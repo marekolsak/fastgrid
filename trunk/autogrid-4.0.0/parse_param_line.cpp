@@ -35,6 +35,9 @@
 #include "partokens.h"
 #include "parse_param_line.h"
 
+// Required for a successful compilation on Visual C++
+#include "msvc_compatibility.h"
+
 extern int debug;
 extern FILE *logFile;
 

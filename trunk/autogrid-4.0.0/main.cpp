@@ -198,6 +198,11 @@ int main( int argc,  char **argv )
  * ATOM_MAPS, so this is safe. */
 
 {
+#if defined(_WIN32)
+    SetThreadAffinityMask(GetCurrentThread(), 1);
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2,2), &wsaData);
+#endif
 
 /*  for associative dictionary storing parameters by autogrid 'type'  */
 // FILE * dataFile;
@@ -341,7 +346,7 @@ int ctr;
 char atom_name[6];
 /*char extension[5];*/
 /* char q_str[7]; */
-char record[6];
+char record[7];
 char temp_char = ' ';
 char token[5];
 char warned = 'F';
@@ -559,11 +564,9 @@ banner( version_num);
 printdate( logFile, 1);
 
 
-#ifndef _WIN32
 if (gethostname( host_name, MAX_CHARS ) == 0) {
     (void) fprintf( logFile, "                   using:\t\t\t\"%s\"\n", host_name);
 }
-#endif
 
 
 (void) fprintf( logFile, "\n\n");
@@ -2524,6 +2527,9 @@ timesyshms( job_end - job_start, &tms_job_start, &tms_job_end);
     boinc_finish(0);       /* should not return */
 #endif
 
+#if defined(_WIN32)
+    WSACleanup();
+#endif
 return 0;
 }
 /*
@@ -2551,34 +2557,3 @@ void boinc_app_mouse_button(int x, int y, int which, bool is_down){}
 void boinc_app_key_press(int wParam, int lParam){}
 void boinc_app_key_release(int wParam, int lParam){}
 #endif
-
-
-/* Windows entry point WinMain() */
-
-#ifdef _WIN32 
-
-/*******************************************************
- * Windows:  Unix applications begin with main() while Windows applications
- * begin with WinMain, so this just makes WinMain() process the command line
- * and then invoke main()
- */
-
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst,
-                   LPSTR Args, int WinMode)
-{
-    LPSTR command_line;
-    char* argv[100];
-    int argc;
-    
-    command_line = GetCommandLine();
-    argc = parse_command_line( command_line, argv );
-    return main(argc, argv);
-}
-
-#endif
-
-
-
-/*
- * EOF
- */ 

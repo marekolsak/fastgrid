@@ -40,6 +40,9 @@
 
 #include "printdate.h"
 
+// Required for a successful compilation on Visual C++
+#include "msvc_compatibility.h"
+
 void printdate( FILE *fp, int flag )
 {
     time_t tn; /* tn = "time_now" */

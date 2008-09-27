@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9,00"
-	Name="autogrid"
+	Name="testdiff"
 	ProjectGUID="{3BC7B16E-5AB0-4092-8FE2-80C77D606D19}"
 	RootNamespace="test"
 	Keyword="Win32Proj"
@@ -62,6 +62,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="..\..\Rune\LibWin"
 				GenerateDebugInformation="true"
@@ -91,6 +92,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -143,11 +145,13 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="..\..\Rune\bin"
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
 				SubSystem="1"
+				StackReserveSize="5000000"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				OptimizeForWindows98="0"
@@ -175,6 +179,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -224,11 +229,13 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="..\..\Rune\bin"
 				GenerateManifest="false"
 				GenerateDebugInformation="true"
 				SubSystem="1"
+				StackReserveSize="5000000"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				OptimizeForWindows98="1"
@@ -256,6 +263,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -263,159 +271,7 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\atom_parameter_manager.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\atom_parameter_manager.h"
-			>
-		</File>
-		<File
-			RelativePath="..\autoglobal.h"
-			>
-		</File>
-		<File
-			RelativePath="..\autogrid.h"
-			>
-		</File>
-		<File
-			RelativePath="..\banner.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\check_size.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\constants.h"
-			>
-		</File>
-		<File
-			RelativePath="..\distdepdiel.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\distdepdiel.h"
-			>
-		</File>
-		<File
-			RelativePath="..\gpfparser.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\gpftoken.h"
-			>
-		</File>
-		<File
-			RelativePath="..\grid.h"
-			>
-		</File>
-		<File
-			RelativePath="..\main.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\parameters.h"
-			>
-		</File>
-		<File
-			RelativePath="..\parm.h"
-			>
-		</File>
-		<File
-			RelativePath="..\parse_param_line.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\parse_param_line.h"
-			>
-		</File>
-		<File
-			RelativePath="..\parsetypes.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\partokens.h"
-			>
-		</File>
-		<File
-			RelativePath="..\prHMSfixed.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\printdate.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\printdate.h"
-			>
-		</File>
-		<File
-			RelativePath="..\printhms.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\printhms.h"
-			>
-		</File>
-		<File
-			RelativePath="..\prototypes.h"
-			>
-		</File>
-		<File
-			RelativePath="..\ranlib.h"
-			>
-		</File>
-		<File
-			RelativePath="..\read_parameter_library.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\read_parameter_library.h"
-			>
-		</File>
-		<File
-			RelativePath="..\setflags.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\strindex.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\structs.h"
-			>
-		</File>
-		<File
-			RelativePath="..\times.h"
-			>
-		</File>
-		<File
-			RelativePath="..\timesys.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\timesys.h"
-			>
-		</File>
-		<File
-			RelativePath="..\timesyshms.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\timesyshms.h"
-			>
-		</File>
-		<File
-			RelativePath="..\typedefs.h"
-			>
-		</File>
-		<File
-			RelativePath="..\util.h"
-			>
-		</File>
-		<File
-			RelativePath="..\version.h"
+			RelativePath=".\main.cpp"
 			>
 		</File>
 	</Files>

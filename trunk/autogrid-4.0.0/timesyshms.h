@@ -28,7 +28,9 @@
 #ifndef TIMESYSHMS
 #define TIMESYSHMS
 #include <sys/types.h>
+#if !defined(_WIN32)
 #include <sys/times.h>
+#endif
 #include <time.h>
 #include "autocomm.h"
 #include "printhms.h"

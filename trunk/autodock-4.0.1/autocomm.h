@@ -72,13 +72,13 @@
 
 #define APPROX_ZERO  1.0E-6 /* To avoid division-by-zero errors...            */
 #define BIG          1.0E12 /* Very large constant                            */
-#define MAX_CHARS    128    /* Number of characters in atom data & filenames  */
+#define MAX_CHARS    512    /* Number of characters in atom data & filenames  */
 #define MAX_LINES    256    /* Number of lines in parameter file              */
 
 #ifdef USE_XCODE
 #define LINE_LEN     140    /* Line length in characters                      */
 #else
-#define LINE_LEN     256    /* Line length in characters                      */
+#define LINE_LEN     1024   /* Line length in characters                      */
 #endif
 
 #if defined( USE_XCODE )

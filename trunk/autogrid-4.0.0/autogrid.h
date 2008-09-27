@@ -25,6 +25,9 @@
 
  */
 
+// Required for a successful compilation on Visual C++
+#include "msvc_compatibility.h"
+
 #include "autocomm.h"
 #include "gpftoken.h"
 

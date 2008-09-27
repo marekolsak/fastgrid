@@ -28,7 +28,9 @@
 #ifndef TIMESYS
 #define TIMESYS
 #include <sys/types.h>
+#if !defined(_WIN32)
 #include <sys/times.h>
+#endif
 #include <time.h>
 #include "autocomm.h"
 void  timesys( Clock  duration,
