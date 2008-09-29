@@ -1,3 +1,4 @@
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <time.h>
@@ -45,3 +46,5 @@ clock_t times(struct tms *buffer)
     clock_t ret = clock_t((time * CLOCKS_PER_SEC) / (freq? freq : 1));
     return ret;
 }
+
+#endif
