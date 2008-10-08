@@ -56,7 +56,7 @@
  * 29/10/92 GMM     Application Visualization System (AVS) readable grid      *
  *                    display file input.                                     *
  *                    [AVS is a trademark of Stardent Computer Inc.]          *
- * 06/11/92 GMM     Command line parsing, using Bruce S. Duncan's "setflags". *
+ * 06/11/92 GMM     Command line parsing, using Bruce S. Duncan's "ProcessProgramParameters". *
  * 06/11/92 GMM     New command mode, allowing communication between Autodock *
  *                    and other, invoking programs.                           *
  ******************************************************************************/

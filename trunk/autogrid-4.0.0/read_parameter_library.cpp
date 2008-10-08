@@ -188,7 +188,7 @@ void setup_parameter_library( int outlev )
     int nfields;
     int param_keyword = -1;
     int int_hbond_type = 0;
-    register int counter = 0;
+    int counter = 0;
 
     pr(logFile, "Setting up parameter library with factory defaults.\n\n\n");
 

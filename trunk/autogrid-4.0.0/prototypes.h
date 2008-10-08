@@ -35,7 +35,7 @@
 
 
 void	banner( double version_num );
-int	    setflags( int argc, char **argv );
+int ProcessProgramParameters( int argc, char **argv, FILE *GPF, FILE *logFile, const char *programname, const char *AutoGridHelp, char *grid_param_fn, int &debug, int &oldpdbq);
 ParameterEntry * apm_find( const char key[] );
 void    apm_enter( const char key[], ParameterEntry value );
 int	    check_size( int nelements, char axischar );

@@ -39,11 +39,6 @@
     #include <sys/param.h>
     #include <sys/times.h>
     #include <unistd.h> // sysconf
-
-    #if defined(CLOCKS_PER_SEC)
-        #undef CLOCKS_PER_SEC
-    #endif
-    #define CLOCKS_PER_SEC (sysconf(_SC_CLK_TCK))
 #endif
 
 // the BOINC API header file 
@@ -58,102 +53,9 @@
 #include "autocomm.h"
 #include "distdepdiel.h"
 #include "read_parameter_library.h"
+#include "main_utils.h"
 
-extern float idct;
-extern Linear_FE_Model AD4;
 
-// round() is a C99 function and not universally available
-// Required to round %.3f consistently on different platforms
-#if defined(HAVE_ROUND)
-    #define round3dp(x) ((round((x)*1000.0L))/1000.0L)
-#else
-    #define round3dp(x) (( floor((x)*1000.0 + 0.5)) / 1000.0)
-#endif
-
-// print_error() is used with error_level where:
-// error_level = one of the following:
-#define FATAL_ERROR -2
-#define ERROR -1
-#define WARNING  0
-#define INFORMATION 1
-#define SUGGESTION 2
-
-// print an error or informational message to a file-pointer or
-// standard error
-void print_error(FILE * fileptr, int error_level, char message[LINE_LEN])
-{
-    char output_message[LINE_LEN];
-    char tag[LINE_LEN];
-
-    switch (error_level)
-    {
-    case ERROR:
-    case FATAL_ERROR:
-        strcpy(tag, "ERROR");
-        break;
-    case WARNING:
-        strcpy(tag, "WARNING");
-        break;
-    case INFORMATION:
-        strcpy(tag, "INFORMATION");
-        break;
-    case SUGGESTION:
-        strcpy(tag, "SUGGESTION");
-        break;
-    }
-
-    sprintf(output_message, "\n%s: %s:  %s\n", programname, tag, message);
-
-    // Records all messages in the logFile.
-    fprintf(logFile, "%s\n", output_message);
-
-    // Only send errors, fatal errors and warnings to standard error, stderr.
-    switch (error_level)
-    {
-    case ERROR:
-    case FATAL_ERROR:
-    case WARNING:
-        fprintf(stderr, "%s\n", output_message);
-        break;
-    }
-
-    // If this is a fatal error, exit now.
-    if (error_level == FATAL_ERROR)
-        exit(error_level);
-}
-
-// fopen rewrite to either use BOINC api or normal system call
-FILE *ag_fopen(const char *path, const char *mode)
-{
-    FILE *filep;
-
-#if defined(BOINC)
-    int rc;
-    char resolved_name[512];
-
-    rc = boinc_resolve_filename(path, resolved_name, sizeof(resolved_name));
-    if (rc)
-    {
-        fprintf(stderr, "BOINC_ERROR: cannot open filename.%s\n", path);
-        boinc_finish(rc);       // back to BOINC core 
-    }
-    // Then open the file with boinc_fopen() not just fopen()
-    filep = boinc_fopen(resolved_name, mode);
-#else
-    filep = fopen(path, mode);
-#endif
-    return filep;
-}
-
-static int get_rec_index(const char key[])
-{
-    ParameterEntry *found_parm;
-
-    found_parm = apm_find(key);
-    if (found_parm != NULL)
-        return found_parm->rec_index;
-    return -1;
-}
 
 //****************************************************************************
 // Name: main (executable's name is "autogrid").  
@@ -206,12 +108,15 @@ int main(int argc, char **argv)
     tms _dummytms;
     clock_t startTime = times(&_dummytms);
 
+    // Former global variables
+    FILE    *GPF;
+
     // for associative dictionary storing parameters by autogrid 'type' 
     /*FILE * dataFile;
     char dataline[100];
     ENTRY item; */
     // see atom_parameter_manager.c 
-    static ParameterEntry thisparm;
+    ParameterEntry thisparm;
     ParameterEntry *found_parm;
     char FN_parameter_library[MAX_CHARS];   // the AD4 parameters .dat file name
     int parameter_library_found = 0;
@@ -227,7 +132,7 @@ int main(int argc, char **argv)
 #define NUM_RECEPTOR_TYPES  NUM_ALL_TYPES
     // malloc this after the number of receptor types is parsed 
     // MAX_DIST is really NBCUTOFF times 100 
-    static double energy_lookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
+    double energy_lookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
 
     struct MapObject
     {
@@ -338,7 +243,7 @@ int main(int argc, char **argv)
     // MAX_DIST 
     double epsilon[MAX_DIST];
     int MD_1 = MAX_DIST - 1;
-    static double sol_fn[MAX_DIST];
+    double sol_fn[MAX_DIST];
     double energy_smooth[MAX_DIST];
 
     // JUNE 29 
@@ -420,14 +325,14 @@ int main(int argc, char **argv)
 
 #define INIT_NUM_GRID_PTS -1
     int num_grid_points_per_map = INIT_NUM_GRID_PTS;
-    register int i = 0, ii = 0, j = 0, k = 0, indx_r = 0, i_smooth = 0;
+    int i = 0, ii = 0, j = 0, k = 0, indx_r = 0, i_smooth = 0;
 
-    // register int i = 0, ii = 0, j = 0, jj = 0, k = 0, indx_r = 0, i_smooth = 0; 
-    register int ia = 0, ib = 0, ic = 0, map_index = -1, iat = 0, i1 = 0, i2 = 0, i3 = 0;
-    register int closestH = 0;
+    // int i = 0, ii = 0, j = 0, jj = 0, k = 0, indx_r = 0, i_smooth = 0; 
+    int ia = 0, ib = 0, ic = 0, map_index = -1, iat = 0, i1 = 0, i2 = 0, i3 = 0;
+    int closestH = 0;
 
-    static int num_receptor_atoms;
-    static long clktck = 0;
+    int num_receptor_atoms;
+    long clktck = 0;
 
     Clock job_start;
     Clock job_end;
@@ -501,8 +406,8 @@ int main(int argc, char **argv)
             fprintf(logFile, "\"CLOCKS_PER_SEC\" command failed in \"main.c\"\n");
             exit(-1);
         }
-        else
-            idct = (float)1. / (float)clktck;
+
+        idct = (float)1. / (float)clktck;
     }
 
     ln_half = (double)log(0.5);
@@ -515,7 +420,7 @@ int main(int argc, char **argv)
     /* 
      * Parse the command line...
      */
-    setflags(argc, argv);
+    ProcessProgramParameters(argc, argv, GPF, logFile, programname, AutoGridHelp, grid_param_fn, debug, oldpdbq);
 
     strcpy(xyz, "xyz");
 
@@ -568,17 +473,15 @@ int main(int argc, char **argv)
 
     while (fgets(GPF_line, LINE_LEN, GPF) != NULL)
     {
-
         GPF_keyword = gpfparser(GPF_line);
 
         // This first "switch" figures out how to echo the current GPF line. 
-
         switch (GPF_keyword)
         {
 
         case -1:
             fprintf(logFile, "GPF> %s", GPF_line);
-            print_error(logFile, WARNING, "Unrecognized keyword in grid parameter file.\n");
+            print_error(programname, logFile, WARNING, "Unrecognized keyword in grid parameter file.\n");
             continue;           // while fgets GPF_line... 
 
         case GPF_NULL:
@@ -615,8 +518,8 @@ int main(int argc, char **argv)
             if ((receptor_fileptr = ag_fopen(receptor_filename, "r")) == NULL)
             {
                 sprintf(message, "can't find or open receptor PDBQT file \"%s\".\n", receptor_filename);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
 
             // start to read in the lines of the receptor file 
@@ -732,15 +635,15 @@ int main(int argc, char **argv)
                     if (ia > AG_MAX_ATOMS)
                     {
                         sprintf(message, "Too many atoms in receptor PDBQT file %s;", receptor_filename);
-                        print_error(logFile, ERROR, message);
+                        print_error(programname, logFile, ERROR, message);
                         sprintf(message, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
-                        print_error(logFile, ERROR, message);
+                        print_error(programname, logFile, ERROR, message);
                         sprintf(message, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
-                        print_error(logFile, SUGGESTION, message);
-                        print_error(logFile, SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
+                        print_error(programname, logFile, SUGGESTION, message);
+                        print_error(programname, logFile, SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
                         fflush(logFile);
                         // FATAL_ERROR will cause AutoGrid to exit...
-                        print_error(logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                        print_error(programname, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                     }           // endif 
                 }               // endif 
             }                   // endwhile 
@@ -756,9 +659,9 @@ int main(int argc, char **argv)
                     sprintf(message,
                                   "The number of atom types found in the receptor PDBQT (%d) does not match the number specified by the \"receptor_types\" command (%d) in the GPF!\n\n",
                                   receptor_types_ct, receptor_types_gpf_ct);
-                    print_error(logFile, ERROR, message);
+                    print_error(programname, logFile, ERROR, message);
                     // FATAL_ERROR will cause AutoGrid to exit...
-                    print_error(logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                    print_error(programname, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                 }
             }
             // Update the total number of atoms in the receptor 
@@ -770,9 +673,9 @@ int main(int argc, char **argv)
             if (q_max == 0. && q_min == 0.)
             {
                 sprintf(message, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptor_filename);
-                print_error(logFile, ERROR, message);
+                print_error(programname, logFile, ERROR, message);
                 // FATAL_ERROR will cause AutoGrid to exit...
-                print_error(logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                print_error(programname, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
             }                   // if there are no charges EXIT 
 
             for (ia = 0; ia < num_receptor_atoms; ia++)
@@ -819,7 +722,7 @@ int main(int argc, char **argv)
             sscanf(GPF_line, "%*s %s", AVS_fld_filename);
             infld = strindex(AVS_fld_filename, ".fld");
             if (infld == -1)
-                print_error(logFile, FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
+                print_error(programname, logFile, FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
             else
             {
                 infld = strindex(AVS_fld_filename, "fld");
@@ -831,18 +734,18 @@ int main(int argc, char **argv)
             if ((AVS_fld_fileptr = ag_fopen(AVS_fld_filename, "w")) == NULL)
             {
                 sprintf(message, "can't create grid dimensions data file %s\n", AVS_fld_filename);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             else
                 fprintf(logFile, "\nCreating (AVS-readable) grid maps file : %s\n", AVS_fld_filename);
             if ((xyz_fileptr = ag_fopen(xyz_filename, "w")) == NULL)
             {
                 sprintf(message, "can't create grid extrema data file %s\n", xyz_filename);
-                print_error(logFile, ERROR, message);
+                print_error(programname, logFile, ERROR, message);
                 sprintf(message, "SORRY!    unable to create the \".xyz\" file.\n\n");
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             else
                 fprintf(logFile, "\nCreating (AVS-readable) grid-coordinates extrema file : %s\n\n", xyz_filename);
@@ -961,8 +864,8 @@ int main(int argc, char **argv)
 
             if (gridmap == NULL)
             {
-                print_error(logFile, ERROR, "Could not allocate memory to create the MapObject \"gridmap\".\n");
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, "Could not allocate memory to create the MapObject \"gridmap\".\n");
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
 
             // Initialize the gridmap MapObject
@@ -1007,7 +910,7 @@ int main(int argc, char **argv)
                     sprintf(message,
                                   "There will not be enough memory to store these grid maps in AutoDock; \ntry reducing the number of ligand atom types (you have %d including electrostatics) \nor reducing the size of the grid maps (you asked for %d x %d x %d grid points); \n or try running AutoDock on a machine with more RAM than this one.\n",
                                   num_maps, n1[X], n1[Y], n1[Z]);
-                    print_error(logFile, WARNING, message);
+                    print_error(programname, logFile, WARNING, message);
                 }
                 else
                 {
@@ -1017,14 +920,14 @@ int main(int argc, char **argv)
             }
             else
             {
-                print_error(logFile, ERROR, "You need to set the number of grid points using \"npts\" before setting the ligand atom types, using \"ligand_types\".\n");
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, "You need to set the number of grid points using \"npts\" before setting the ligand atom types, using \"ligand_types\".\n");
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }                   // ZZZZZZZZZZZZZZZZZ 
             if (!gridmap)
             {
                 sprintf(message, "Too many ligand atom types; there is not enough memory to create these maps.  Try using fewer atom types than %d.\n", num_atom_maps);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
 
             for (i = 0; i < num_atom_maps; i++)
@@ -1140,8 +1043,8 @@ int main(int argc, char **argv)
                 else
                 {
                     sprintf(message, "Unknown receptor type: \"%s\"\n -- Add parameters for it to the parameter library first!\n", receptor_atom_types[i]);
-                    print_error(logFile, ERROR, message);
-                    print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    print_error(programname, logFile, ERROR, message);
+                    print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
             }
             // at this point set up hydrogen, carbon, oxygen and nitrogen
@@ -1201,16 +1104,16 @@ int main(int argc, char **argv)
             {
                 sprintf(message, "Too many \"map\" keywords (%d);  the \"types\" command declares only %d maps.\nRemove a \"map\" keyword from the GPF.\n", map_index + 1,
                               num_atom_maps);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             // Read in the filename for this grid map *//* GPF_MAP 
             sscanf(GPF_line, "%*s %s", gridmap[map_index].map_filename);
             if ((gridmap[map_index].map_fileptr = ag_fopen(gridmap[map_index].map_filename, "w")) == NULL)
             {
                 sprintf(message, "Cannot open grid map \"%s\" for writing.", gridmap[map_index].map_filename);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nOutput Grid Map %d:   %s\n\n", (map_index + 1), gridmap[map_index].map_filename);
             fflush(logFile);
@@ -1222,8 +1125,8 @@ int main(int argc, char **argv)
             if ((gridmap[elecPE].map_fileptr = ag_fopen(gridmap[elecPE].map_filename, "w")) == NULL)
             {
                 sprintf(message, "can't open grid map \"%s\" for writing.\n", gridmap[elecPE].map_filename);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmap[elecPE].map_filename);
             break;
@@ -1233,8 +1136,8 @@ int main(int argc, char **argv)
             if ((gridmap[dsolvPE].map_fileptr = ag_fopen(gridmap[dsolvPE].map_filename, "w")) == NULL)
             {
                 sprintf(message, "can't open grid map \"%s\" for writing.\n", gridmap[dsolvPE].map_filename);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmap[dsolvPE].map_filename);
             break;
@@ -1311,8 +1214,8 @@ int main(int argc, char **argv)
             if ((floating_grid_fileptr = ag_fopen(floating_grid_filename, "w")) == NULL)
             {
                 sprintf(message, "can't open grid map \"%s\" for writing.\n", floating_grid_filename);
-                print_error(logFile, ERROR, message);
-                print_error(logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                print_error(programname, logFile, ERROR, message);
+                print_error(programname, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nFloating Grid file name = %s\n", floating_grid_filename);
             ++num_maps;
@@ -1401,16 +1304,16 @@ int main(int argc, char **argv)
                 cA = (tmpconst = epsij / (double)(xA - xB)) * pow(Rij, (double)xA) * (double)xB;
                 cB = tmpconst * pow(Rij, (double)xB) * (double)xA;
                 if (isnan(cA))
-                    print_error(logFile, FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
+                    print_error(programname, logFile, FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
                 if (isnan(cB))
-                    print_error(logFile, FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
+                    print_error(programname, logFile, FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
                 // printf("tmpconst = %6.4f, cA = %6.4f, cB = %6.4f\n",tmpconst, cA, cB); 
                 dxA = (double)xA;
                 dxB = (double)xB;
                 if (xA == 0)
-                    print_error(logFile, FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
+                    print_error(programname, logFile, FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
                 if (xB == 0)
-                    print_error(logFile, FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
+                    print_error(programname, logFile, FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
                 fprintf(logFile, "\n             %9.1lf       %9.1lf \n", cA, cB);
                 fprintf(logFile, "    E    =  -----------  -  -----------\n");
                 fprintf(logFile, "     %s, %s         %2d              %2d\n", gridmap[ia].type, receptor_types[i], xA, xB);
@@ -1552,7 +1455,7 @@ int main(int argc, char **argv)
                                 sprintf(message,
                                               "While calculating an H-O or H-N bond vector...\nAttempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n",
                                               ia + 1, ib + 1);
-                                print_error(logFile, WARNING, message);
+                                print_error(programname, logFile, WARNING, message);
                             }
                             rd2 = APPROX_ZERO;
                         }
@@ -1622,7 +1525,7 @@ int main(int argc, char **argv)
                         if (nbond == 2)
                         {
                             sprintf(message, "Found an H-bonding atom with three bonded atoms, atom serial number %d\n", ia + 1);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                         }
                         if (nbond == 1)
                         {
@@ -1643,7 +1546,7 @@ int main(int argc, char **argv)
             if (nbond == 0)
             {
                 sprintf(message, "Oxygen atom found with no bonded atoms, atom serial number %d, atom_type %d\n", ia + 1, atom_type[ia]);
-                print_error(logFile, WARNING, message);
+                print_error(programname, logFile, WARNING, message);
             }
 
             // one bond: Carbonyl Oxygen O=C-X 
@@ -1664,7 +1567,7 @@ int main(int argc, char **argv)
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
                         sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, i1 + 1);
-                        print_error(logFile, WARNING, message);
+                        print_error(programname, logFile, WARNING, message);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1700,7 +1603,7 @@ int main(int argc, char **argv)
                                 if ((rd2 == 0.) && (warned == 'F'))
                                 {
                                     sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
-                                    print_error(logFile, WARNING, message);
+                                    print_error(programname, logFile, WARNING, message);
                                     warned = 'T';
                                 }
                                 rd2 = APPROX_ZERO;
@@ -1721,7 +1624,7 @@ int main(int argc, char **argv)
                                 if ((rd2 == 0.) && (warned == 'F'))
                                 {
                                     sprintf(message, "Attempt to divide by zero was just prevented.\n\n");
-                                    print_error(logFile, WARNING, message);
+                                    print_error(programname, logFile, WARNING, message);
                                     warned = 'T';
                                 }
                                 rd2 = APPROX_ZERO;
@@ -1759,7 +1662,7 @@ int main(int argc, char **argv)
                         if ((rd2 == 0.) && (warned == 'F'))
                         {
                             sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, ib + 1);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                             warned = 'T';
                         }
                         rd2 = APPROX_ZERO;
@@ -1786,7 +1689,7 @@ int main(int argc, char **argv)
                         if ((rd2 == 0.) && (warned == 'F'))
                         {
                             sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                             warned = 'T';
                         }
                         rd2 = APPROX_ZERO;
@@ -1811,7 +1714,7 @@ int main(int argc, char **argv)
                         if ((rd2 == 0.) && (warned == 'F'))
                         {
                             sprintf(message, "Attempt to divide by zero was just prevented.\n\n");
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                             warned = 'T';
                         }
                         rd2 = APPROX_ZERO;
@@ -1874,7 +1777,7 @@ int main(int argc, char **argv)
             if (nbond == 0)
             {
                 sprintf(message, "Nitrogen atom found with no bonded atoms, atom serial number %d\n", ia);
-                print_error(logFile, WARNING, message);
+                print_error(programname, logFile, WARNING, message);
             }
 
             // one bond: Azide Nitrogen :N=C-X 
@@ -1895,7 +1798,7 @@ int main(int argc, char **argv)
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
                         sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
-                        print_error(logFile, WARNING, message);
+                        print_error(programname, logFile, WARNING, message);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1921,7 +1824,7 @@ int main(int argc, char **argv)
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
                         sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
-                        print_error(logFile, WARNING, message);
+                        print_error(programname, logFile, WARNING, message);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1948,7 +1851,7 @@ int main(int argc, char **argv)
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
                         sprintf(message, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
-                        print_error(logFile, WARNING, message);
+                        print_error(programname, logFile, WARNING, message);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -2263,13 +2166,13 @@ int main(int argc, char **argv)
                         {
                             t0 = 1.;
                             sprintf(message, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", t0);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                         }
                         else if (t0 < -1.)
                         {
                             t0 = -1.;
                             sprintf(message, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", t0);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                         }
                         t0 = PI_halved - acos(t0);
 
@@ -2288,7 +2191,7 @@ int main(int argc, char **argv)
                             if ((rd2 == 0.) && (warned == 'F'))
                             {
                                 sprintf(message, "Attempt to divide by zero was just prevented.\n\n");
-                                print_error(logFile, WARNING, message);
+                                print_error(programname, logFile, WARNING, message);
                                 warned = 'T';
                             }
                             rd2 = APPROX_ZERO;
@@ -2306,13 +2209,13 @@ int main(int argc, char **argv)
                             {
                                 ti = 1.;
                                 sprintf(message, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", ti);
-                                print_error(logFile, WARNING, message);
+                                print_error(programname, logFile, WARNING, message);
                             }
                             else if (ti < -1.)
                             {
                                 ti = -1.;
                                 sprintf(message, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", ti);
-                                print_error(logFile, WARNING, message);
+                                print_error(programname, logFile, WARNING, message);
                             }
                             ti = acos(ti) - PI_halved;
                             if (ti < 0.)
@@ -2337,13 +2240,13 @@ int main(int argc, char **argv)
                         {
                             cos_theta = 1.;
                             sprintf(message, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", cos_theta);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                         }
                         else if (cos_theta < -1.)
                         {
                             cos_theta = -1.;
                             sprintf(message, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", cos_theta);
-                            print_error(logFile, WARNING, message);
+                            print_error(programname, logFile, WARNING, message);
                         }
                         theta = acos(cos_theta);
                         racc = 0.;
@@ -2382,15 +2285,9 @@ int main(int argc, char **argv)
                                 {   // DS or D1 
                                     // PROBE can be an H-BOND ACCEPTOR, 
                                     if (disorder[ia] == FALSE)
-                                    {
                                         gridmap[map_index].energy += energy_lookup[atom_type[ia]][indx_r][map_index] * Hramp * (racc + (1. - racc) * rsph);
-
-                                    }
                                     else
-                                    {
                                         gridmap[map_index].energy += energy_lookup[hydrogen][max(0, indx_r - 110)][map_index] * Hramp * (racc + (1. - racc) * rsph);
-
-                                    }
                                 }
                                 else if ((gridmap[map_index].hbond == 4)    // A1 
                                          && (hbond[ia] == 1 || hbond[ia] == 2))
@@ -2401,7 +2298,6 @@ int main(int argc, char **argv)
                                 }
                                 else if ((gridmap[map_index].hbond == 1 || gridmap[map_index].hbond == 2) && (hbond[ia] > 2))
                                 {   // DS,D1 vs AS,A1,A2 
-
                                     // PROBE is H-BOND DONOR, 
                                     temp_hbond_enrg = energy_lookup[atom_type[ia]][indx_r][map_index] * (rdon + (1. - rdon) * rsph);
                                     hbondmin[map_index] = min(hbondmin[map_index], temp_hbond_enrg);
@@ -2409,18 +2305,13 @@ int main(int argc, char **argv)
                                     hbondflag[map_index] = TRUE;
                                 }
                                 else
-                                {
                                     // hbonder PROBE-ia cannot form a H-bond..., 
                                     gridmap[map_index].energy += energy_lookup[atom_type[ia]][indx_r][map_index];
-                                }
-
                             }
                             else
-                            {   // end of is_hbonder 
                                 // PROBE does not form H-bonds..., 
                                 gridmap[map_index].energy += energy_lookup[atom_type[ia]][indx_r][map_index];
 
-                            }   // end hbonder test 
                             // add desolvation energy 
                             // forcefield desolv coefficient/weight in sol_fn 
                             gridmap[map_index].energy += gridmap[map_index].solpar_probe * vol[ia] * sol_fn[indx_r] +
@@ -2430,13 +2321,11 @@ int main(int argc, char **argv)
                     gridmap[dsolvPE].energy += solpar_q * vol[ia] * sol_fn[indx_r];
                 }               // ia loop, over all receptor atoms... 
                 for (map_index = 0; map_index < num_atom_maps; map_index++)
-                {
                     if (hbondflag[map_index])
                     {
                         gridmap[map_index].energy += hbondmin[map_index];
                         gridmap[map_index].energy += hbondmax[map_index];
                     }
-                }
 
                 /* 
                  * O U T P U T . . .
@@ -2461,10 +2350,8 @@ int main(int argc, char **argv)
                     gridmap[k].energy_min = min(gridmap[k].energy_min, gridmap[k].energy);
                 }
                 if (floating_grid)
-                {
                     if ((!problem_wrt) && (fprintf(floating_grid_fileptr, "%.3f\n", (float)round3dp(r_min)) < 0))
                         problem_wrt = TRUE;
-                }
                 ctr++;
             }                   // icoord[X] loop 
 
@@ -2473,7 +2360,7 @@ int main(int argc, char **argv)
         if (problem_wrt)
         {
             sprintf(message, "Problems writing grid maps - there may not be enough disk space.\n");
-            print_error(logFile, WARNING, message);
+            print_error(programname, logFile, WARNING, message);
         }
         grd_end = times(&tms_grd_end);
         ++nDone;
@@ -2535,6 +2422,7 @@ int main(int argc, char **argv)
     boinc_finish(0);            // should not return 
 #endif
 
+    // output the elapsed time
     clock_t endTime = times(&_dummytms);
     std::cout << "main() took: " << ((endTime-startTime)*1000/CLOCKS_PER_SEC) << "ms\n";
 #if defined(_WIN32)
@@ -2542,18 +2430,3 @@ int main(int argc, char **argv)
 #endif
     return 0;
 }
-
-/* 
- * End of main function.
- */
-
-#if defined(BOINC)
-// Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks. 
-
-void app_graphics_render(int xs, int ys, double time_of_day){}
-void app_graphics_reread_prefs(){}
-void boinc_app_mouse_move(int x, int y, bool left, bool middle, bool right){}
-void boinc_app_mouse_button(int x, int y, int which, bool is_down){}
-void boinc_app_key_press(int wParam, int lParam){}
-void boinc_app_key_release(int wParam, int lParam){}
-#endif

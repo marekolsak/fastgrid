@@ -67,7 +67,7 @@
 				AdditionalLibraryDirectories="..\..\Rune\LibWin"
 				GenerateDebugInformation="true"
 				SubSystem="1"
-				StackReserveSize="5000000"
+				StackReserveSize="100000000"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				TargetMachine="1"
@@ -151,7 +151,7 @@
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
 				SubSystem="1"
-				StackReserveSize="5000000"
+				StackReserveSize="100000000"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				OptimizeForWindows98="0"
@@ -235,7 +235,7 @@
 				GenerateManifest="false"
 				GenerateDebugInformation="true"
 				SubSystem="1"
-				StackReserveSize="5000000"
+				StackReserveSize="100000000"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				OptimizeForWindows98="1"
@@ -276,6 +276,10 @@
 		</File>
 		<File
 			RelativePath="..\atom_parameter_manager.h"
+			>
+		</File>
+		<File
+			RelativePath="..\autoglobal.cpp"
 			>
 		</File>
 		<File
@@ -320,6 +324,14 @@
 		</File>
 		<File
 			RelativePath="..\main.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\main_utils.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\main_utils.h"
 			>
 		</File>
 		<File

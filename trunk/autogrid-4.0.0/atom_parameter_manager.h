@@ -25,11 +25,8 @@
 
  */
 
-#ifndef _APM_PROTOTYPES
-#   define _APM_PROTOTYPES
+#pragma once
+#include "structs.h"
 
-#   include "structs.h"
 void apm_enter(const char key[], ParameterEntry value);
 ParameterEntry * apm_find(const char key[]);
-
-#endif

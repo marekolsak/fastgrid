@@ -30,22 +30,14 @@
 #include <string.h>
 #include "autogrid.h"
 
-extern FILE *GPF;
-extern FILE *logFile;
-extern char *programname;
-extern char AutoGridHelp[];
-extern char grid_param_fn[];
-extern int  debug;
-extern int  oldpdbq;
-
 /*----------------------------------------------------------------------------*/
 
-int setflags( int argc, char **argv )
+int ProcessProgramParameters( int argc, char **argv, FILE *GPF, FILE *logFile, const char *programname, const char *AutoGridHelp, char *grid_param_fn, int &debug, int &oldpdbq)
 
 /*----------------------------------------------------------------------------*/
 
 /******************************************************************************/
-/*      Name: setflags                                                        */
+/*      Name: ProcessProgramParameters                                                        */
 /*  Function: read flags from argv; return argindex of first non arg.         */
 /* Copyright: (C) Garrett Matthew Morris, TSRI.                               */
 /*----------------------------------------------------------------------------*/
