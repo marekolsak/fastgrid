@@ -26,7 +26,7 @@
  */
 
 #pragma once
-#include <time.h>
+#include <ctime>
 
 struct tms
 {
@@ -37,7 +37,4 @@ struct tms
 	// All of the times are given in clock ticks. These are absolute values; in a newly created process, they are all zero. See section Creating a Process. 
 };
 
-
-extern clock_t times (struct tms *buffer);
-
-// end
+clock_t times (struct tms *buffer);

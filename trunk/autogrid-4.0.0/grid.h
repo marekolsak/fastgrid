@@ -66,7 +66,7 @@ typedef struct      grid_map_set_info
 
 #define GridMapSetSize(gp) (((gp)->num_alloc[Z]) * ((gp)->num_alloc[Y]) * ((gp)->num_alloc[X]) * ((gp)->num_alloc_maps))
 
-#define NewGridMapSet(gp) (double *) malloc( sizeof(double) * GridMapSetSize(gp) )
+#define NewGridMapSet(gp) (double *) malloc(sizeof(double) * GridMapSetSize(gp))
 
 /* 
  * GridIndex(gp,m,x,y,z)

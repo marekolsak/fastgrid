@@ -57,4 +57,3 @@
 #define	PAR_COMMENT	 7
 
 #endif
-/* EOF */

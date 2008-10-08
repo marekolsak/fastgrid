@@ -29,19 +29,16 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstring>
+#include <cctype>
 #include "partokens.h"
 #include "parse_param_line.h"
 
 // Required for a successful compilation on Visual C++
 #include "msvc_compatibility.h"
 
-extern int debug;
-extern FILE *logFile;
-
-int parse_param_line( char line[LINE_LEN] )
+int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile)
 
 /******************************************************************************/
 /*      Name: parse_param_line                                                */
@@ -84,11 +81,11 @@ int parse_param_line( char line[LINE_LEN] )
         /*  Ignore case */
         c[j] = (char)tolower((int)line[j]);
         if (debug > 0) {
-            (void)fprintf(logFile,"%c",c[j]);
+            fprintf(logFile,"%c",c[j]);
         }
     }
     if (debug > 0) {
-        (void)fprintf(logFile,"\nj = %d\n",j);
+        fprintf(logFile,"\nj = %d\n",j);
     }
 
     /*  Recognize one character tokens  */
@@ -103,7 +100,7 @@ int parse_param_line( char line[LINE_LEN] )
 
     for (i=0;  (i < tokentablesize) && (token == PAR_);  i++) {
         if (debug > 0) {
-            (void)fprintf(logFile,"i = %d, tokentable[i].lexeme = %s, tokentable[i].value = %d, c = %s\n",i,tokentable[i].lexeme,tokentable[i].tokenvalue,c);
+            fprintf(logFile,"i = %d, tokentable[i].lexeme = %s, tokentable[i].value = %d, c = %s\n",i,tokentable[i].lexeme,tokentable[i].tokenvalue,c);
         }
         if (strncasecmp(tokentable[i].lexeme, c, j) == 0) {
             token = tokentable[i].tokenvalue;
@@ -111,4 +108,3 @@ int parse_param_line( char line[LINE_LEN] )
     }
     return(token);
 }
-/* EOF */

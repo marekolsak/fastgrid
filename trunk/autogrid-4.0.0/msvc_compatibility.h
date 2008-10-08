@@ -4,7 +4,7 @@
 // disable the warning: ' function ': was declared deprecated
 #pragma warning (disable: 4996)
 
-#include <float.h>
+#include <cfloat>
 
 // Some functions in Visual C++ differ from those in the linux/unix environment
 #define isnan _isnan

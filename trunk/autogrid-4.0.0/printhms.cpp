@@ -28,16 +28,10 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <cstdio>
+#include "typedefs.h"
 
-/* printhms.cc */
-
-    #include <stdio.h>
-    #include "printhms.h"
-
-extern FILE *logFile;
-
-void printhms( Real t )
-
+void printhms(Real t, FILE *logFile)
 {
     int   h,
           m;
@@ -52,11 +46,10 @@ void printhms( Real t )
 
     if (h == 0) {
         if (m == 0)
-            fprintf(logFile,       "%.2fs",       s );
+            fprintf(logFile,       "%.2fs",       s);
         else
-            fprintf(logFile,    "%dm %05.2fs",    m, s );
+            fprintf(logFile,    "%dm %05.2fs",    m, s);
     } else {
-            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
     }
 }
-/* EOF */

@@ -2,9 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include "msvc_compatibility.h"
-#include "autocomm.h"
-//#include "autoglobal.h"
-#include "atom_parameter_manager.h"
+#include "prototypes.h"
 #include "main_utils.h"
 
 

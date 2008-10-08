@@ -34,7 +34,6 @@
 #if defined(_WIN32)
     #include "times.h"
     #include <Winsock2.h>
-    #include "util.h"
 #else
     #include <sys/param.h>
     #include <sys/times.h>
@@ -49,10 +48,8 @@
 #endif
 
 #include "autogrid.h"
-#include "autoglobal.h"
 #include "autocomm.h"
 #include "distdepdiel.h"
-#include "read_parameter_library.h"
 #include "main_utils.h"
 
 
@@ -109,7 +106,14 @@ int main(int argc, char **argv)
     clock_t startTime = times(&_dummytms);
 
     // Former global variables
-    FILE    *GPF;
+    char    *programname;
+    FILE    *GPF = 0;
+    char    grid_param_fn[MAX_CHARS];
+    int     debug = 0;
+    int     oldpdbq = FALSE;
+    Real	idct = 1;
+    FILE    *logFile;
+    Linear_FE_Model AD4;
 
     // for associative dictionary storing parameters by autogrid 'type' 
     /*FILE * dataFile;
@@ -345,10 +349,8 @@ int main(int argc, char **argv)
     struct tms tms_grd_end;
 
     for (i = 0; i < MAX_MAPS; i++)
-    {
         // initialize to "" 
         strcpy(ligand_types[i], "");
-    }
     for (i = 0; i < NUM_RECEPTOR_TYPES; i++)
     {
         // initialize to "" 
@@ -403,7 +405,6 @@ int main(int argc, char **argv)
         if ((clktck = CLOCKS_PER_SEC) < 0)
         {
             fprintf(stderr, "\"CLOCKS_PER_SEC\" command failed in \"main.c\"\n");
-            fprintf(logFile, "\"CLOCKS_PER_SEC\" command failed in \"main.c\"\n");
             exit(-1);
         }
 
@@ -420,7 +421,7 @@ int main(int argc, char **argv)
     /* 
      * Parse the command line...
      */
-    ProcessProgramParameters(argc, argv, GPF, logFile, programname, AutoGridHelp, grid_param_fn, debug, oldpdbq);
+    process_program_parameters(argc, argv, GPF, logFile, programname, grid_param_fn, debug, oldpdbq);
 
     strcpy(xyz, "xyz");
 
@@ -444,7 +445,7 @@ int main(int argc, char **argv)
         receptor_atom_type_count[i] = 0;
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * Output the "AutoGrid" banner... 
-    banner(version_num);
+    banner(version_num, logFile);
 
     fprintf(logFile, "                           $Revision: 1.58 $\n\n\n");
     /* 
@@ -467,7 +468,7 @@ int main(int argc, char **argv)
     // 
     // Read in default parameters
     // 
-    setup_parameter_library(outlev);
+    setup_parameter_library(outlev, programname, debug, logFile, AD4);
 
     // Read in the grid parameter file...  
 
@@ -756,7 +757,7 @@ int main(int argc, char **argv)
             sscanf(GPF_line, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
             for (i = 0; i < XYZ; i++)
             {
-                nelements[i] = check_size(nelements[i], xyz[i]);
+                nelements[i] = check_size(nelements[i], xyz[i], programname, logFile);
                 ne[i] = nelements[i] / 2;
                 n1[i] = nelements[i] + 1;
             }
@@ -1005,7 +1006,7 @@ int main(int argc, char **argv)
                 fprintf(logFile, "\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", gridmap[i].map_index, gridmap[i].type);
 
                 // FIX THIS!!! Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism... 
-                /* if (gridmap[i].atom_type == COVALENTTYPE) { gridmap[i].is_covalent = TRUE;  fprintf( logFile, "\nAtom type number %d will be used to calculate a covalent affinity
+                /* if (gridmap[i].atom_type == COVALENTTYPE) { gridmap[i].is_covalent = TRUE;  fprintf(logFile, "\nAtom type number %d will be used to calculate a covalent affinity
                    grid map\n\n", i + 1); } */
             }
             fprintf(logFile, "\n\n");
@@ -1225,7 +1226,7 @@ int main(int argc, char **argv)
         case GPF_PARAM_FILE:
             // open and read the AD4 parameters .dat file 
             parameter_library_found = sscanf(GPF_line, "%*s %s ", FN_parameter_library);
-            read_parameter_library(FN_parameter_library, outlev);
+            read_parameter_library(FN_parameter_library, outlev, programname, debug, logFile, AD4);
             break;
         }                       // second switch 
     }                           // while 
@@ -1331,10 +1332,10 @@ int main(int argc, char **argv)
                 energy_lookup[i][0][ia] = EINTCLAMP;
                 energy_lookup[i][MD_1][ia] = 0.;
 
-                /* PRINT OUT INITIAL VALUES before smoothing here  fprintf( logFile, "before smoothing\n r "); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf( logFile, 
-                   " %s ", receptor_types[iat]); }  fprintf( logFile, "\n ___"); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf( logFile, " ________"); } 
-                   fprintf( logFile, "\n"); for (j = 0; j <= 500; j += 10) {  fprintf( logFile, "%4.1lf", angstrom(j)); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf( 
-                   logFile, (energy_lookup[iat][j][ia]<100000.)?"%9.2lf":"%9.2lg", energy_lookup[iat][j][ia]); }  fprintf( logFile, "\n"); }  fprintf( logFile, "\n"); */
+                /* PRINT OUT INITIAL VALUES before smoothing here  fprintf(logFile, "before smoothing\n r "); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf(logFile, 
+                   " %s ", receptor_types[iat]); }  fprintf(logFile, "\n ___"); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf(logFile, " ________"); } 
+                   fprintf(logFile, "\n"); for (j = 0; j <= 500; j += 10) {  fprintf(logFile, "%4.1lf", angstrom(j)); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf(
+                   logFile, (energy_lookup[iat][j][ia]<100000.)?"%9.2lf":"%9.2lg", energy_lookup[iat][j][ia]); }  fprintf(logFile, "\n"); }  fprintf(logFile, "\n"); */
 
                 // smooth with min function *//* GPF_MAP 
                 if (i_smooth > 0)
@@ -1357,7 +1358,7 @@ int main(int argc, char **argv)
             for (iat = 0; iat < receptor_types_ct; iat++)
             {
                 fprintf(logFile, "    %s    ", receptor_types[iat]);
-                //  fprintf( logFile, " %c ", receptor_atom_type_string[iat]); 
+                //  fprintf(logFile, " %c ", receptor_atom_type_string[iat]); 
             }                   // iat 
             fprintf(logFile, "\n ___");
             for (iat = 0; iat < receptor_types_ct; iat++)
@@ -1538,7 +1539,7 @@ int main(int argc, char **argv)
                             i1 = ib;
                         }
                     }
-                }               // ( ib != ia ) 
+                }               // (ib != ia) 
             }                   // ib-loop 
 
             // if no bonds, something is wrong 
@@ -1769,7 +1770,7 @@ int main(int argc, char **argv)
                             i1 = ib;
                         }
                     }
-                }               // ( ib != ia ) 
+                }               // (ib != ia) 
             }                   // ib-loop 
 
             // if no bonds, something is wrong 
@@ -1912,7 +1913,7 @@ int main(int argc, char **argv)
     fprintf(logFile, "________  ________  ________  ______________  __________________________\n\n");
 
     /* 
-     * Iterate over all grid points, Z( Y ( X ) ) (X is fastest)...
+     * Iterate over all grid points, Z(Y (X)) (X is fastest)...
      */
 
     ic = 0;
@@ -2035,7 +2036,7 @@ int main(int argc, char **argv)
                     if ((atom_type[ia] == hydrogen) && (disorder[ia] == TRUE))
                         continue;   // onto the next atom... 
 
-                //** racc = rdon = 1.; **
+                    //** racc = rdon = 1.; **
                     racc = 1.;
                     rdon = 1.;
                     // NEW2 Hramp ramps in Hbond acceptor probes 
@@ -2045,7 +2046,7 @@ int main(int argc, char **argv)
                     if (hbond[ia] == 2)
                     {           // D1 
                         /* 
-                         *  ia-th receptor atom = Hydrogen ( 4 = H )
+                         *  ia-th receptor atom = Hydrogen (4 = H)
                          *  => receptor H-bond donor, OH or NH.
                          *  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
                          *            ====     ======================
@@ -2059,13 +2060,11 @@ int main(int argc, char **argv)
                             cos_theta -= d[i] * rvector[ia][i];
 
                         if (cos_theta <= 0.)
-                        {
                             /* 
                              *  H->current-grid-pt vector >= 90 degrees from
                              *  N->H or O->H vector,
                              */
                             racc = 0.;
-                        }
                         else
                         {
                             /* 
@@ -2086,7 +2085,7 @@ int main(int argc, char **argv)
                                 racc = tmp * tmp;
                                 break;
                             }
-                            // racc = pow( cos_theta, (double)rexp[ia]); 
+                            // racc = pow(cos_theta, (double)rexp[ia]); 
 
                             // NEW2 calculate dot product of bond vector with bond vector of best hbond 
                             if (ia == closestH)
@@ -2102,7 +2101,6 @@ int main(int argc, char **argv)
                                 Hramp = 0.5 - 0.5 * cos(theta * 120. / 90.);
                             }   // ia test 
                             // END NEW2 calculate dot product of bond vector with bond vector of best hbond 
-
                         }
                         // endif (atom_type[ia] == hydrogen) 
                         // NEW Directional N acceptor 
@@ -2110,7 +2108,7 @@ int main(int argc, char **argv)
                     else if (hbond[ia] == 4)
                     {           // A1 
                         /* 
-                         **  ia-th macromolecule atom = Nitrogen ( 4 = H )
+                         **  ia-th macromolecule atom = Nitrogen (4 = H)
                          **  calculate rdon for H-bond Donor PROBES at this grid pt.
                          **            ====     ======================
                          */
@@ -2123,20 +2121,16 @@ int main(int argc, char **argv)
                             cos_theta -= d[i] * rvector[ia][i];
 
                         if (cos_theta <= 0.)
-                        {
                             /* 
                              **  H->current-grid-pt vector >= 90 degrees from
                              **  X->N vector,
                              */
                             rdon = 0.;
-                        }
                         else
-                        {
                             /* 
                              **  racc = [cos(theta)]^2.0 for H->N
                              */
                             rdon = cos_theta * cos_theta;
-                        }
                         // endif (atom_type[ia] == nitrogen) 
                         // end NEW Directional N acceptor 
 
@@ -2354,7 +2348,6 @@ int main(int argc, char **argv)
                         problem_wrt = TRUE;
                 ctr++;
             }                   // icoord[X] loop 
-
         }                       // icoord[Y] loop 
 
         if (problem_wrt)
@@ -2366,11 +2359,10 @@ int main(int argc, char **argv)
         ++nDone;
         timeRemaining = (float)(grd_end - grd_start) * idct * (float)(n1[Z] - nDone);
         fprintf(logFile, " %6d   %8.3lf   %5.1lf%%   ", icoord[Z], cgridmin[Z] + c[Z], percentdone * (double)++ic);
-        prHMSfixed(timeRemaining);
+        prHMSfixed(timeRemaining, logFile);
         fprintf(logFile, "  ");
-        timesys(grd_end - grd_start, &tms_grd_start, &tms_grd_end);
+        timesys(grd_end - grd_start, &tms_grd_start, &tms_grd_end, idct, logFile);
         fflush(logFile);
-
     }                           // icoord[Z] loop 
 
 #if defined(BOINCCOMPOUND)
@@ -2410,7 +2402,7 @@ int main(int argc, char **argv)
     fprintf(logFile, "\n%s: Successful Completion.\n", programname);
 
     job_end = times(&tms_job_end);
-    timesyshms(job_end - job_start, &tms_job_start, &tms_job_end);
+    timesyshms(job_end - job_start, &tms_job_start, &tms_job_end, idct, logFile);
 
     fclose(logFile);
 

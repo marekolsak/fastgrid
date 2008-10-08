@@ -25,14 +25,14 @@
 
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstring>
+#include <cctype>
 #include "gpftoken.h"
 #include "autogrid.h"
 #include "constants.h"
 
-int gpfparser( char line[LINE_LEN] )
+int gpfparser(char line[LINE_LEN])
 
 /******************************************************************************/
 /*      Name: gpfparser                                                       */
@@ -63,7 +63,7 @@ int gpfparser( char line[LINE_LEN] )
 	}
     }
     for(i=0; i<l; i++) {
-        c[i] = (char)tolower( (int)line[i] );
+        c[i] = (char)tolower((int)line[i]);
     }
 
     if ((c[0]=='\n')||(c[0]=='\0')) {
@@ -142,4 +142,3 @@ int gpfparser( char line[LINE_LEN] )
     }
     return(token);
 }
-/* EOF */

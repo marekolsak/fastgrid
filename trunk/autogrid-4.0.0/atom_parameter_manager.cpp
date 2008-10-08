@@ -27,10 +27,9 @@
 
 #define MAXKEY (256*256)
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include "structs.h" // needed for ParameterEntry structure
-#include "atom_parameter_manager.h"
 
 typedef ParameterEntry PE;
 static PE *dictionary[MAXKEY];

@@ -243,4 +243,3 @@ typedef struct energy_tables
 
 
 #endif
-/* EOF */

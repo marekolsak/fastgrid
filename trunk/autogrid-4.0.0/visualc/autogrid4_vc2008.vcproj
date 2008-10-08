@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../../autodock-4.0.1"
+				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -124,7 +124,7 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="../../autodock-4.0.1"
+				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				EnableEnhancedInstructionSet="2"
@@ -209,7 +209,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				InlineFunctionExpansion="0"
-				AdditionalIncludeDirectories="../../autodock-4.0.1"
+				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -275,15 +275,7 @@
 			>
 		</File>
 		<File
-			RelativePath="..\atom_parameter_manager.h"
-			>
-		</File>
-		<File
-			RelativePath="..\autoglobal.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\autoglobal.h"
+			RelativePath="..\autocomm.h"
 			>
 		</File>
 		<File
@@ -371,15 +363,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\printdate.h"
-			>
-		</File>
-		<File
 			RelativePath="..\printhms.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\printhms.h"
+			RelativePath="..\process_program_parameters.cpp"
 			>
 		</File>
 		<File
@@ -392,14 +380,6 @@
 		</File>
 		<File
 			RelativePath="..\read_parameter_library.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\read_parameter_library.h"
-			>
-		</File>
-		<File
-			RelativePath="..\setflags.cpp"
 			>
 		</File>
 		<File
@@ -423,23 +403,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\timesys.h"
-			>
-		</File>
-		<File
 			RelativePath="..\timesyshms.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\timesyshms.h"
-			>
-		</File>
-		<File
 			RelativePath="..\typedefs.h"
-			>
-		</File>
-		<File
-			RelativePath="..\util.h"
 			>
 		</File>
 		<File

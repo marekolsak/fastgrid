@@ -25,17 +25,12 @@
 
  */
 
-#include <iostream>
-#include <math.h>
+#include <cstdlib>
+#include <cmath>
 #include "autogrid.h"
 
-
-extern char *programname;
-extern FILE *logFile;
-
 /*----------------------------------------------------------------------------*/
-int check_size(int nelements, 
-	       char axischar)
+int check_size(int nelements, char axischar, const char *programname, FILE *logFile)
 
 /*----------------------------------------------------------------------------*/
 

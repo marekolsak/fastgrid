@@ -25,10 +25,10 @@
 
  */
 
-#include <math.h>
+#include <cmath>
 #include "distdepdiel.h"
 
-double calc_ddd_Mehler_Solmajer( double distance, double approx_zero ) {
+double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
     /*____________________________________________________________________________
      * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
      *____________________________________________________________________________*/

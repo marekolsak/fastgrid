@@ -59,4 +59,3 @@ typedef struct parameter_entry
 } ParameterEntry;
 
 #endif
-/* EOF */

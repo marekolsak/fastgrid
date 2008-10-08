@@ -62,36 +62,9 @@
 /* Globals,                                                                   */
 /*----------------------------------------------------------------------------*/
 
-extern char    *programname;
-extern char    *AutoDockHelp;
-
-extern char    *AutoGridHelp;
-
-extern char    dock_param_fn[MAX_CHARS];
-extern char    grid_param_fn[MAX_CHARS];
-
-extern int     command_mode;
-extern int     debug;
-extern int	    ElecMap;
-extern int	    DesolvMap;
-extern int     ignore_errors;
-extern int     keepresnum;
-extern int     oldpdbq;
-extern int     parse_tors_mode;
-extern int	    true_ligand_atoms;
-
-extern FILE    *command_in_fp;
-extern FILE    *command_out_fp;
-extern FILE    *parFile;
-extern FILE    *logFile;
-
-#ifdef USE_DOUBLE
-extern Real	idct;
-#else
-extern Real	idct;
-#endif
-
-extern Linear_FE_Model AD4;
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// All global variables were moved.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 /*
 // AutoDock 3 Linear Free Energy Model Coefficients wrt AD2
@@ -136,14 +109,4 @@ AD4.coeff_tors   = AD4_wrt_3.coeff_tors   * AD3.coeff_tors;
 // estat  0.1408434
 // desolv 0.122
 // tors   0.090277
-
-*/
-
-extern FILE    *stateFile;
-extern int     write_stateFile;
-/*
-** struct  Quat {
-**             Real angle;
-**             Real vec[SPACE];
-**             };
 */

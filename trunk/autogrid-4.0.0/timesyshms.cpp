@@ -26,35 +26,22 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+    #include <config.h>
 #endif
-
-#include <stdio.h>
+#include <cstdio>
+#include <ctime>
 #include <sys/types.h>
-
 #ifndef _WIN32
-#include <sys/times.h>
-#include <unistd.h>
+    #include <sys/times.h>
+    #include <unistd.h>
 #else
-#include "times.h"
+    #include "times.h"
 #endif
-#include "timesyshms.h"
-#include <time.h>
+#include "autocomm.h"
 
-
-extern  FILE    *logFile;
-extern	Real	idct;
-
-/*----------------------------------------------------------------------------*/
-
-void timesyshms( Clock     duration,
-                 struct tms  *start,
-                 struct tms  *end)
-
-/*----------------------------------------------------------------------------*/
-
+void timesyshms(Clock duration, struct tms  *start, struct tms  *end, Real idct, FILE *logFile)
 {
-    int   h, m;
+    int h, m;
     Real t, T, s;
 #ifndef USE_DOUBLE
     const Real min = 60., hrs = 3600.;
@@ -62,7 +49,7 @@ void timesyshms( Clock     duration,
     const Real min = 60.L, hrs = 3600.L;
 #endif
 
-    (void)fprintf( logFile, "Real= " );
+    fprintf(logFile, "Real= ");
     t = (Real)duration * idct;
     h = (int)(t/hrs);
     T = t - ((Real)h)*hrs;
@@ -71,25 +58,25 @@ void timesyshms( Clock     duration,
     if (h == 0) {
         if (m == 0)
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile,       "%.2fs",       s );
+            fprintf(logFile,       "%.2fs",       s);
 #else
-            (void)fprintf(logFile,       "%.2lfs",       s );
+            fprintf(logFile,       "%.2lfs",       s);
 #endif
         else
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile,    "%dm %05.2fs",    m, s );
+            fprintf(logFile,    "%dm %05.2fs",    m, s);
 #else
-            (void)fprintf(logFile,    "%dm %05.2lfs",    m, s );
+            fprintf(logFile,    "%dm %05.2lfs",    m, s);
 #endif
     } else {
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile, "%dh %02dm %05.2fs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
 #else
-            (void)fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s);
 #endif
     }
 
-    (void)fprintf( logFile, ",  CPU= " );
+    fprintf(logFile, ",  CPU= ");
     t =      (Real)((end->tms_utime  - start->tms_utime) * idct);
     h = (int)(t/hrs);
     T = t - ((Real)h)*hrs;
@@ -98,25 +85,25 @@ void timesyshms( Clock     duration,
     if (h == 0) {
         if (m == 0)
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile,       "%.2fs",       s );
+            fprintf(logFile,       "%.2fs",       s);
 #else
-            (void)fprintf(logFile,       "%.2lfs",       s );
+            fprintf(logFile,       "%.2lfs",       s);
 #endif
         else
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile,    "%dm %05.2fs",    m, s );
+            fprintf(logFile,    "%dm %05.2fs",    m, s);
 #else
-            (void)fprintf(logFile,    "%dm %05.2lfs",    m, s );
+            fprintf(logFile,    "%dm %05.2lfs",    m, s);
 #endif
     } else {
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile, "%dh %02dm %05.2fs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
 #else
-            (void)fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s);
 #endif
     }
 
-    (void)fprintf( logFile, ",  System= " );
+    fprintf(logFile, ",  System= ");
     t = (Real)((end->tms_stime  - start->tms_stime) * idct);
     h = (int)(t/hrs);
     T = t - ((Real)h)*hrs;
@@ -125,26 +112,23 @@ void timesyshms( Clock     duration,
     if (h == 0) {
         if (m == 0)
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile,       "%.2fs",       s );
+            fprintf(logFile,       "%.2fs",       s);
 #else
-            (void)fprintf(logFile,       "%.2lfs",       s );
+            fprintf(logFile,       "%.2lfs",       s);
 #endif
         else
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile,    "%dm %05.2fs",    m, s );
+            fprintf(logFile,    "%dm %05.2fs",    m, s);
 #else
-            (void)fprintf(logFile,    "%dm %05.2lfs",    m, s );
+            fprintf(logFile,    "%dm %05.2lfs",    m, s);
 #endif
     } else {
 #ifndef USE_DOUBLE
-            (void)fprintf(logFile, "%dh %02dm %05.2fs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
 #else
-            (void)fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s );
+            fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s);
 #endif
     }
 
-    (void)fprintf( logFile, "\n" );
+    fprintf(logFile, "\n");
 }
-/*----------------------------------------------------------------------------*/
-/* EOF.                                                                       */
-/*----------------------------------------------------------------------------*/

@@ -56,7 +56,7 @@
  * 29/10/92 GMM     Application Visualization System (AVS) readable grid      *
  *                    display file input.                                     *
  *                    [AVS is a trademark of Stardent Computer Inc.]          *
- * 06/11/92 GMM     Command line parsing, using Bruce S. Duncan's "ProcessProgramParameters". *
+ * 06/11/92 GMM     Command line parsing, using Bruce S. Duncan's "process_program_parameters". *
  * 06/11/92 GMM     New command mode, allowing communication between Autodock *
  *                    and other, invoking programs.                           *
  ******************************************************************************/
@@ -241,14 +241,14 @@
 #ifndef MACROS
 #define MACROS
 
-#define equal(a,b,n) ( strncmp(a,b,(size_t)(n)) == (int)0 )
+#define equal(a,b,n) (strncmp(a,b,(size_t)(n)) == (int)0)
 
-#define max(x,y)     ( ((x) > (y)) ? (x) : (y) )
-#define min(x,y)     ( ((x) < (y)) ? (x) : (y) )
-#define clamp(x,lowerbound)        ( ((x) < (lowerbound)) ? (lowerbound) : (x) )
+#define max(x,y)     (((x) > (y)) ? (x) : (y))
+#define min(x,y)     (((x) < (y)) ? (x) : (y))
+#define clamp(x,lowerbound)        (((x) < (lowerbound)) ? (lowerbound) : (x))
 
-#define Rad(deg)     ( (deg) * 0.01745329252 )
-#define Deg(rad)     ( (rad) * 57.29577951 )
+#define Rad(deg)     ((deg) * 0.01745329252)
+#define Deg(rad)     ((rad) * 57.29577951)
 
 #define ModDeg(a)    fmod((double)(a),(double)360.)
 #define ModRad(a)    fmod((double)(a),(double)TWOPI)
@@ -259,43 +259,43 @@
 #define WrpModRad(a) (((a)> PI)? (ModRad(a)-TWOPI) :(((a)< -PI)?  (ModRad(a)+TWOPI) :(a)))
 
 /*
- * #define        RedFac(s0,sN,N)                expf( logf((sN)/(s0)) / ((N)-1))
+ * #define        RedFac(s0,sN,N)                expf(logf((sN)/(s0)) / ((N)-1))
  * N.B. You must compile with ANSI (-Aa on HPPA) in order to use expf 
  * and logf, otherwise Reals are automatically promoted to doubles.
  */
-#define        RedFac(s0,sN,N)    exp( log((sN)/(s0)) / ((N)-1))
+#define        RedFac(s0,sN,N)    exp(log((sN)/(s0)) / ((N)-1))
 
-#define arithmetic_mean( r1, r2 ) (0.5L * ((r1) + (r2)))
-#define geometric_mean( e1, e2 )  sqrt((double)(e1) * (double)(e2))
+#define arithmetic_mean(r1, r2) (0.5L * ((r1) + (r2)))
+#define geometric_mean(e1, e2)  sqrt((double)(e1) * (double)(e2))
 
-#define sq(a)                     ( (a) * (a) )
-#define SQ(a)                     ( (a) * (a) )
-#define sqhypotenuse(x,y,z)       ( sq(x) + sq(y) + sq(z) )
-#define hypotenuse(x,y,z)         (sqrt((double)(sq(x) + sq(y) + sq(z)) )  )
-#define hypotenuse_F(x,y,z)       (sqrtf( sq(x) + sq(y) + sq(z) )  )
+#define sq(a)                     ((a) * (a))
+#define SQ(a)                     ((a) * (a))
+#define sqhypotenuse(x,y,z)       (sq(x) + sq(y) + sq(z))
+#define hypotenuse(x,y,z)         (sqrt((double)(sq(x) + sq(y) + sq(z))))
+#define hypotenuse_F(x,y,z)       (sqrtf(sq(x) + sq(y) + sq(z)))
 #define hypotenuse4(x,y,z,w)      (sqrt((double)(sq(x) + sq(y) + sq(z) + sq(w))))
-#define hypotenuse4_F(x,y,z,w)    (sqrtf( sq(x) + sq(y) + sq(z) + sq(w) )  )
+#define hypotenuse4_F(x,y,z,w)    (sqrtf(sq(x) + sq(y) + sq(z) + sq(w)))
 
 
 /* index_to_Ang converts from an array index to a distance */
-#define index_to_Ang(i)           ( ( (Real) (i) ) * INV_A_DIV )
+#define index_to_Ang(i)           (((Real) (i)) * INV_A_DIV)
 
 /* Ang_to_index converts from a distance to an array index */
-#define Ang_to_index(r)           ( (int) ( (r) * A_DIV ) )
+#define Ang_to_index(r)           ((int) ((r) * A_DIV))
 
 /* BoundedAng_to_index converts from a distance to an array index, but never returns an index out of bounds. */
 #define BoundedAng_to_index(r)    ((((int)((r)*A_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r)*A_DIV))
 
 /* index_to_SqAng converts from an array index to the square of a distance */
-#define index_to_SqAng(i)         ( ( (Real) (i) ) * INV_SQA_DIV )
+#define index_to_SqAng(i)         (((Real) (i)) * INV_SQA_DIV)
 
 /* SqAng_to_index converts from the square of a distance to an array index */
-#define SqAng_to_index(r2)        ( (int) ( (r2) * SQA_DIV ) )
-#define SqAng_to_index_NBC2(r2)   ( (int) ( ( min( r2, NBC2 ) ) * SQA_DIV ) )
+#define SqAng_to_index(r2)        ((int) ((r2) * SQA_DIV))
+#define SqAng_to_index_NBC2(r2)   ((int) ((min(r2, NBC2)) * SQA_DIV))
 #define SqAng_to_index_Int(r2)    (INT_SQA_DIV * (int)(r2))  /* Xcode-gmm */
 
 /* BoundedSqAng_to_index converts from the square of a distance to an array index, but never returns an index out of bounds. */
-#define BoundedSqAng_to_index(r2) ( (((int)((r2)*SQA_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r2)*SQA_DIV)) )
+#define BoundedSqAng_to_index(r2) ((((int)((r2)*SQA_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r2)*SQA_DIV)))
 
 /* BoundedNeint never returns an index greater than (NEINT - 1). */
 #define BoundedNeint(i)           (((i) > NEINT_1) ? NEINT_1 : (i))
@@ -317,19 +317,19 @@
  *  local_random is >= 0.0 and <1.0
  */
 #ifdef __ppc__
-#include <stdlib.h>
+#include <cstdlib>
 #include <limits.h>
-#define seed_random(t)      srandom( (t) )
-#define local_random()      ( (double)random() / (double)LONG_MAX )
+#define seed_random(t)      srandom((t))
+#define local_random()      ((double)random() / (double)LONG_MAX)
 #else
-#include <stdlib.h>
-#define seed_random(t)      srand48( (FourByteLong)(t) )
+#include <cstdlib>
+#define seed_random(t)      srand48((FourByteLong)(t))
 #define local_random()      drand48()
 #endif
 #else 
 // This is platform-independent RNG-based.
 #include "ranlib.h"
-#define seed_random(t)      setall( (FourByteLong)(t), (FourByteLong)(t) ); initgn(-1)
+#define seed_random(t)      setall((FourByteLong)(t), (FourByteLong)(t)); initgn(-1)
 #define local_random()      genunf(0., 1.)
 #endif
 
@@ -340,13 +340,13 @@
     #define        ISNAN(n)        isnan(n)
 #endif /* !sgi */
 
-#define random_sign        ( (local_random() < 0.5) ?  (-1.0) : (+1.0) )
-#define random_pm1()    ( 2.*local_random() - 1. ) /* ..."pm"="Plus or Minus" */
+#define random_sign        ((local_random() < 0.5) ?  (-1.0) : (+1.0))
+#define random_pm1()    (2.*local_random() - 1.) /* ..."pm"="Plus or Minus" */
 #define Randpm1                random_pm1()
 #define RandpmPI        PI * Randpm1
-#define random_pm(x)    ( (x) * Randpm1 )    /* ...random num. between +/- x; */
+#define random_pm(x)    ((x) * Randpm1)    /* ...random num. between +/- x; */
 /* Return a random number in the range a to b...  */
-#define random_range(a,b)    ( (a) + (((b)-(a))*local_random()) )
+#define random_range(a,b)    ((a) + (((b)-(a))*local_random()))
 
 #endif  /* MACROS */
 
@@ -367,12 +367,12 @@
 
 /*  For debugging torsions... */
 
-#define    PrintDebugTors    (void)fprintf(logFile, "%-2d %-2d %4s %c %-8d %-9d %-2d %-4d      [%-2d] [ ", i, atomnumber[i],rec5,C,atomlast,nbranches,j, ntor, ntor )
-#define    PrintDebugTors2   for(oo=0; oo<3+tlist[ntor][2]; oo++)  (void)fprintf(logFile, "%-2d ", tlist[ ntor ][ oo ] )
+#define    PrintDebugTors    fprintf(logFile, "%-2d %-2d %4s %c %-8d %-9d %-2d %-4d      [%-2d] [ ", i, atomnumber[i],rec5,C,atomlast,nbranches,j, ntor, ntor)
+#define    PrintDebugTors2   for(oo=0; oo<3+tlist[ntor][2]; oo++)  fprintf(logFile, "%-2d ", tlist[ ntor ][ oo ])
 
 #endif /* DEBUG */
 
-#define DPrint(expr)        (void)printf(#expr " = %.4g\n", expr)
+#define DPrint(expr)        printf(#expr " = %.4g\n", expr)
 
 #endif /* DEBUG_STUFF */
 

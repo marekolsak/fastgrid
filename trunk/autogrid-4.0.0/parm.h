@@ -85,7 +85,5 @@
 #define num_atom_types     49
 #define num_hbnd_types     16
 
-
-extern float get_Rij(int type1, int type2);
-extern float get_epsij(int type1, int type2);
-
+float get_Rij(int type1, int type2);
+float get_epsij(int type1, int type2);

@@ -26,9 +26,9 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstring>
+#include <cctype>
 
 #include "autogrid.h"
 
@@ -98,4 +98,3 @@ int parsetypes(char * line, char *words[], int maxwords)
     }
 
 }
-/* EOF */

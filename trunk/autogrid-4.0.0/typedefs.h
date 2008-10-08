@@ -69,4 +69,3 @@ typedef union
 #endif
 
 #endif
-/* EOF */

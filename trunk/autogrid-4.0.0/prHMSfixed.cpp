@@ -1,10 +1,7 @@
-#include <stdio.h>
+#include <cstdio>
 #include "autogrid.h"
 
-
-extern FILE *logFile;
-
-void prHMSfixed( float t )
+void prHMSfixed(float t, FILE *logFile)
 {
     int   h, m;
     float T, s;
@@ -17,11 +14,10 @@ void prHMSfixed( float t )
 
     if (h == 0) {
         if (m == 0)
-            fprintf(logFile,    "        %5.2fs",        s );
+            fprintf(logFile,    "        %5.2fs",        s);
         else
-            fprintf(logFile,   "    %2dm %05.2fs",    m, s );
+            fprintf(logFile,   "    %2dm %05.2fs",    m, s);
     } else {
-            fprintf(logFile, "%2dh %02dm %05.2fs", h, m, s );
+            fprintf(logFile, "%2dh %02dm %05.2fs", h, m, s);
     }
 }
-/* EOF */

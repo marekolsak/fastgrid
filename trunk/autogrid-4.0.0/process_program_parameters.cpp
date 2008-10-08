@@ -1,6 +1,6 @@
 /*
 
- $Id: setflags.cpp,v 1.8 2007/05/03 20:46:06 garrett Exp $
+ $Id: process_program_parameters.cpp,v 1.8 2007/05/03 20:46:06 garrett Exp $
 
  AutoGrid 
 
@@ -25,19 +25,19 @@
 
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include "autogrid.h"
 
 /*----------------------------------------------------------------------------*/
 
-int ProcessProgramParameters( int argc, char **argv, FILE *GPF, FILE *logFile, const char *programname, const char *AutoGridHelp, char *grid_param_fn, int &debug, int &oldpdbq)
+int process_program_parameters(int argc, char **argv, FILE *&GPF, FILE *&logFile, char *&programname, char (&grid_param_fn)[MAX_CHARS], int &debug, int &oldpdbq)
 
 /*----------------------------------------------------------------------------*/
 
 /******************************************************************************/
-/*      Name: ProcessProgramParameters                                                        */
+/*      Name: process_program_parameters                                                        */
 /*  Function: read flags from argv; return argindex of first non arg.         */
 /* Copyright: (C) Garrett Matthew Morris, TSRI.                               */
 /*----------------------------------------------------------------------------*/
@@ -62,6 +62,8 @@ int ProcessProgramParameters( int argc, char **argv, FILE *GPF, FILE *logFile, c
 /******************************************************************************/
 
 {
+    char *AutoGridHelp = "-p parameter_filename\n-l log_filename\n-o (old PDBQ format)\n-d (increment debug level)\n-u (display this message)\n";
+
     int argindex;
 /*----------------------------------------------------------------------------*/
 /* Initialize                                                                 */
@@ -94,7 +96,7 @@ int ProcessProgramParameters( int argc, char **argv, FILE *GPF, FILE *logFile, c
 	    exit(0);
             break;
         case 'l':
-            if ( (logFile = ag_fopen(argv[2], "w")) == NULL ) {
+            if ((logFile = ag_fopen(argv[2], "w")) == NULL) {
                 fprintf(stderr, "\n%s: Sorry, I can't create the log file \"%s\"\n", programname, argv[2]);
                 fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programname);
                 exit(911);
@@ -105,7 +107,7 @@ int ProcessProgramParameters( int argc, char **argv, FILE *GPF, FILE *logFile, c
             break;
         case 'p':
             strcpy(grid_param_fn, argv[2]);
-            if ( (GPF = ag_fopen(argv[2], "r")) == NULL ) {
+            if ((GPF = ag_fopen(argv[2], "r")) == NULL) {
                 fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programname, argv[2]);
                 fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programname);
                 exit(911);

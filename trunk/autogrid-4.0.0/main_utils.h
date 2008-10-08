@@ -5,7 +5,7 @@
 #if defined(HAVE_ROUND)
     #define round3dp(x) ((round((x)*1000.0L))/1000.0L)
 #else
-    #define round3dp(x) (( floor((x)*1000.0 + 0.5)) / 1000.0)
+    #define round3dp(x) ((floor((x)*1000.0 + 0.5)) / 1000.0)
 #endif
 
 // print_error() is used with error_level where:

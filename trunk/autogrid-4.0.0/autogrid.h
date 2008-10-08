@@ -77,9 +77,9 @@
 /* Macros,                                                                    */
 /*----------------------------------------------------------------------------*/
 
-#define sq(a)               ( (a) * (a) )
-/* #define hypotenuse(x,y,z)   ( sqrt( (x)*(x) + (y)*(y) + (z)*(z) )  ) */
-#define sq_hyp(x,y,z)       ( (x)*(x) + (y)*(y) + (z)*(z) )
+#define sq(a)               ((a) * (a))
+/* #define hypotenuse(x,y,z)   (sqrt((x)*(x) + (y)*(y) + (z)*(z))) */
+#define sq_hyp(x,y,z)       ((x)*(x) + (y)*(y) + (z)*(z))
 // we do not want to have a redefinition of the following macro max,min
 
 #ifdef _WIN32
@@ -87,10 +87,10 @@
 #undef max
 #endif
 
-#define max(x,y)            ( ((x) > (y)) ? (x) : (y) )
-#define min(x,y)            ( ((x) < (y)) ? (x) : (y) )
-#define angstrom(i)         ( ( (double) (i) ) / A_DIVISOR )
-#define lookup(r)           ( (int) ( (r) * A_DIVISOR ) )
+#define max(x,y)            (((x) > (y)) ? (x) : (y))
+#define min(x,y)            (((x) < (y)) ? (x) : (y))
+#define angstrom(i)         (((double) (i)) / A_DIVISOR)
+#define lookup(r)           ((int) ((r) * A_DIVISOR))
 
 /*----------------------------------------------------------------------------*/
 /* Prototypes,                                                                */
