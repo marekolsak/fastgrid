@@ -34,9 +34,7 @@
 #include <cctype>
 #include "partokens.h"
 #include "parse_param_line.h"
-
-// Required for a successful compilation on Visual C++
-#include "msvc_compatibility.h"
+#include "autogrid.h"
 
 int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile)
 

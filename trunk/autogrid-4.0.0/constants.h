@@ -26,7 +26,7 @@
  */
 
 #ifndef _AUTOCOMM
-#include "autocomm.h" /* PI, TWOPI. */
+#include "../autodock-4.0.1/autocomm.h" /* PI, TWOPI. */
 #endif
 
 /******************************************************************************

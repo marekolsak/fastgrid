@@ -29,6 +29,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "autogrid.h"
+#include "utils.h"
 
 /*----------------------------------------------------------------------------*/
 

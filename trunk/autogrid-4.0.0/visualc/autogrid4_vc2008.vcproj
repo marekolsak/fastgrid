@@ -40,6 +40,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="0"
 				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
@@ -120,6 +121,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="2"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
@@ -207,6 +209,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="0"
 				InlineFunctionExpansion="0"
 				AdditionalIncludeDirectories=""
@@ -271,43 +274,11 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\atom_parameter_manager.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\autocomm.h"
-			>
-		</File>
-		<File
 			RelativePath="..\autogrid.h"
 			>
 		</File>
 		<File
-			RelativePath="..\banner.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\check_size.cpp"
-			>
-		</File>
-		<File
 			RelativePath="..\constants.h"
-			>
-		</File>
-		<File
-			RelativePath="..\distdepdiel.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\distdepdiel.h"
-			>
-		</File>
-		<File
-			RelativePath="..\gpfparser.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\gpftoken.h"
 			>
 		</File>
 		<File
@@ -316,18 +287,6 @@
 		</File>
 		<File
 			RelativePath="..\main.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\main_utils.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\main_utils.h"
-			>
-		</File>
-		<File
-			RelativePath="..\msvc_compatibility.h"
 			>
 		</File>
 		<File
@@ -347,31 +306,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\parsetypes.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\partokens.h"
-			>
-		</File>
-		<File
-			RelativePath="..\prHMSfixed.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\printdate.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\printhms.cpp"
-			>
-		</File>
-		<File
 			RelativePath="..\process_program_parameters.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\prototypes.h"
+			RelativePath="..\process_program_parameters.h"
 			>
 		</File>
 		<File
@@ -383,7 +322,7 @@
 			>
 		</File>
 		<File
-			RelativePath="..\strindex.cpp"
+			RelativePath="..\read_parameter_library.h"
 			>
 		</File>
 		<File
@@ -391,23 +330,15 @@
 			>
 		</File>
 		<File
-			RelativePath="..\times.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\times.h"
-			>
-		</File>
-		<File
-			RelativePath="..\timesys.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\timesyshms.cpp"
-			>
-		</File>
-		<File
 			RelativePath="..\typedefs.h"
+			>
+		</File>
+		<File
+			RelativePath="..\utils.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\utils.h"
 			>
 		</File>
 		<File

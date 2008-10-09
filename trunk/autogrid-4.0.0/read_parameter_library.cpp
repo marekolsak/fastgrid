@@ -29,12 +29,11 @@
 #include <cstdio>
 #include <cstring>
 #include "autogrid.h"
-#include "autocomm.h"
 #include "constants.h"
 #include "parameters.h"
 #include "parse_param_line.h"
-#include "partokens.h"
 #include "../autodock-4.0.1/default_parameters.h"
+#include "utils.h"
 
 void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
 {

@@ -21,23 +21,17 @@
 
 #include <cmath>
 #include <cassert>
-#include <cstdio>
 #include <search.h>
 #include <cstring>
 #include <cstdlib>
-#include <ctime>
 #include <cctype>   // tolower
 #include <cstddef>
 #include <iostream>
-#include <sys/types.h>
 
 #if defined(_WIN32)
-    #include "times.h"
     #include <Winsock2.h>
 #else
     #include <sys/param.h>
-    #include <sys/times.h>
-    #include <unistd.h> // sysconf
 #endif
 
 // the BOINC API header file 
@@ -48,11 +42,9 @@
 #endif
 
 #include "autogrid.h"
-#include "autocomm.h"
-#include "distdepdiel.h"
-#include "main_utils.h"
-
-
+#include "utils.h"
+#include "process_program_parameters.h"
+#include "read_parameter_library.h"
 
 //****************************************************************************
 // Name: main (executable's name is "autogrid").  

@@ -26,10 +26,18 @@
  */
 
 // Required for a successful compilation on Visual C++
-#include "msvc_compatibility.h"
+#if defined(_MSC_VER)
+    // disable the warning: ' function ': was declared deprecated
+    #pragma warning (disable: 4996)
 
-#include "autocomm.h"
-#include "gpftoken.h"
+    #include <cfloat>
+
+    // Some functions in Visual C++ differ from those in the linux/unix environment
+    #define isnan _isnan
+    #define strncasecmp _strnicmp
+#endif
+
+#include "../autodock-4.0.1/autocomm.h"
 
 /******************************************************************************/
 /*      Name: autogrid.h                                                      */
@@ -92,19 +100,6 @@
 #define angstrom(i)         (((double) (i)) / A_DIVISOR)
 #define lookup(r)           ((int) ((r) * A_DIVISOR))
 
-/*----------------------------------------------------------------------------*/
-/* Prototypes,                                                                */
-/*----------------------------------------------------------------------------*/
-
-#include "prototypes.h"
-
-
 #define MAX_NUM_AUTOGRID_TYPES 100
 #define NUM_ALL_TYPES 20   /*??? IS THIS REASONABLE???*/
 #define MAX_LEN_AUTOGRID_TYPE 7
-
-/* added for port to BOINC 11/17/2004 */
-FILE *ag_fopen(const char *path, const char *mode);
-/*----------------------------------------------------------------------------*/
-/* EOF.                                                                       */
-/*----------------------------------------------------------------------------*/
