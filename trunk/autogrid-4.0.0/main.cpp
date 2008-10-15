@@ -46,6 +46,37 @@
 #include "process_program_parameters.h"
 #include "read_parameter_library.h"
 
+#define NUM_RECEPTOR_TYPES  NUM_ALL_TYPES
+
+struct MapObject
+{
+    int atom_type;          // corresponds to receptor numbers???? 
+    int map_index;
+    int is_covalent;
+    int is_hbonder;
+    FILE *map_fileptr;
+    char map_filename[MAX_CHARS];
+    char type[3];           // eg HD or OA or NA or N 
+    double constant;        // this will become obsolete 
+    double energy_max;
+    double energy_min;
+    double energy;
+    double vol_probe;
+    double solpar_probe;
+    // new 6/28 
+    double Rij;
+    double epsij;
+    hbond_type hbond;       // hbonding character: 
+    double Rij_hb;
+    double epsij_hb;
+    // per receptor type parameters, ordered as in receptor_types 
+    double nbp_r[NUM_RECEPTOR_TYPES];   // radius of energy-well minimum 
+    double nbp_eps[NUM_RECEPTOR_TYPES]; // depth of energy-well minimum 
+    int xA[NUM_RECEPTOR_TYPES]; // generally 12 
+    int xB[NUM_RECEPTOR_TYPES]; // 6 for non-hbonders 10 for h-bonders 
+    int hbonder[NUM_RECEPTOR_TYPES];
+};
+
 //****************************************************************************
 // Name: main (executable's name is "autogrid").  
 // Function: Calculation of interaction energy grids for Autodock.  
@@ -97,69 +128,19 @@ int main(int argc, char **argv)
     tms _dummytms;
     clock_t startTime = times(&_dummytms);
 
-    // Former global variables
-    char    *programname;
-    FILE    *GPF = 0;
-    char    grid_param_fn[MAX_CHARS];
-    int     debug = 0;
-    int     oldpdbq = FALSE;
-    Real	idct = 1;
-    FILE    *logFile;
-    Linear_FE_Model AD4;
+#pragma region Declarations of variables
 
-    // for associative dictionary storing parameters by autogrid 'type' 
-    /*FILE * dataFile;
-    char dataline[100];
-    ENTRY item; */
-    // see atom_parameter_manager.c 
-    ParameterEntry thisparm;
-    ParameterEntry *found_parm;
-    char FN_parameter_library[MAX_CHARS];   // the AD4 parameters .dat file name
-    int parameter_library_found = 0;
-
-    // LIGAND: maximum is MAX_MAPS 
-    // each type is now at most two characters plus '\0' 
-    // currently ligand_atom_types is sparse... some types are not set 
+    // LIGAND: maximum is MAX_MAPS
+    // each type is now at most two characters plus '\0'
+    // currently ligand_atom_types is sparse... some types are not set
     char ligand_types[MAX_MAPS][3];
 
-    // array of ptrs used to parse input line 
+    // array of ptrs used to parse input line
     char *ligand_atom_types[MAX_MAPS];
 
-#define NUM_RECEPTOR_TYPES  NUM_ALL_TYPES
-    // malloc this after the number of receptor types is parsed 
-    // MAX_DIST is really NBCUTOFF times 100 
+    // malloc this after the number of receptor types is parsed
+    // MAX_DIST is really NBCUTOFF times 100
     double energy_lookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
-
-    struct MapObject
-    {
-        int atom_type;          // corresponds to receptor numbers???? 
-        int map_index;
-        int is_covalent;
-        int is_hbonder;
-        FILE *map_fileptr;
-        char map_filename[MAX_CHARS];
-        char type[3];           // eg HD or OA or NA or N 
-        double constant;        // this will become obsolete 
-        double energy_max;
-        double energy_min;
-        double energy;
-        double vol_probe;
-        double solpar_probe;
-        // new 6/28 
-        double Rij;
-        double epsij;
-        hbond_type hbond;       // hbonding character: 
-        double Rij_hb;
-        double epsij_hb;
-        // per receptor type parameters, ordered as in receptor_types 
-        double nbp_r[NUM_RECEPTOR_TYPES];   // radius of energy-well minimum 
-        double nbp_eps[NUM_RECEPTOR_TYPES]; // depth of energy-well minimum 
-        int xA[NUM_RECEPTOR_TYPES]; // generally 12 
-        int xB[NUM_RECEPTOR_TYPES]; // 6 for non-hbonders 10 for h-bonders 
-        int hbonder[NUM_RECEPTOR_TYPES];
-    };
-
-    // constant will go away 
 
     char *maptypeptr;           // ptr for current map->type 
     MapObject *gridmap;         // was statically assigned MapObject gridmap[MAX_MAPS]; 
@@ -214,6 +195,7 @@ int main(int argc, char **argv)
     double cmin[XYZ];
     double csum[XYZ];
     double cmean[XYZ];
+
     double center[XYZ];
     double covpos[XYZ];         // Cartesian-coordinate of covalent affinity well. 
     double d[XYZ];
@@ -328,7 +310,6 @@ int main(int argc, char **argv)
     int closestH = 0;
 
     int num_receptor_atoms;
-    long clktck = 0;
 
     Clock job_start;
     Clock job_end;
@@ -340,6 +321,9 @@ int main(int argc, char **argv)
     struct tms tms_grd_start;
     struct tms tms_grd_end;
 
+#pragma endregion
+
+#pragma region Initialization of ligand_types, receptor_types, receptor_atom_type_count
     for (i = 0; i < MAX_MAPS; i++)
         // initialize to "" 
         strcpy(ligand_types[i], "");
@@ -349,10 +333,11 @@ int main(int argc, char **argv)
         strcpy(receptor_types[i], "");
         receptor_atom_type_count[i] = 0;
     }
+#pragma endregion
 
+#pragma region BOINC initialization
 #if defined(BOINC)
     int flags = 0;
-    int rc;
 
     flags = BOINC_DIAG_DUMPCALLSTACKENABLED | BOINC_DIAG_HEAPCHECKENABLED | BOINC_DIAG_REDIRECTSTDERR | BOINC_DIAG_REDIRECTSTDOUT;
     boinc_init_diagnostics(flags);
@@ -368,7 +353,8 @@ int main(int argc, char **argv)
     options.send_status_msgs = true;    // only the worker programs (i.e. model) sends status msgs
     options.direct_process_action = true;   // monitor handles suspend/quit, but app/model doesn't
     // Initialization of Boinc 
-    rc = boinc_init_options(options);   // return 0 for success
+
+    int rc = boinc_init_options(options);   // return 0 for success
     if (rc)
     {
         fprintf(stderr, "BOINC_ERROR: boinc_init_options() failed \n");
@@ -384,36 +370,35 @@ int main(int argc, char **argv)
         exit(rc);
     }
 #endif
-
 #endif
+#pragma endregion
 
-    /* 
-     * Fetch clock ticks per second.
-     */
-
-
-    if (clktck == 0)
+#pragma region Fetching clock ticks per second
+    // Fetch clock ticks per second.
+    long clocks = CLOCKS_PER_SEC;
+    if (clocks < 0)
     {
-        if ((clktck = CLOCKS_PER_SEC) < 0)
-        {
-            fprintf(stderr, "\"CLOCKS_PER_SEC\" command failed in \"main.c\"\n");
-            exit(-1);
-        }
-
-        idct = (float)1. / (float)clktck;
+        fprintf(stderr, "\"CLOCKS_PER_SEC\" command failed in \"main.c\"\n");
+        exit(-1);
     }
+    Real idct = 1/float(clocks);
+#pragma endregion
 
-    ln_half = (double)log(0.5);
+    ln_half = log(0.5);
 
-    /* 
-     * Get the time at the start of the run...
-     */
+    // Get the time at the start of the run...
     job_start = times(&tms_job_start);
 
-    /* 
-     * Parse the command line...
-     */
+#pragma region Parsing the command line, initialization of some variables, opening files
+    // Parse the command line...
+    char    *programname;
+    FILE    *GPF = 0;
+    char    grid_param_fn[MAX_CHARS];
+    int     debug = 0;
+    int     oldpdbq = FALSE;
+    FILE    *logFile;
     process_program_parameters(argc, argv, GPF, logFile, programname, grid_param_fn, debug, oldpdbq);
+#pragma endregion
 
     strcpy(xyz, "xyz");
 
@@ -430,24 +415,18 @@ int main(int argc, char **argv)
 
     PI_halved = PI / 2.;
 
-    /* 
-     * Initialize int receptor_atom_type_count[] array to 0
-     */
+    // Initialize int receptor_atom_type_count[] array to 0
     for (i = 0; i < NUM_RECEPTOR_TYPES; i++)
         receptor_atom_type_count[i] = 0;
 
-    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * Output the "AutoGrid" banner... 
+    // Output the "AutoGrid" banner...
     banner(version_num, logFile);
 
     fprintf(logFile, "                           $Revision: 1.58 $\n\n\n");
-    /* 
-     * Print out MAX_MAPS - maximum number of maps allowed
-     */
+    // Print out MAX_MAPS - maximum number of maps allowed
     fprintf(logFile, "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n", MAX_MAPS);
 
-    /* 
-     * Print the time and date when the file was created...
-     */
+    // Print the time and date when the file was created...
     fprintf(logFile, "This file was created at:\t\t\t");
     printdate(logFile, 1);
 
@@ -456,13 +435,17 @@ int main(int argc, char **argv)
 
     fprintf(logFile, "\n\n");
 
-    // ______________________________________________________________________________
-    // 
     // Read in default parameters
-    // 
+    Linear_FE_Model AD4;
     setup_parameter_library(outlev, programname, debug, logFile, AD4);
 
+#pragma region Reading grip parameter file
+
     // Read in the grid parameter file...  
+    ParameterEntry thisparm;
+    ParameterEntry *found_parm;
+    char FN_parameter_library[MAX_CHARS];   // the AD4 parameters .dat file name
+    int parameter_library_found = 0;
 
     while (fgets(GPF_line, LINE_LEN, GPF) != NULL)
     {
@@ -494,7 +477,6 @@ int main(int argc, char **argv)
         }                       // first switch 
 
         // This second switch interprets the current GPF line. 
-
         switch (GPF_keyword)
         {
         case GPF_NULL:
@@ -503,7 +485,6 @@ int main(int argc, char **argv)
 
         case GPF_RECEPTOR:
             // read in the receptor filename 
-
             sscanf(GPF_line, "%*s %s", receptor_filename);
             fprintf(logFile, "\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptor_filename);
 
@@ -535,7 +516,6 @@ int main(int argc, char **argv)
                     fflush(logFile);
 
                     // Read in this receptor atom's coordinates,partial charges, and solvation parameters in PDBQS format... 
-
                     sscanf(&line[30], "%lf", &coord[ia][X]);
                     sscanf(&line[38], "%lf", &coord[ia][Y]);
                     sscanf(&line[46], "%lf", &coord[ia][Z]);
@@ -575,7 +555,6 @@ int main(int argc, char **argv)
 
                     // if from pdbqs: convert cal/molA**3 to kcal/molA**3 
                     // solpar[ia] *= 0.001; 
-
                     q_max = max(q_max, charge[ia]);
                     q_min = min(q_min, charge[ia]);
 
@@ -587,21 +566,18 @@ int main(int argc, char **argv)
                         atom_name[2] = atom_name[3];
                         atom_name[3] = '\0';
                     }
-                    else if (atom_name[0] == '0' ||
-                             atom_name[0] == '1' ||
-                             atom_name[0] == '2' ||
-                             atom_name[0] == '3' || atom_name[0] == '4' || atom_name[0] == '5' || atom_name[0] == '6' || atom_name[0] == '7' || atom_name[0] == '8' || atom_name[0] == '9')
+                    else if ((atom_name[0] == '0' || atom_name[0] == '1' || atom_name[0] == '2' ||
+                             atom_name[0] == '3' || atom_name[0] == '4' || atom_name[0] == '5' ||
+                             atom_name[0] == '6' || atom_name[0] == '7' || atom_name[0] == '8' ||
+                             atom_name[0] == '9') && atom_name[1] == 'H')
                     {
-                        if (atom_name[1] == 'H')
-                        {
-                            /* Assume this is the 'mangled' name of a hydrogen atom, after the atom name has been changed from 'HD21' to '1HD2' for example. [0-9]H\(.\)\(.\) 0 1 2 3 : : :
-                               : V V V V tmp 0 1 2 tmp : V 0 1 2 3 : : : : V V V V H\(.\)\(.\)[0-9] */
-                            temp_char = atom_name[0];
-                            atom_name[0] = atom_name[1];
-                            atom_name[1] = atom_name[2];
-                            atom_name[2] = atom_name[3];
-                            atom_name[3] = temp_char;
-                        }
+                        /* Assume this is the 'mangled' name of a hydrogen atom, after the atom name has been changed from 'HD21' to '1HD2' for example. [0-9]H\(.\)\(.\) 0 1 2 3 : : :
+                           : V V V V tmp 0 1 2 tmp : V 0 1 2 3 : : : : V V V V H\(.\)\(.\)[0-9] */
+                        temp_char = atom_name[0];
+                        atom_name[0] = atom_name[1];
+                        atom_name[1] = atom_name[2];
+                        atom_name[2] = atom_name[3];
+                        atom_name[3] = temp_char;
                     }
 
                     // Tell the user what you thought this atom was... 
@@ -643,7 +619,6 @@ int main(int argc, char **argv)
             // Finished reading in the lines of the receptor file 
             fclose(receptor_fileptr);
             if (has_receptor_types_in_gpf == 1)
-            {
                 // Check that the number of atom types found in the receptor PDBQT
                 // file match the number parsed in by the "receptor_types" command
                 // in the GPF; if they do not match, exit!
@@ -656,7 +631,7 @@ int main(int argc, char **argv)
                     // FATAL_ERROR will cause AutoGrid to exit...
                     print_error(programname, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                 }
-            }
+
             // Update the total number of atoms in the receptor 
             num_receptor_atoms = ia;
             fprintf(logFile, "\nMaximum partial atomic charge found = %+.3lf e\n", q_max);
@@ -786,10 +761,8 @@ int main(int argc, char **argv)
             }
             // centering stuff... 
             for (ia = 0; ia < num_receptor_atoms; ia++)
-            {
                 for (i = 0; i < XYZ; i++)
                     coord[ia][i] -= center[i];  // transform to center of gridmaps 
-            }
             for (i = 0; i < XYZ; i++)
             {
                 cext[i] = spacing * (double)ne[i];
@@ -906,10 +879,8 @@ int main(int argc, char **argv)
                     print_error(programname, logFile, WARNING, message);
                 }
                 else
-                {
                     // free up this memory right away; we were just testing to see if we had enough when we try to run AutoDock 
                     free(dummy_map);
-                }
             }
             else
             {
@@ -1058,9 +1029,7 @@ int main(int argc, char **argv)
             break;
 
         case GPF_SOL_PAR:      // THIS IS OBSOLETE!!!
-            /* 
-             ** Read volume and solvation parameter for probe:
-             */
+            // Read volume and solvation parameter for probe:
             sscanf(GPF_line, "%*s %s %lf %lf", thisparm.autogrid_type, &temp_vol, &temp_solpar);
             found_parm = apm_find(thisparm.autogrid_type);
             if (found_parm != NULL)
@@ -1142,10 +1111,8 @@ int main(int argc, char **argv)
             fprintf(logFile, "\nCovalent barrier energy in kcal/mol:             %8.3f\n", covbarrier);
             fprintf(logFile, "\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n", covpos[X], covpos[Y], covpos[Z]);
             for (i = 0; i < XYZ; i++)
-            {
                 // center covpos in the grid maps frame of reference, 
                 covpos[i] -= center[i];
-            }
             break;
 
         case GPF_DISORDER:
@@ -1227,6 +1194,8 @@ int main(int argc, char **argv)
     fprintf(logFile, UnderLine);
     fclose(GPF);
 
+#pragma endregion
+
     if (!floating_grid)
         fprintf(logFile, "\n\nNo Floating Grid was requested.\n");
 
@@ -1270,13 +1239,10 @@ int main(int argc, char **argv)
     fprintf(logFile, "\n\nCalculating Pairwise Interaction Energies\n");
     fprintf(logFile, "=========================================\n\n");
 
-/**************************************************
- * do the map stuff here: 
- * set up xA, xB, npb_r, npb_eps and hbonder 
- * before this pt
- **************************************************/
+    // do the map stuff here: 
+    // set up xA, xB, npb_r, npb_eps and hbonder 
+    // before this pt
     for (ia = 0; ia < num_atom_maps; ia++)
-    {
         if (gridmap[ia].is_covalent == FALSE)
         {
             // i is the index of the receptor atom type, that the ia type ligand probe will interact with. *//* GPF_MAP 
@@ -1343,9 +1309,8 @@ int main(int argc, char **argv)
                 }               // endif smoothing 
             }                   // for i in receptor types: build energy table for this map 
 
-            /* 
-             * Print out a table, of distance versus energy...
-             */// GPF_MAP 
+            // Print out a table, of distance versus energy...
+            // GPF_MAP 
             fprintf(logFile, "\n\nFinding the lowest pairwise interaction energy within %.1f Angstrom (\"smoothing\").\n\n  r ", r_smooth);
             for (iat = 0; iat < receptor_types_ct; iat++)
             {
@@ -1370,7 +1335,7 @@ int main(int argc, char **argv)
             // parsing for intnbp not needed for covalent maps 
             fprintf(logFile, "\nAny internal non-bonded parameters will be ignored for this map, since this is a covalent map.\n");
         }                       // end of else parsing intnbp 
-    }                           // end of loop over all the maps 
+
     // exponential function for receptor and ligand desolvation 
     // note: the solvation term will not be smoothed 
     sigma = 3.6;
@@ -1383,10 +1348,8 @@ int main(int argc, char **argv)
         sol_fn[indx_r] *= AD4.coeff_desolv;
     }
 
-/**************************************************
- * Loop over all RECEPTOR atoms to
- * calculate bond vectors for directional H-bonds
- **************************************************/
+    // Loop over all RECEPTOR atoms to
+    // calculate bond vectors for directional H-bonds
     // setup the canned atom types here....
     // at this point set up hydrogen, carbon, oxygen and nitrogen
     hydrogen = get_rec_index("HD");
@@ -1402,43 +1365,30 @@ int main(int argc, char **argv)
     // 7:CHANGE HERE: scan the 'map_index' from the input 
     for (ia = 0; ia < num_receptor_atoms; ia++)
     {                                      //** ia = i_receptor_atom_a **
-
         disorder[ia] = FALSE;   // initialize disorder flag. 
         warned = 'F';
 
-        /* 
-         * Set scan limits looking for bonded atoms
-         */
+        // Set scan limits looking for bonded atoms
         from = max(ia - 20, 0);
         to = min(ia + 20, num_receptor_atoms - 1);
 
-        /* 
-         * If 'ia' is a hydrogen atom, it could be a
-         * RECEPTOR hydrogen-BOND DONOR,
-         */
+        // If 'ia' is a hydrogen atom, it could be a
+        // RECEPTOR hydrogen-BOND DONOR,
         // 8:CHANGE HERE: fix the atom_type vs atom_types problem in following 
-        if ((int)hbond[ia] == 2)
-        {                       // D1 hydrogen bond donor 
-
+        if ((int)hbond[ia] == 2) // D1 hydrogen bond donor
+        {
             for (ib = from; ib <= to; ib++)
-            {                                    //** ib = i_receptor_atom_b **
-                if (ib != ia)
+                if (ib != ia) // ib = i_receptor_atom_b
                 {
-                    /* 
-                     * =>  NH-> or OH->
-                     */
+                    // =>  NH-> or OH->
                     // if ((atom_type[ib] == nitrogen) || (atom_type[ib]==nonHB_nitrogen) ||(atom_type[ib] == oxygen)||(atom_type[ib] == sulphur)||(atom_type[ib]==nonHB_sulphur)) { 
 
-                    /* 
-                     * Calculate the square of the N-H or O-H bond distance, rd2,
-                     *                            ib-ia  ib-ia
-                     */
+                    // Calculate the square of the N-H or O-H bond distance, rd2,
+                    //                            ib-ia  ib-ia
                     for (i = 0; i < XYZ; i++)
                         d[i] = coord[ia][i] - coord[ib][i];
                     rd2 = sq(d[X]) + sq(d[Y]) + sq(d[Z]);
-                    /* 
-                     * If ia & ib are less than 1.3 A apart -- they are covalently bonded,
-                     */
+                    // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
                     if (rd2 < 1.90)
                     {           // INCREASED for H-S bonds 
                         if (rd2 < APPROX_ZERO)
@@ -1453,53 +1403,41 @@ int main(int argc, char **argv)
                             rd2 = APPROX_ZERO;
                         }
                         inv_rd = 1. / sqrt(rd2);
-                        /* 
-                         * N-H: Set exponent rexp to 2 for m/m H-atom,
-                         */
+
+                        // N-H: Set exponent rexp to 2 for m/m H-atom,
                         // if (atom_type[ib] == nitrogen) rexp[ia] = 2; 
                         if ((atom_type[ib] != oxygen) && (atom_type[ib] != sulphur))
                             rexp[ia] = 2;
 
-                        /* 
-                         * O-H: Set exponent rexp to 4 for m/m H-atom,
-                         * and flag disordered hydroxyls
-                         */
+                        // O-H: Set exponent rexp to 4 for m/m H-atom,
+                        // and flag disordered hydroxyls
                         if ((atom_type[ib] == oxygen) || (atom_type[ib] == sulphur))
                         {
                             rexp[ia] = 4;
                             if (disorder_h == TRUE)
                                 disorder[ia] = TRUE;
                         }
-                        /* 
-                         * Normalize the vector from ib to ia, N->H or O->H...
-                         */
+
+                        // Normalize the vector from ib to ia, N->H or O->H...
                         for (i = 0; i < XYZ; i++)
                             rvector[ia][i] = d[i] * inv_rd;
-                        /* 
-                         * First O-H/N-H H-bond-donor found; Go on to next atom,
-                         */
+
+                        // First O-H/N-H H-bond-donor found; Go on to next atom,
                         break;
                     }           // Found covalent bond. 
                     // } Found NH or OH in receptor. 
                 }
-            }                   // Finished scanning for the NH or OH in receptor. 
-
-            /* 
-             * If 'ia' is an Oxygen atom, it could be a
-             * RECEPTOR H_BOND ACCEPTOR,
-             */
-
+            // Finished scanning for the NH or OH in receptor. 
+            // If 'ia' is an Oxygen atom, it could be a
+            // RECEPTOR H_BOND ACCEPTOR,
         }
         else if (hbond[ia] == 5)
         {                       // A2 
-            /* 
-             * Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
-             *        to (ia + 5)th m/m-atom
-             * determine number of atoms bonded to the oxygen
-             */
+            // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
+            //        to (ia + 5)th m/m-atom
+            // determine number of atoms bonded to the oxygen
             nbond = 0;
             for (ib = from; ib <= to; ib++)
-            {
                 if (ib != ia)
                 {
                     rd2 = 0.;
@@ -1510,8 +1448,7 @@ int main(int argc, char **argv)
                         rd2 += sq(dc[i]);
                     }
 
-                    /* 
-                       for (i = 0; i < XYZ; i++) { rd2 += sq(coord[ia][i] - coord[ib][i]); } */
+                    // for (i = 0; i < XYZ; i++) { rd2 += sq(coord[ia][i] - coord[ib][i]); }
                     if (((rd2 < 3.61) && ((atom_type[ib] != hydrogen) && (atom_type[ib] != nonHB_hydrogen))) ||
                         ((rd2 < 1.69) && ((atom_type[ib] == hydrogen) || (atom_type[ib] == nonHB_hydrogen))))
                     {
@@ -1532,10 +1469,8 @@ int main(int argc, char **argv)
                         }
                     }
                 }               // (ib != ia) 
-            }                   // ib-loop 
 
             // if no bonds, something is wrong 
-
             if (nbond == 0)
             {
                 sprintf(message, "Oxygen atom found with no bonded atoms, atom serial number %d, atom_type %d\n", ia + 1, atom_type[ia]);
@@ -1543,12 +1478,9 @@ int main(int argc, char **argv)
             }
 
             // one bond: Carbonyl Oxygen O=C-X 
-
             if (nbond == 1)
             {
-
                 // calculate normalized carbonyl bond vector rvector[ia][] 
-
                 rd2 = 0.;
                 for (i = 0; i < XYZ; i++)
                 {
@@ -1571,7 +1503,6 @@ int main(int argc, char **argv)
 
                 // find a second atom (i2) bonded to carbonyl carbon (i1) 
                 for (i2 = from; i2 <= to; i2++)
-                {
                     if ((i2 != i1) && (i2 != ia))
                     {
                         rd2 = 0.;
@@ -1627,15 +1558,11 @@ int main(int argc, char **argv)
                                 rvector2[ia][i] *= inv_rd;
                         }
                     }
-                }               // i2-loop 
             }                   // endif nbond==1 
 
             // two bonds: Hydroxyl or Ether Oxygen X1-O-X2 
             if (nbond == 2)
-            {
-
                 // disordered hydroxyl 
-
                 if (((atom_type[i1] == hydrogen) || (atom_type[i2] == hydrogen)) && (atom_type[i1] != atom_type[i2]) && (disorder_h == TRUE))
                 {
 
@@ -1663,14 +1590,11 @@ int main(int argc, char **argv)
                     inv_rd = 1. / sqrt(rd2);
                     for (i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
-
                 }
                 else
                 {
-
                     // not a disordered hydroxyl 
                     // normalized X1 to X2 vector, defines lone pair plane 
-
                     rd2 = 0.;
                     for (i = 0; i < XYZ; i++)
                     {
@@ -1691,8 +1615,11 @@ int main(int argc, char **argv)
                     for (i = 0; i < XYZ; i++)
                         rvector2[ia][i] *= inv_rd;
 
-                    /* vector pointing between the lone pairs: ** front of the vector is the oxygen atom, ** X1->O vector dotted with normalized X1->X2 vector plus ** coords of X1 gives the 
-                       point on the X1-X2 line for the ** back of the vector. */
+                    // vector pointing between the lone pairs:
+                    // front of the vector is the oxygen atom,
+                    // X1->O vector dotted with normalized X1->X2 vector plus
+                    // coords of X1 gives the point on the X1-X2 line for the
+                    // back of the vector.
                     rdot = 0.;
                     for (i = 0; i < XYZ; i++)
                         rdot += (coord[ia][i] - coord[i1][i]) * rvector2[ia][i];
@@ -1715,34 +1642,25 @@ int main(int argc, char **argv)
                     inv_rd = 1. / sqrt(rd2);
                     for (i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
-
                 }               // end disordered hydroxyl 
-
-            }                   // end two bonds to Oxygen 
-            // NEW Directional N Acceptor 
         }
         else if (hbond[ia] == 4)
         {                       // A1 
-            /* 
-             ** Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
-             **        to (ia+5)th m/m-atom
-             ** determine number of atoms bonded to the oxygen
-             */
+            // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
+            //        to (ia+5)th m/m-atom
+            // determine number of atoms bonded to the oxygen
             nbond = 0;
             for (ib = from; ib <= to; ib++)
-            {
                 if (ib != ia)
                 {
                     rd2 = 0.;
-
                     for (i = 0; i < XYZ; i++)
                     {
                         dc[i] = coord[ia][i] - coord[ib][i];
                         rd2 += sq(dc[i]);
                     }
 
-                    /* 
-                       for (i = 0; i < XYZ; i++) { rd2 += sq(coord[ia][i] - coord[ib][i]); } */
+                    // for (i = 0; i < XYZ; i++) { rd2 += sq(coord[ia][i] - coord[ib][i]); }
                     if (((rd2 < 2.89) && ((atom_type[ib] != hydrogen) && (atom_type[ib] != nonHB_hydrogen))) ||
                         ((rd2 < 1.69) && ((atom_type[ib] == hydrogen) || (atom_type[ib] == nonHB_hydrogen))))
                     {
@@ -1763,10 +1681,8 @@ int main(int argc, char **argv)
                         }
                     }
                 }               // (ib != ia) 
-            }                   // ib-loop 
 
             // if no bonds, something is wrong 
-
             if (nbond == 0)
             {
                 sprintf(message, "Nitrogen atom found with no bonded atoms, atom serial number %d\n", ia);
@@ -1774,12 +1690,9 @@ int main(int argc, char **argv)
             }
 
             // one bond: Azide Nitrogen :N=C-X 
-
             if (nbond == 1)
             {
-
                 // calculate normalized N=C bond vector rvector[ia][] 
-
                 rd2 = 0.;
                 for (i = 0; i < XYZ; i++)
                 {
@@ -1805,7 +1718,6 @@ int main(int argc, char **argv)
             if (nbond == 2)
             {
                 // normalized vector from Nitrogen to midpoint between X1 and X2 
-
                 rd2 = 0.;
                 for (i = 0; i < XYZ; i++)
                 {
@@ -1825,14 +1737,12 @@ int main(int argc, char **argv)
                 inv_rd = 1. / sqrt(rd2);
                 for (i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
-
             }                   // end two bonds for nitrogen 
 
             // three bonds: X1,X2,X3 
             if (nbond == 3)
             {
                 // normalized vector from Nitrogen to midpoint between X1, X2, and X3 
-
                 rd2 = 0.;
                 for (i = 0; i < XYZ; i++)
                 {
@@ -1855,14 +1765,10 @@ int main(int argc, char **argv)
 
             }                   // end three bonds for Nitrogen 
             // endNEW directional N Acceptor 
-
         }                       // end test for atom type 
-
     }                           // Do Next receptor atom... 
 
-/********************************************
- * End bond vector loop
- ********************************************/
+    // End bond vector loop
     for (k = 0; k < num_atom_maps + 1; k++)
     {
         gridmap[k].energy_max = (double)-BIG;
@@ -1873,12 +1779,11 @@ int main(int argc, char **argv)
     fprintf(logFile, "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n", num_maps, num_grid_points_per_map, num_receptor_atoms);
     fflush(logFile);
 
-/*____________________________________________________________________________
- * Write out the  correct grid_data '.fld' file_name at the  head of each map
- * file, to avoid centering errors in subsequent dockings...
- * AutoDock can then  check to see  if the  center of each  map  matches that
- * specified in its parameter file...
- *____________________________________________________________________________*/
+    // Write out the  correct grid_data '.fld' file_name at the  head of each map
+    // file, to avoid centering errors in subsequent dockings...
+    // AutoDock can then  check to see  if the  center of each  map  matches that
+    // specified in its parameter file...
+
     // change num_atom_maps +1 to num_atom_maps + 2 for new dsolvPE map 
     for (k = 0; k < num_atom_maps + 2; k++)
     {
@@ -1904,18 +1809,14 @@ int main(int argc, char **argv)
     fprintf(logFile, "            /Ang              /sec            /sec\n");
     fprintf(logFile, "________  ________  ________  ______________  __________________________\n\n");
 
-    /* 
-     * Iterate over all grid points, Z(Y (X)) (X is fastest)...
-     */
+    // Iterate over all grid points, Z(Y (X)) (X is fastest)...
 
     ic = 0;
 
     ctr = 0;
     for (icoord[Z] = -ne[Z]; icoord[Z] <= ne[Z]; icoord[Z]++)
     {
-        /* 
-         *  c[0:2] contains the current grid point.
-         */
+        //  c[0:2] contains the current grid point.
         c[Z] = ((double)icoord[Z]) * spacing;
         grd_start = times(&tms_grd_start);
 
@@ -1928,7 +1829,6 @@ int main(int argc, char **argv)
                 c[X] = ((double)icoord[X]) * spacing;
 
                 for (j = 0; j < num_atom_maps + 2; j++)
-                {
                     if (gridmap[j].is_covalent == TRUE)
                     {
                         // Calculate the distance from the current grid point, c, to the covalent attachment point, covpos 
@@ -1942,7 +1842,7 @@ int main(int argc, char **argv)
                     }
                     else // is not covalent
                         gridmap[j].energy = 0.; // used to initialize to 'constant'for this gridmap
-                }
+
                 if (floating_grid)
                     r_min = BIG;
 
@@ -1958,7 +1858,6 @@ int main(int argc, char **argv)
                 rmin = 999999.;
                 closestH = 0;
                 for (ia = 0; ia < num_receptor_atoms; ia++)
-                {
                     if ((hbond[ia] == 1) || (hbond[ia] == 2))
                     {           // DS or D1 
                         for (i = 0; i < XYZ; i++)
@@ -1970,17 +1869,12 @@ int main(int argc, char **argv)
                             closestH = ia;
                         }
                     }           // Hydrogen test 
-                }               // ia loop 
                 // END NEW2: Find Min Hbond 
 
-                /* 
-                 *  Do all Receptor (protein, DNA, etc.) atoms...
-                 */
+                //  Do all Receptor (protein, DNA, etc.) atoms...
                 for (ia = 0; ia < num_receptor_atoms; ia++)
                 {
-                    /* 
-                     *  Get distance, r, from current grid point, c, to this receptor atom, coord,
-                     */
+                    //  Get distance, r, from current grid point, c, to this receptor atom, coord,
                     for (i = 0; i < XYZ; i++)
                         d[i] = coord[ia][i] - c[i];
                     r = hypotenuse(d[X], d[Y], d[Z]);
@@ -1995,40 +1889,30 @@ int main(int argc, char **argv)
                     indx_r = min(lookup(r), MD_1);
 
                     if (floating_grid)
-                    {
                         // Calculate the so-called "Floating Grid"... 
                         r_min = min(r, r_min);
-                    }
 
                     // elecPE is the next-to-last last grid map, i.e. electrostatics 
                     if (dddiel)
-                    {
                         // Distance-dependent dielectric... 
                         // gridmap[elecPE].energy += charge[ia] * inv_r * epsilon[indx_r]; 
-
                         // apply the estat forcefield coefficient/weight here 
                         gridmap[elecPE].energy += charge[ia] * inv_rmax * epsilon[indx_r] * AD4.coeff_estat;
-
-                    }
                     else
-                    {
                         // Constant dielectric... 
                         // gridmap[elecPE].energy += charge[ia] * inv_r * invdielcal; 
                         gridmap[elecPE].energy += charge[ia] * inv_rmax * invdielcal * AD4.coeff_estat;
-                    }
 
-                    /* 
-                     * If distance from grid point to atom ia is too large,
-                     * or if atom is a disordered hydrogen,
-                     *   add nothing to the grid-point's non-bond energy;
-                     *   just continue to next atom...
-                     */
+                    // If distance from grid point to atom ia is too large,
+                    // or if atom is a disordered hydrogen,
+                    //   add nothing to the grid-point's non-bond energy;
+                    //   just continue to next atom...
                     if (r > NBCUTOFF)
                         continue;   // onto the next atom... 
                     if ((atom_type[ia] == hydrogen) && (disorder[ia] == TRUE))
                         continue;   // onto the next atom... 
 
-                    //** racc = rdon = 1.; **
+                    // racc = rdon = 1.;
                     racc = 1.;
                     rdon = 1.;
                     // NEW2 Hramp ramps in Hbond acceptor probes 
@@ -2037,32 +1921,23 @@ int main(int argc, char **argv)
 
                     if (hbond[ia] == 2)
                     {           // D1 
-                        /* 
-                         *  ia-th receptor atom = Hydrogen (4 = H)
-                         *  => receptor H-bond donor, OH or NH.
-                         *  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
-                         *            ====     ======================
-                         */
+                        //  ia-th receptor atom = Hydrogen (4 = H)
+                        //  => receptor H-bond donor, OH or NH.
+                        //  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
                         cos_theta = 0.;
-                        /* 
-                         *  d[] = Unit vector from current grid pt to ia_th m/m atom.
-                         *  cos_theta = d dot rvector == cos(angle) subtended.
-                         */
+                        //  d[] = Unit vector from current grid pt to ia_th m/m atom.
+                        //  cos_theta = d dot rvector == cos(angle) subtended.
                         for (i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
 
                         if (cos_theta <= 0.)
-                            /* 
-                             *  H->current-grid-pt vector >= 90 degrees from
-                             *  N->H or O->H vector,
-                             */
+                            //  H->current-grid-pt vector >= 90 degrees from
+                            //  N->H or O->H vector,
                             racc = 0.;
                         else
                         {
-                            /* 
-                             *  racc = [cos(theta)]^2.0 for N-H
-                             *  racc = [cos(theta)]^4.0 for O-H,
-                             */
+                            //  racc = [cos(theta)]^2.0 for N-H
+                            //  racc = [cos(theta)]^4.0 for O-H,
                             switch (rexp[ia])
                             {
                             case 1:
@@ -2099,29 +1974,20 @@ int main(int argc, char **argv)
                     }
                     else if (hbond[ia] == 4)
                     {           // A1 
-                        /* 
-                         **  ia-th macromolecule atom = Nitrogen (4 = H)
-                         **  calculate rdon for H-bond Donor PROBES at this grid pt.
-                         **            ====     ======================
-                         */
+                        //  ia-th macromolecule atom = Nitrogen (4 = H)
+                        //  calculate rdon for H-bond Donor PROBES at this grid pt.
                         cos_theta = 0.;
-                        /* 
-                         **  d[] = Unit vector from current grid pt to ia_th m/m atom.
-                         **  cos_theta = d dot rvector == cos(angle) subtended.
-                         */
+                        //  d[] = Unit vector from current grid pt to ia_th m/m atom.
+                        //  cos_theta = d dot rvector == cos(angle) subtended.
                         for (i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
 
                         if (cos_theta <= 0.)
-                            /* 
-                             **  H->current-grid-pt vector >= 90 degrees from
-                             **  X->N vector,
-                             */
+                            //  H->current-grid-pt vector >= 90 degrees from
+                            //  X->N vector,
                             rdon = 0.;
                         else
-                            /* 
-                             **  racc = [cos(theta)]^2.0 for H->N
-                             */
+                            //  racc = [cos(theta)]^2.0 for H->N
                             rdon = cos_theta * cos_theta;
                         // endif (atom_type[ia] == nitrogen) 
                         // end NEW Directional N acceptor 
@@ -2129,22 +1995,17 @@ int main(int argc, char **argv)
                     }
                     else if ((hbond[ia] == 5) && (disorder[ia] == FALSE))
                     {           // A2 
-                        /* 
-                         **  ia-th receptor atom = Oxygen
-                         **  => receptor H-bond acceptor, oxygen.
-                         */
-
+                        //  ia-th receptor atom = Oxygen
+                        //  => receptor H-bond acceptor, oxygen.
                         rdon = 0.;
 
                         // check to see that probe is in front of oxygen, not behind 
                         cos_theta = 0.;
                         for (i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
-                        /* 
-                         ** t0 is the angle out of the lone pair plane, calculated
-                         ** as 90 deg - acos (vector to grid point DOT lone pair
-                         ** plane normal)
-                         */
+                        // t0 is the angle out of the lone pair plane, calculated
+                        // as 90 deg - acos (vector to grid point DOT lone pair
+                        // plane normal)
                         t0 = 0.;
                         for (i = 0; i < XYZ; i++)
                             t0 += d[i] * rvector2[ia][i];
@@ -2162,12 +2023,10 @@ int main(int argc, char **argv)
                         }
                         t0 = PI_halved - acos(t0);
 
-                        /* 
-                         ** ti is the angle in the lone pair plane, away from the
-                         ** vector between the lone pairs,
-                         ** calculated as (grid vector CROSS lone pair plane normal)
-                         ** DOT C=O vector - 90 deg
-                         */
+                        // ti is the angle in the lone pair plane, away from the
+                        // vector between the lone pairs,
+                        // calculated as (grid vector CROSS lone pair plane normal)
+                        // DOT C=O vector - 90 deg
                         cross[0] = d[1] * rvector2[ia][2] - d[2] * rvector2[ia][1];
                         cross[1] = d[2] * rvector2[ia][0] - d[0] * rvector2[ia][2];
                         cross[2] = d[0] * rvector2[ia][1] - d[1] * rvector2[ia][0];
@@ -2245,12 +2104,10 @@ int main(int argc, char **argv)
                         }
                     }           // atom_type test 
 
-                    /* 
-                     * For each probe atom-type,
-                     * Sum pairwise interactions between each probe
-                     * at this grid point (c[0:2])
-                     * and the current receptor atom, ia...
-                     */
+                    // For each probe atom-type,
+                    // Sum pairwise interactions between each probe
+                    // at this grid point (c[0:2])
+                    // and the current receptor atom, ia...
                     for (map_index = 0; map_index < num_atom_maps; map_index++)
                     {
                         // We do not want to change the current enrg value for any covalent maps, make sure iscovalent is false... 
@@ -2313,12 +2170,8 @@ int main(int argc, char **argv)
                         gridmap[map_index].energy += hbondmax[map_index];
                     }
 
-                /* 
-                 * O U T P U T . . .
-                 *
-                 * Now output this grid point's energies to the maps:
-                 *
-                 */
+                // O U T P U T . . .
+                // Now output this grid point's energies to the maps:
                 // 2 includes new dsolvPE 
                 for (k = 0; k < num_atom_maps + 2; k++)
                 {
@@ -2361,11 +2214,8 @@ int main(int argc, char **argv)
     boinc_fraction_done(0.9);
 #endif
 
-/*____________________________________________________________________________
- * Print a summary of extrema-values from the atomic-affinity and
- * electrostatics grid-maps,
- *____________________________________________________________________________*/
-
+    // Print a summary of extrema-values from the atomic-affinity and
+    // electrostatics grid-maps,
     fprintf(logFile, "\nGrid\tAtom\tMinimum   \tMaximum\n");
     fprintf(logFile, "Map \tType\tEnergy    \tEnergy \n");
     fprintf(logFile, "\t\t(kcal/mol)\t(kcal/mol)\n");
@@ -2379,9 +2229,7 @@ int main(int argc, char **argv)
     fprintf(logFile, " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n", num_atom_maps + 2, 'd', gridmap[dsolvPE].energy_min, gridmap[i + 1].energy_max);
     fprintf(logFile, "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n", EINTCLAMP);
 
-    /* 
-     * Close all files, ************************************************************
-     */
+    // Close all files
 
     for (i = 0; i < num_atom_maps + 2; i++)
         fclose(gridmap[i].map_fileptr);

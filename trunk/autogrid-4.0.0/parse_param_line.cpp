@@ -32,11 +32,9 @@
 #include <cstdio>
 #include <cstring>
 #include <cctype>
-#include "partokens.h"
+#include "utils.h"
 #include "parse_param_line.h"
 #include "autogrid.h"
-
-int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile)
 
 /******************************************************************************/
 /*      Name: parse_param_line                                                */
@@ -54,7 +52,7 @@ int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile)
 /* Date     Inits   Comments                                                  */
 /* 08/03/05 GMM     Entered code.                                             */
 /******************************************************************************/
-
+int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile)
 {
     int j, i, token = PAR_;               /* return -1 if nothing is recognized. */
     char c[LINE_LEN];
