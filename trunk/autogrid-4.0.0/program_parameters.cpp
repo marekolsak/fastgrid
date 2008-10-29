@@ -28,7 +28,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include "process_program_parameters.h"
+#include "program_parameters.h"
 #include "utils.h"
 
 ProgramParameters::ProgramParameters(): debug(0)

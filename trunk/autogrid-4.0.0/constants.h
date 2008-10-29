@@ -25,6 +25,7 @@
 
  */
 
+#pragma once
 #ifndef _AUTOCOMM
 #include "../autodock-4.0.1/autocomm.h" /* PI, TWOPI. */
 #endif

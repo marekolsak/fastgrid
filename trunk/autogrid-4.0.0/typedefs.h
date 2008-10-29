@@ -25,8 +25,7 @@
 
  */
 
-#ifndef _TYPEDEFS_H
-#define _TYPEDEFS_H
+#pragma once
 
 /******************************************************************************
  *      Name: typedefs.h                                                      *
@@ -66,6 +65,4 @@ typedef union
 	vector float vec;
 	float		 elements[4];
 } Float4;
-#endif
-
 #endif

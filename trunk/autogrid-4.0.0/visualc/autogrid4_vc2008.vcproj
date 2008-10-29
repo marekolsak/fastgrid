@@ -286,6 +286,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\grid_parameter_file.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\grid_parameter_file.h"
+			>
+		</File>
+		<File
 			RelativePath="..\main.cpp"
 			>
 		</File>
@@ -306,11 +314,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\process_program_parameters.cpp"
+			RelativePath="..\program_parameters.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\process_program_parameters.h"
+			RelativePath="..\program_parameters.h"
 			>
 		</File>
 		<File
