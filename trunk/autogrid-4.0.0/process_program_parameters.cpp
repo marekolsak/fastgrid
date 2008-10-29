@@ -2,9 +2,9 @@
 
  $Id: process_program_parameters.cpp,v 1.8 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -28,17 +28,18 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include "autogrid.h"
+#include "process_program_parameters.h"
 #include "utils.h"
 
-/*----------------------------------------------------------------------------*/
-
-int process_program_parameters(int argc, char **argv, FILE *&GPF, FILE *&logFile, char *&programname, char (&grid_param_fn)[MAX_CHARS], int &debug, int &oldpdbq)
-
-/*----------------------------------------------------------------------------*/
+ProgramParameters::ProgramParameters(): debug(0)
+{
+    programName[0] = 0;
+    gridParameterFilename[0] = 0;
+    logFilename[0] = 0;
+}
 
 /******************************************************************************/
-/*      Name: process_program_parameters                                                        */
+/*      Name: process_program_parameters                                      */
 /*  Function: read flags from argv; return argindex of first non arg.         */
 /* Copyright: (C) Garrett Matthew Morris, TSRI.                               */
 /*----------------------------------------------------------------------------*/
@@ -51,7 +52,7 @@ int process_program_parameters(int argc, char **argv, FILE *&GPF, FILE *&logFile
 /*   Globals: *GPF;                                                           */
 /*            *logFile;                                                       */
 /*            *programname;                                                   */
-/*            grid_param_fn[];                                                */
+/*            gridParameterFilename[];                                        */
 /*----------------------------------------------------------------------------*/
 /* Modification Record                                                        */
 /* Date     Inits   Comments                                                  */
@@ -61,64 +62,40 @@ int process_program_parameters(int argc, char **argv, FILE *&GPF, FILE *&logFile
 /*                  -o = Use old PDBq format (q in columns 55-61)             */
 /* 04/01/93 GMM     Created for use in makefile.                              */
 /******************************************************************************/
-
+int process_program_parameters(int argc, char **argv, ProgramParameters &out)
 {
-    char *AutoGridHelp = "-p parameter_filename\n-l log_filename\n-o (old PDBQ format)\n-d (increment debug level)\n-u (display this message)\n";
+    strncpy(out.programName, argv[0], MAX_CHARS);
 
-    int argindex;
-/*----------------------------------------------------------------------------*/
-/* Initialize                                                                 */
-/*----------------------------------------------------------------------------*/
-    argindex = 1;
-    programname = argv[0];
-    GPF = stdin;
-    logFile = stdout;
-/*----------------------------------------------------------------------------*/
-/* Loop over arguments                                                        */
-/*----------------------------------------------------------------------------*/
-    while((argc > 1) && (argv[1][0] == '-')){
-        switch(argv[1][1]){
-#ifdef FOO
-        case 'n':
-            ncount = atoi(argv[2]);
-            argv++;
-            argc--;
-            argindex++;
-            break;
-#endif
-        case 'o':
-            oldpdbq = TRUE;
-            break;
+    // Loop over arguments
+    int argindex = 1;
+    while((argc > 1) && (argv[1][0] == '-'))
+    {
+        switch(argv[1][1])
+        {
         case 'd':
-            debug++;
+            out.debug++;
             break;
         case 'u':
-	    fprintf(stderr, "usage: %s %s\n", programname, AutoGridHelp);
-	    exit(0);
+	        fprintf(stderr, "usage: %s -p parameter_filename\n"
+                            "                -l log_filename\n"
+                            "                -d (increment debug level)\n"
+                            "                -u (display this message)\n\n", argv[0]);
+	        exit(0);
             break;
         case 'l':
-            if ((logFile = ag_fopen(argv[2], "w")) == NULL) {
-                fprintf(stderr, "\n%s: Sorry, I can't create the log file \"%s\"\n", programname, argv[2]);
-                fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programname);
-                exit(911);
-            }
+            strncpy(out.logFilename, argv[2], MAX_CHARS);
             argv++;
             argc--;
             argindex++;
             break;
         case 'p':
-            strcpy(grid_param_fn, argv[2]);
-            if ((GPF = ag_fopen(argv[2], "r")) == NULL) {
-                fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programname, argv[2]);
-                fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programname);
-                exit(911);
-            }
+            strncpy(out.gridParameterFilename, argv[2], MAX_CHARS);
             argv++;
             argc--;
             argindex++;
             break;
         default:
-            fprintf(stderr,"%s: unknown switch -%c\n",programname,argv[1][1]);
+            fprintf(stderr,"%s: unknown switch -%c\n",argv[0],argv[1][1]);
             exit(1);
             break;
         }
@@ -126,9 +103,5 @@ int process_program_parameters(int argc, char **argv, FILE *&GPF, FILE *&logFile
         argc--;
         argv++;
     }
-    return(argindex);
+    return argindex;
 }
-  
-/*----------------------------------------------------------------------------*/
-/* EOF.                                                                       */
-/*----------------------------------------------------------------------------*/

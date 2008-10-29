@@ -2,9 +2,9 @@
 
  $Id: parameters.h,v 1.3 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -44,9 +44,9 @@ typedef struct parameter_entry
   double epsij;			/* Lennard-Jones energy well-depth */
   double vol;			/* solvation volume */
   double solpar;		/* solvation parameter */
-  hbond_type hbond;		/* hbonding character: 
-				   NON: none, 
-				   DS: spherical donor 
+  hbond_type hbond;		/* hbonding character:
+				   NON: none,
+				   DS: spherical donor
 				   D1: directional donor
 				   AS: spherical acceptor
 				   A1: acceptor of 1 directional hbond

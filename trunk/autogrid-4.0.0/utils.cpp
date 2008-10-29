@@ -4,6 +4,7 @@
 #if defined(_WIN32)
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
+    #include <Winsock2.h>
 #endif
 #include "utils.h"
 #include <cstdlib>
@@ -11,6 +12,42 @@
 #include <cerrno>
 #include "autogrid.h"
 #include "constants.h"
+
+// initializes BOINC
+void ag_boinc_init()
+{
+#if defined(BOINC)
+    boinc_init_diagnostics(BOINC_DIAG_DUMPCALLSTACKENABLED | BOINC_DIAG_HEAPCHECKENABLED | BOINC_DIAG_REDIRECTSTDERR | BOINC_DIAG_REDIRECTSTDOUT);
+
+#if defined(BOINCCOMPOUND)
+    BOINC_OPTIONS options;
+    options.main_program = false;
+    options.check_heartbeat = false;    // monitor does check heartbeat
+    options.handle_trickle_ups = false;
+    options.handle_trickle_downs = false;
+    options.handle_process_control = false;
+    options.send_status_msgs = true;    // only the worker programs (i.e. model) sends status msgs
+    options.direct_process_action = true;   // monitor handles suspend/quit, but app/model doesn't
+
+    // Initialization of Boinc
+    int rc = boinc_init_options(options);   // return 0 for success
+    if (rc)
+    {
+        fprintf(stderr, "BOINC_ERROR: boinc_init_options() failed \n");
+        exit(rc);
+    }
+
+#else
+    // All BOINC applications must initialize the BOINC interface:
+    rc = boinc_init();
+    if (rc)
+    {
+        fprintf(stderr, "BOINC_ERROR: boinc_init() failed.\n");
+        exit(rc);
+    }
+#endif
+#endif
+}
 
 // fopen rewrite to either use BOINC api or normal system call
 FILE *ag_fopen(const char *path, const char *mode)
@@ -25,7 +62,7 @@ FILE *ag_fopen(const char *path, const char *mode)
     if (rc)
     {
         fprintf(stderr, "BOINC_ERROR: cannot open filename.%s\n", path);
-        boinc_finish(rc);       // back to BOINC core 
+        boinc_finish(rc);       // back to BOINC core
     }
     // Then open the file with boinc_fopen() not just fopen()
     filep = boinc_fopen(resolved_name, mode);
@@ -33,6 +70,22 @@ FILE *ag_fopen(const char *path, const char *mode)
     filep = fopen(path, mode);
 #endif
     return filep;
+}
+
+char *ag_gethostname(char *buffer, int size)
+{
+#if defined(_WIN32)
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+
+    if (gethostname(buffer, size) != 0)
+        strncpy(buffer, "(gethostname returned error)", size);
+
+#if defined(_WIN32)
+    WSACleanup();
+#endif
+    return buffer;
 }
 
 // Atom Parameter Manager (hash, apm_enter, apm_find)
@@ -51,7 +104,7 @@ static unsigned int hash(const char key[]) {
 }
 
 void apm_enter(const char key[], PE value) {
-    if (dictionary[hash(key)] == NULL) {
+    if (dictionary[hash(key)] == 0) {
         dictionary[hash(key)] = (PE *) calloc(1, sizeof(PE));
     }
     *(dictionary[hash(key)]) = value;  // this replaces, as well as inserts
@@ -63,7 +116,7 @@ PE * apm_find(const char key[]) {
 }
 
 // Output banner...
-void banner(double version_num, FILE *logFile)
+void fprint_banner(FILE *logFile, double version_num)
 {
     fprintf(logFile,"\n       _______________________________________________________\n");
     fprintf(logFile,"\n");
@@ -77,7 +130,6 @@ void banner(double version_num, FILE *logFile)
     fprintf(logFile,"_______/______/__////_/___///___/////___/////__/______/__////_/________\n");
     fprintf(logFile,"\n");
     fprintf(logFile,"       _______________________________________________________\n");
-
     fprintf(logFile,"\n");
     fprintf(logFile,"                                ______\n");
     fprintf(logFile,"                               /      \\\n");
@@ -89,7 +141,6 @@ void banner(double version_num, FILE *logFile)
     fprintf(logFile,"                                 /  \\\n");
     fprintf(logFile,"                                /____\\\n");
     fprintf(logFile,"\n");
-
     fprintf(logFile,"\n");
     fprintf(logFile,"                ______________________________________ \n");
     fprintf(logFile,"               |                                      |\n");
@@ -130,9 +181,9 @@ double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
     double rk= 7.7839L;
     double lambda_B;
     lambda_B = -lambda * B;
-        
+
     epsilon = A + B / (1.0L + rk*exp(lambda_B * distance));
-    
+
     if (epsilon < approx_zero) {
         epsilon = 1.0L;
     }
@@ -141,7 +192,7 @@ double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
 
 /******************************************************************************/
 /*      Name: check_size                                                      */
-/*  Function: Checks that number of grid elements is valid.                   */ 
+/*  Function: Checks that number of grid elements is valid.                   */
 /* Copyright: (C) 1994, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
 /*    Author: Garrett Morris, The Scripps Research Institute                  */
@@ -178,12 +229,25 @@ int check_size(int nelements, char axischar, const char *programname, FILE *logF
     return nelements;
 }
 
+#if !defined(WIN32)
+int get_clocks_per_sec()
+{
+    long clocks = sysconf(_SC_CLK_TCK);
+    if (clocks < 0)
+    {
+        fprintf(stderr, "\"sysconf(_SC_CLK_TCK)\" failed in get_clocks_per_sec()\n");
+        exit(-1);
+    }
+    return clocks;
+}
+#endif
+
 int get_rec_index(const char key[])
 {
     ParameterEntry *found_parm;
 
     found_parm = apm_find(key);
-    if (found_parm != NULL)
+    if (found_parm != 0)
         return found_parm->rec_index;
     return -1;
 }
@@ -384,29 +448,29 @@ void prHMSfixed(float t, FILE *logFile)
     }
 }
 
-void printdate(FILE *fp, int flag)
+char *getdate(int flag, char *buffer, int size)
 {
     time_t tn; /* tn = "time_now" */
     char *StringTimeDate;
     struct tm *ts;
 
     tn = time(&tn);
-
     ts = localtime(&tn);
-    
+
     if (flag==1) {
-        fprintf(fp, "%d:%02d %02d\" %s, %02d/%02d/%4d\n", 
+        _snprintf(buffer, size, "%d:%02d %02d\" %s, %02d/%02d/%4d\n",
         ((ts->tm_hour >  12) ? (ts->tm_hour-12) : ts->tm_hour), ts->tm_min, ts->tm_sec,
         ((ts->tm_hour >= 12) ? "p.m." : "a.m."),
         (ts->tm_mon + 1), ts->tm_mday, 1900+ts->tm_year);
     } else if (flag==2) {
           StringTimeDate = ctime(&tn);
-          fprintf(fp, "%s", StringTimeDate);
+          _snprintf(buffer, size, "%s", StringTimeDate);
     } else {
-        fprintf(fp, "%d:%02d %02d\" %s\n", 
+        _snprintf(buffer, size, "%d:%02d %02d\" %s\n",
         ((ts->tm_hour >  12) ? (ts->tm_hour-12) : ts->tm_hour), ts->tm_min, ts->tm_sec,
         ((ts->tm_hour >= 12) ? "pm" : "am"));
     }
+    return buffer;
 }
 
 void printhms(Real t, FILE *logFile)
@@ -443,20 +507,20 @@ void print_error(const char *programname, FILE * fileptr, int error_level, char 
     {
     case ERROR:
     case FATAL_ERROR:
-        strcpy(tag, "ERROR");
+        strncpy(tag, "ERROR", LINE_LEN);
         break;
     case WARNING:
-        strcpy(tag, "WARNING");
+        strncpy(tag, "WARNING", LINE_LEN);
         break;
     case INFORMATION:
-        strcpy(tag, "INFORMATION");
+        strncpy(tag, "INFORMATION", LINE_LEN);
         break;
     case SUGGESTION:
-        strcpy(tag, "SUGGESTION");
+        strncpy(tag, "SUGGESTION", LINE_LEN);
         break;
     }
 
-    sprintf(output_message, "\n%s: %s:  %s\n", programname, tag, message);
+    _snprintf(output_message, LINE_LEN, "\n%s: %s:  %s\n", programname, tag, message);
 
     // Records all messages in the logFile.
     fprintf(fileptr, "%s\n", output_message);
@@ -642,7 +706,7 @@ clock_t times(struct tms *buffer)
 
 #endif
 
-// Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks. 
+// Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.
 #if defined(BOINC)
 void app_graphics_render(int xs, int ys, double time_of_day){}
 void app_graphics_reread_prefs(){}

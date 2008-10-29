@@ -2,9 +2,9 @@
 
  $Id: grid.h,v 1.2 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -31,7 +31,7 @@
 /* ______________________________________________________________________________*/
 
 /*
- * Grid Map 
+ * Grid Map
  */
 
 typedef struct      grid_map_set_info
@@ -51,7 +51,7 @@ typedef struct      grid_map_set_info
     int             num_atom_types; // number of atom types
     int             num_all_maps; // number of all maps, = num_atom_types + 2
     int             num_alloc_maps; // allocated number of maps, >= num_all_maps
-    
+
 }                   GridMapSetInfo;
 
 
@@ -61,19 +61,19 @@ typedef struct      grid_map_set_info
  * Thanks to Mike Pique for his helpful discussions of the Dot source code!
  */
 
-// we need space for all the atom maps (info->num_atom_types), 
+// we need space for all the atom maps (info->num_atom_types),
 // plus the electrostatic potential and the desolvation map
 
 #define GridMapSetSize(gp) (((gp)->num_alloc[Z]) * ((gp)->num_alloc[Y]) * ((gp)->num_alloc[X]) * ((gp)->num_alloc_maps))
 
 #define NewGridMapSet(gp) (double *) malloc(sizeof(double) * GridMapSetSize(gp))
 
-/* 
+/*
  * GridIndex(gp,m,x,y,z)
  *
- * Convert from a grid map index, m, and spatial x, y, z- indices 
- * to the corresponding index into the multidimensional array, 
- * where m is the fastest-varying index, as in [z][y][x][m]. 
+ * Convert from a grid map index, m, and spatial x, y, z- indices
+ * to the corresponding index into the multidimensional array,
+ * where m is the fastest-varying index, as in [z][y][x][m].
  *
  * gp is a pointer to a GridMapSetInfo structure, typically "info"
  * m is the map index (the atom affinity, electrostatic potential or desolvation map)
@@ -81,7 +81,7 @@ typedef struct      grid_map_set_info
  * y is the index in the Y-dimension
  * z is the index in the Z-dimension
  *
- * Note also: this macro could also be used for a 3D grid of vectors, where each vector is of length (gp)->num_all_maps, 
+ * Note also: this macro could also be used for a 3D grid of vectors, where each vector is of length (gp)->num_all_maps,
  */
 
 #define GridIndex(gp,m,x,y,z)  (((gp)->num_alloc_maps)*(((gp)->num_alloc[X])*(((gp)->num_alloc[Y])*(z) + (y)) + (x)) + (m))

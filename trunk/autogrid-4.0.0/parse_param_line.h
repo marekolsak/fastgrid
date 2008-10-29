@@ -2,9 +2,9 @@
 
  $Id: parse_param_line.h,v 1.2 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.

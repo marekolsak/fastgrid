@@ -34,7 +34,7 @@
     #if defined(CLOCKS_PER_SEC)
         #undef CLOCKS_PER_SEC
     #endif
-    #define CLOCKS_PER_SEC (sysconf(_SC_CLK_TCK))
+    #define CLOCKS_PER_SEC (get_clocks_per_sec())
 #endif
 
 // Define tokens for parsing AutoDock atomic parameter files
@@ -77,26 +77,28 @@
 #if defined(_WIN32)
 struct tms
 {
-    clock_t tms_utime;	// CPU time used in executing the instructions of the calling process. 
-    clock_t tms_stime;	// CPU time used by the system on behalf of the calling process. 
-    clock_t tms_cutime;	// sum of the tms_utime values and the tms_cutime values of all terminated child processes of the calling process, whose status has been reported to the parent process by wait or waitpid; see section Process Completion. In other words, it represents the total CPU time used in executing the instructions of all the terminated child processes of the calling process, excluding child processes which have not yet been reported by wait or waitpid. 
-    clock_t tms_cstime;	// similar to tms_cutime, but represents the total CPU time used by the system on behalf of all the terminated child processes of the calling process. 
-    // All of the times are given in clock ticks. These are absolute values; in a newly created process, they are all zero. See section Creating a Process. 
+    clock_t tms_utime;	// CPU time used in executing the instructions of the calling process.
+    clock_t tms_stime;	// CPU time used by the system on behalf of the calling process.
+    clock_t tms_cutime;	// sum of the tms_utime values and the tms_cutime values of all terminated child processes of the calling process, whose status has been reported to the parent process by wait or waitpid; see section Process Completion. In other words, it represents the total CPU time used in executing the instructions of all the terminated child processes of the calling process, excluding child processes which have not yet been reported by wait or waitpid.
+    clock_t tms_cstime;	// similar to tms_cutime, but represents the total CPU time used by the system on behalf of all the terminated child processes of the calling process.
+    // All of the times are given in clock ticks. These are absolute values; in a newly created process, they are all zero. See section Creating a Process.
 };
 #endif
 
 // functions
+void ag_boinc_init();
 FILE *ag_fopen(const char *path, const char *mode);
+char *ag_gethostname(char *buffer, int size);
 ParameterEntry *apm_find(const char key[]);
 void apm_enter(const char key[], ParameterEntry value);
-void banner(double version_num, FILE *logFile);
+void fprint_banner(FILE *logFile, double version_num);
 double calc_ddd_Mehler_Solmajer(double distance, double aprrox_zero);
 int check_size(int nelements, char axischar, const char *programname, FILE *logFile);
 int get_rec_index(const char key[]);
 int gpfparser(char line[LINE_LEN]);
 int parsetypes(char * line, char *words[], int maxwords);
 void prHMSfixed(float t, FILE *logFile);
-void printdate(FILE *fp, int flag);
+char *getdate(int flag, char *buffer, int size);
 void printhms(float t, FILE *logFile);
 void print_error(const char *programname, FILE * fileptr, int error_level, char message[LINE_LEN]);
 int strindex(char s[], char t[]);
@@ -105,4 +107,6 @@ void timesyshms(Clock duration, struct tms *start, struct tms *end, Real idct, F
 
 #if defined(_WIN32)
 clock_t times(struct tms *buffer);
+#else
+int get_clocks_per_sec();
 #endif

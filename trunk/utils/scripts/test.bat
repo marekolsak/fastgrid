@@ -8,6 +8,7 @@ if x%4 == x goto ERROR
 cd %2
 echo cmd: ../autogrid4.exe" -p ../EXAMPLE7.gpf -l EXAMPLE7.glg
 "../autogrid4.exe" -p ../EXAMPLE7.gpf -l EXAMPLE7.glg
+tail -n 1 EXAMPLE7.glg
 cd ..
 echo cmd: diff -U 0 %1 %2 ^> %3
 diff -U 0 %1 %2 > %3

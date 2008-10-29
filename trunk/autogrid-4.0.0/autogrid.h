@@ -2,9 +2,9 @@
 
  $Id: autogrid.h,v 1.15 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -24,6 +24,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
  */
+
+#pragma once
 
 // Required for a successful compilation on Visual C++
 #if defined(_MSC_VER)

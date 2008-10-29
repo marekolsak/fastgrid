@@ -2,9 +2,9 @@
 
  $Id: parm.h,v 1.2 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -30,7 +30,7 @@
 #define C1      2
 #define Cac     3
 #define Cpl     4
-    
+
 #define N3pl    5
 #define Nox     6
 #define N3      7
@@ -50,11 +50,11 @@
 #define Sox    19
 #define S      20
 
-#define HC     21 
-#define H      22 
+#define HC     21
+#define H      22
 
 #define P3     23
-#define Pac    24 
+#define Pac    24
 #define Pox    25
 
 #define B      26
@@ -67,14 +67,14 @@
 #define Br     32
 #define Ca     33
 #define Cl     34
-#define Cu     35  
-#define Fl     36  
-#define Fe     37 
-#define Ge     38  
-#define I      39 
-#define K      40 
-#define Li     41 
-#define Mg     42  
+#define Cu     35
+#define Fl     36
+#define Fe     37
+#define Ge     38
+#define I      39
+#define K      40
+#define Li     41
+#define Mg     42
 #define Mn     43
 #define Na     44
 #define Ni     45

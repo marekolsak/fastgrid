@@ -96,7 +96,7 @@ bool FileDiff::ExamineChanges(std::ostream &output)
     for (size_t i = 0; i < added.size(); i++)
         if (!IsSimilar(added[i], removed[i]))
         {
-            output << "*** Test failed. The " << (i+1) << (i == 0? "st" : i == 1? "nd" : "th") << " item is different. See below. ***\n";
+            output << "*** Test failed. The " << (i+1) << (i%10 == 0 && i != 10? "st" : i%10 == 1 && i != 11? "nd" : "th") << " item is different. See below. ***\n";
             ok = false;
         }
     if (!ok)

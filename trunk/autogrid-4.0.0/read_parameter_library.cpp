@@ -2,9 +2,9 @@
 
  $Id: read_parameter_library.cpp,v 1.3 2007/05/03 20:46:06 garrett Exp $
 
- AutoGrid 
+ AutoGrid
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
  All Rights Reserved.
 
  AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -48,12 +48,12 @@ void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, co
 
     // Open and read the parameter library
     //
-    if ((parameter_library_file = ag_fopen(FN_parameter_library, "r")) == NULL) {
+    if ((parameter_library_file = ag_fopen(FN_parameter_library, "r")) == 0) {
          fprintf(stderr,"Sorry, I can't find or open %s\n", FN_parameter_library);
          exit(-1);
     }
 
-    while (fgets(parameter_library_line, sizeof(parameter_library_line), parameter_library_file) != NULL) {
+    while (fgets(parameter_library_line, sizeof(parameter_library_line), parameter_library_file) != 0) {
         param_keyword = parse_param_line(parameter_library_line, debug, logFile);
         if (debug > 0) {
             fprintf(logFile, "DEBUG: parameter_library_line = %sDEBUG: param_keyword          = %d\n", parameter_library_line, param_keyword);
@@ -184,7 +184,7 @@ void setup_parameter_library(int outlev, const char *programname, int debug, FIL
     // These are set up in "default_parameters.h"
     // and stored in the param_string[MAX_LINES] array
 
-    while (param_string[counter] != NULL) {
+    while (param_string[counter] != 0) {
         param_keyword = parse_param_line(param_string[counter], debug, logFile);
 
         strcpy(parameter_library_line, param_string[counter]);
