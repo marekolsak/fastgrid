@@ -540,22 +540,21 @@ void print_error(const char *programname, FILE * fileptr, int error_level, char 
         exit(error_level);
 }
 
+void print_errorf(const char *programname, FILE *fileptr, int error_level, const char *format, ...)
+{
+    char message[LINE_LEN];
+    va_list ap;
+    va_start(ap, format);
+    vsprintf(message, format, ap);
+    va_end(ap);
+    print_error(programname, fileptr, error_level, message);
+}
+
 // returns index of t in s, -1 if none.
 int strindex(char s[], char t[])
 {
     char *r = strstr(s, t);
     return r? int(r-s) : -1;
-
-    // Original code:
-    /*int i,c1,c2;
-
-    for (i=0; s[i] != '\0'; i++) {
-        for (c1=i, c2=0; s[c1]==t[c2] && t[c2]!='\0'; c1++, c2++)
-            ;
-        if (c2>0 && t[c2]=='\0')
-            return(i);
-    }
-    return(-1);*/
 }
 
 void timesys(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile)
