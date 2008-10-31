@@ -691,7 +691,7 @@ clock_t times(struct tms *buffer)
     buffer->tms_stime = FileTimeToClockTime(kernelTime);
     buffer->tms_utime = FileTimeToClockTime(userTime);
 
-    // Use a high-resolution performance counter.
+    // Use the high-resolution performance counter.
     // The drawback is that we cannot let this thread switch between
     // individual processors because that would give us incorrect values.
     // This can be solved by calling SetThreadAffinityMask at the beginning
@@ -705,6 +705,41 @@ clock_t times(struct tms *buffer)
 }
 
 #endif
+
+static clock_t timers[256];
+static unsigned int indexOfNesting = 0;
+
+void beginTimer(const char *description)
+{
+    if (indexOfNesting > 255)
+    {
+        fprintf(stderr, "ERROR: Cannot initiate a timer\n");
+        exit(1);
+    }
+
+    for (unsigned int i = 0; i < indexOfNesting; i++)
+        fprintf(stderr, "  ");
+    fprintf(stderr, "\"%s\" {\n", description);
+    tms _t;
+    timers[indexOfNesting] = times(&_t);
+    ++indexOfNesting;
+}
+
+void endTimer()
+{
+    if (indexOfNesting <= 0)
+    {
+        fprintf(stderr, "ERROR: Cannot terminate a timer\n");
+        exit(1);
+    }
+
+    --indexOfNesting;
+    tms _t;
+    clock_t time = times(&_t) - timers[indexOfNesting];
+    for (unsigned int i = 0; i < indexOfNesting; i++)
+        fprintf(stderr, "  ");
+    fprintf(stderr, "} took %i ms.\n", (time*1000/CLOCKS_PER_SEC));
+}
 
 // Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.
 #if defined(BOINC)

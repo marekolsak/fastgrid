@@ -25,9 +25,7 @@
 
  */
 
-#ifndef _STRUCTS_H
-#define _STRUCTS_H
-
+#pragma once
 #include "constants.h"
 #include "typedefs.h"
 
@@ -240,6 +238,3 @@ typedef struct energy_tables
     Real epsilon_fn[NDIEL];                        // distance-dependent dielectric function
     Real r_epsilon_fn[NDIEL];                      // r * distance-dependent dielectric function
 } EnergyTables;
-
-
-#endif

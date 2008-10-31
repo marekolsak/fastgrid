@@ -25,8 +25,7 @@
 
  */
 
-#ifndef _PARAMETERS_H
-#define _PARAMETERS_H
+#pragma once
 
 /* ______________________________________________________________________________
 ** Parameter Dictionary */
@@ -57,5 +56,3 @@ typedef struct parameter_entry
   int map_index;		/* used to set up map atom_types */
   int bond_index;		/* used to set up bonds; corresponds to the enum in mdist.h */
 } ParameterEntry;
-
-#endif

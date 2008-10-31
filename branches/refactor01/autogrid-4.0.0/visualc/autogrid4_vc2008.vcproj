@@ -93,7 +93,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -181,7 +181,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -266,7 +266,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -306,11 +306,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\process_program_parameters.cpp"
+			RelativePath="..\program_parameters.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\process_program_parameters.h"
+			RelativePath="..\program_parameters.h"
 			>
 		</File>
 		<File

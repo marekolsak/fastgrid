@@ -45,7 +45,7 @@
 
 #include "autogrid.h"
 #include "utils.h"
-#include "process_program_parameters.h"
+#include "program_parameters.h"
 #include "read_parameter_library.h"
 
 #pragma endregion
@@ -333,16 +333,6 @@ int main(int argc, char **argv)
             exit(911);
         }
 
-    // Initializes the grid parameter file
-    FILE *GPF = stdin;
-    if (programParams.gridParameterFilename[0])
-        if (!(GPF = ag_fopen(programParams.gridParameterFilename, "r")))
-        {
-            fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programParams.programName, programParams.gridParameterFilename);
-            fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.programName);
-            exit(911);
-        }
-
     // Output basic information
     fprint_banner(logFile, version_num);
     fprintf(logFile, "                           $Revision: 1.58 $\n\n\n");
@@ -358,6 +348,16 @@ int main(int argc, char **argv)
 
 #pragma region Reading grid parameter file
 {
+    // Initializes the grid parameter file
+    FILE *GPF = stdin;
+    if (programParams.gridParameterFilename[0])
+        if (!(GPF = ag_fopen(programParams.gridParameterFilename, "r")))
+        {
+            fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programParams.programName, programParams.gridParameterFilename);
+            fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.programName);
+            exit(911);
+        }
+
     // Read in the grid parameter file...
     ParameterEntry thisparm;
     ParameterEntry *found_parm;
