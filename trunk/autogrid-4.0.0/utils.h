@@ -110,3 +110,6 @@ clock_t times(struct tms *buffer);
 #else
 int get_clocks_per_sec();
 #endif
+
+void beginTimer(const char *description);
+void endTimer();

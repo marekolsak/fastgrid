@@ -103,7 +103,7 @@ int main(int argc, char **argv)
     double energy_lookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
 
     char *maptypeptr;           // ptr for current map->type
-    MapObject *gridmap;         // was statically assigned MapObject gridmap[MAX_MAPS];
+    MapObject *gridmap;         // contains information about gridmaps; gridmap[MAX_MAPS] is dynamically allocated
 
     int disorder[AG_MAX_ATOMS];
     double rvector[AG_MAX_ATOMS][XYZ];
@@ -176,6 +176,8 @@ int main(int argc, char **argv)
 
 #pragma endregion
 
+    beginTimer("main() code");
+    beginTimer("initialization stuff");
     ag_boinc_init();
 
     // Get the time at the start of the run...
@@ -205,10 +207,12 @@ int main(int argc, char **argv)
     fprintf(logFile, "\n\n");
 
     // Read in default parameters and the grid parameter file
+    beginTimer("reading in default parameters and the grid parameter file");
     Linear_FE_Model AD4;
     GridParameterInfo params;
     setup_parameter_library(params.outlev, programParams.programName, programParams.debug, logFile, AD4);
     read_grid_parameter_file(programParams, logFile, AD4, gridmap, params);
+    endTimer();
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.1);
@@ -216,7 +220,9 @@ int main(int argc, char **argv)
 
     fprintf(logFile, "\n\nCalculating Pairwise Interaction Energies\n");
     fprintf(logFile, "=========================================\n\n");
+    endTimer();
 
+    beginTimer("precalculating vdW and H-bond interactions into the energy_lookup array");
     // do the map stuff here:
     // set up xA, xB, npb_r, npb_eps and hbonder
     // before this pt
@@ -313,11 +319,13 @@ int main(int argc, char **argv)
             // parsing for intnbp not needed for covalent maps
             fprintf(logFile, "\nAny internal non-bonded parameters will be ignored for this map, since this is a covalent map.\n");
         }                       // end of else parsing intnbp
+    endTimer();
 
     // exponential function for receptor and ligand desolvation
     // note: the solvation term will not be smoothed
     sigma = 3.6;
     minus_inv_two_sigma_sqd = -1. / (2. * sigma * sigma);
+    beginTimer("precalculating the exponential-function values for calculation of desolvation parameters");
     for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
     {
         r = angstrom(indx_r);
@@ -325,6 +333,7 @@ int main(int argc, char **argv)
         sol_fn[indx_r] = exp(sq(r) * minus_inv_two_sigma_sqd);
         sol_fn[indx_r] *= AD4.coeff_desolv;
     }
+    endTimer();
 
     // Loop over all RECEPTOR atoms to
     // calculate bond vectors for directional H-bonds
@@ -340,6 +349,7 @@ int main(int argc, char **argv)
     params.sulphur = get_rec_index("SA");
     params.nonHB_sulphur = get_rec_index("S");
 
+    beginTimer("calculate bond vectors for directional H-bonds");
     // 7:CHANGE HERE: scan the 'params.map_index' from the input
     for (int ia = 0; ia < params.num_receptor_atoms; ia++)
     {                                      //** ia = i_receptor_atom_a **
@@ -747,6 +757,7 @@ int main(int argc, char **argv)
             // endNEW directional N Acceptor
         }                       // end test for atom type
     }                           // Do Next receptor atom...
+    endTimer();
 
     // End bond vector loop
     for (int k = 0; k < params.num_atom_maps + 1; k++)
@@ -800,6 +811,7 @@ int main(int argc, char **argv)
 
     // Iterate over all grid points, Z(Y (X)) (X is fastest)...
 
+    beginTimer("calculating gridmap");
     int ic = 0;
     ctr = 0;
     for (icoord[Z] = -params.ne[Z]; icoord[Z] <= params.ne[Z]; icoord[Z]++)
@@ -1197,6 +1209,7 @@ int main(int argc, char **argv)
         timesys(grd_end - grd_start, &tms_grd_start, &tms_grd_end, idct, logFile);
         fflush(logFile);
     }                           // icoord[Z] loop
+    endTimer();
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
@@ -1242,5 +1255,7 @@ int main(int argc, char **argv)
 #if defined(BOINC)
     boinc_finish(0);            // should not return
 #endif
+
+    endTimer();
     return 0;
 }
