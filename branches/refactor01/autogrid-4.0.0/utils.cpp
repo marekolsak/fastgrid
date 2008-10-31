@@ -182,7 +182,7 @@ double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
     double lambda_B;
     lambda_B = -lambda * B;
 
-    epsilon = A + B / (1.0L + rk*exp(lambda_B * distance));
+    epsilon = A + B / (1 + rk*exp(lambda_B * distance));
 
     if (epsilon < approx_zero) {
         epsilon = 1.0L;
@@ -387,7 +387,7 @@ int parsetypes(char * line, char *words[], int maxwords)
     int found_keyword = 0;
     int index = 0;
 
-    while(1) {
+    for(;;) {
         /*skip spaces*/
         while(isspace(*char_ptr)){
             char_ptr++;

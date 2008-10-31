@@ -277,7 +277,6 @@ int main(int argc, char **argv)
     int elecPE = 0;
     int dsolvPE = 0;
 
-    // int covmap;
     int from, to;
     int fprintf_retval = 0;
     int GPF_keyword = -1;
@@ -293,9 +292,9 @@ int main(int argc, char **argv)
 
 #define INIT_NUM_GRID_PTS -1
     int num_grid_points_per_map = INIT_NUM_GRID_PTS;
-    int i = 0, ii = 0, j = 0, k = 0, indx_r = 0, i_smooth = 0;
+    int ii = 0, i_smooth = 0;
 
-    int ia = 0, ib = 0, ic = 0, map_index = -1, iat = 0, i1 = 0, i2 = 0, i3 = 0;
+    int ic = 0, map_index = -1, i1 = 0, i2 = 0, i3 = 0;
     int closestH = 0;
 
     int num_receptor_atoms;
@@ -346,7 +345,7 @@ int main(int argc, char **argv)
     Linear_FE_Model AD4;
     setup_parameter_library(outlev, programParams.programName, programParams.debug, logFile, AD4);
 
-#pragma region Reading grid parameter file
+#pragma region Reading in the grid parameter file
 {
     // Initializes the grid parameter file
     FILE *GPF = stdin;
@@ -400,206 +399,202 @@ int main(int argc, char **argv)
             break;
 
         case GPF_RECEPTOR:
-            // read in the receptor filename
-            sscanf(GPF_line, "%*s %s", receptor_filename);
-            fprintf(logFile, "\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptor_filename);
-
-            // try to open receptor file
-            if ((receptor_fileptr = ag_fopen(receptor_filename, "r")) == 0)
             {
-                sprintf(message, "can't find or open receptor PDBQT file \"%s\".\n", receptor_filename);
-                print_error(programParams.programName, logFile, ERROR, message);
-                print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
+                // read in the receptor filename
+                sscanf(GPF_line, "%*s %s", receptor_filename);
+                fprintf(logFile, "\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptor_filename);
 
-            // start to read in the lines of the receptor file
-            ia = 0;
-            while ((fgets(line, length, receptor_fileptr)) != 0)
-            {
-                sscanf(line, "%6s", record);
-                if (equal(record, "ATOM", 4) || // Amino Acid or DNA/RNA atoms
-                    equal(record, "HETA", 4) || // Non-standard heteroatoms
-                    equal(record, "CHAR", 4))
-                {               // Partial Atomic Charge - not a PDB record
+                // try to open receptor file
+                if ((receptor_fileptr = ag_fopen(receptor_filename, "r")) == 0)
+                {
+                    sprintf(message, "can't find or open receptor PDBQT file \"%s\".\n", receptor_filename);
+                    print_error(programParams.programName, logFile, ERROR, message);
+                    print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                }
 
-                    strncpy(atom_name, &line[12], 4);
-                    /* atom_name is declared as an array of 6 characters, the PDB atom name is 4 characters (C indices 0, 1, 2 and 3) but let's ensure that the fifth character (C index 4)
-                       is a null character, which terminates the string. */
-                    atom_name[4] = '\0';
+                // start to read in the lines of the receptor file
+                int ia = 0;
+                while ((fgets(line, length, receptor_fileptr)) != 0)
+                {
+                    sscanf(line, "%6s", record);
+                    if (equal(record, "ATOM", 4) || // Amino Acid or DNA/RNA atoms
+                        equal(record, "HETA", 4) || // Non-standard heteroatoms
+                        equal(record, "CHAR", 4))
+                    {               // Partial Atomic Charge - not a PDB record
 
-                    // Output the serial number of this atom...
-                    fprintf(logFile, "Atom no. %2d, \"%s\"", ia + 1, atom_name);
-                    fflush(logFile);
+                        strncpy(atom_name, &line[12], 4);
+                        /* atom_name is declared as an array of 6 characters, the PDB atom name is 4 characters (C indices 0, 1, 2 and 3) but let's ensure that the fifth character (C index 4)
+                           is a null character, which terminates the string. */
+                        atom_name[4] = '\0';
 
-                    // Read in this receptor atom's coordinates,partial charges, and solvation parameters in PDBQS format...
-                    sscanf(&line[30], "%lf", &coord[ia][X]);
-                    sscanf(&line[38], "%lf", &coord[ia][Y]);
-                    sscanf(&line[46], "%lf", &coord[ia][Z]);
-
-                    // Output the coordinates of this atom...
-                    fprintf(logFile, " at (%.3lf, %.3lf, %.3lf), ", coord[ia][X], coord[ia][Y], coord[ia][Z]);
-                    fflush(logFile);
-
-                    // 1:CHANGE HERE: need to set up vol and solpar
-                    sscanf(&line[70], "%lf", &charge[ia]);
-                    // printf("new type is: %s\n", &line[77]);
-                    sscanf(&line[77], "%s", thisparm.autogrid_type);
-                    found_parm = apm_find(thisparm.autogrid_type);
-                    if (found_parm != 0)
-                    {
-                        fprintf(logFile, "DEBUG: found_parm->rec_index = %d", found_parm->rec_index);
-                        if (found_parm->rec_index < 0)
-                        {
-                            strcpy(receptor_types[receptor_types_ct], found_parm->autogrid_type);
-                            found_parm->rec_index = receptor_types_ct++;
-                            fprintf(logFile, "DEBUG: found_parm->rec_index => %d", found_parm->rec_index);
-                        }
-                        atom_type[ia] = found_parm->rec_index;
-                        solpar[ia] = found_parm->solpar;
-                        vol[ia] = found_parm->vol;
-                        hbond[ia] = found_parm->hbond;  // NON=0, DS,D1, AS, A1, A2
-#if defined(DEBUG)
-                        printf("%d:key=%s, type=%d,solpar=%f,vol=%f\n", ia, thisparm.autogrid_type, atom_type[ia], solpar[ia], vol[ia]);
-#endif
-                        ++receptor_atom_type_count[found_parm->rec_index];
-                    }
-                    else
-                    {
-                        fprintf(logFile, "\n\nreceptor file contains unknown type: '%s'\nadd parameters for it to the parameter library first\n", thisparm.autogrid_type);
-                        exit(-1);
-                    }
-
-                    // if from pdbqs: convert cal/molA**3 to kcal/molA**3
-                    // solpar[ia] *= 0.001;
-                    q_max = max(q_max, charge[ia]);
-                    q_min = min(q_min, charge[ia]);
-
-                    if (atom_name[0] == ' ')
-                    {
-                        // truncate the first character...
-                        atom_name[0] = atom_name[1];
-                        atom_name[1] = atom_name[2];
-                        atom_name[2] = atom_name[3];
-                        atom_name[3] = '\0';
-                    }
-                    else if ((atom_name[0] == '0' || atom_name[0] == '1' || atom_name[0] == '2' ||
-                             atom_name[0] == '3' || atom_name[0] == '4' || atom_name[0] == '5' ||
-                             atom_name[0] == '6' || atom_name[0] == '7' || atom_name[0] == '8' ||
-                             atom_name[0] == '9') && atom_name[1] == 'H')
-                    {
-                        /* Assume this is the 'mangled' name of a hydrogen atom, after the atom name has been changed from 'HD21' to '1HD2' for example. [0-9]H\(.\)\(.\) 0 1 2 3 : : :
-                           : V V V V tmp 0 1 2 tmp : V 0 1 2 3 : : : : V V V V H\(.\)\(.\)[0-9] */
-                        temp_char = atom_name[0];
-                        atom_name[0] = atom_name[1];
-                        atom_name[1] = atom_name[2];
-                        atom_name[2] = atom_name[3];
-                        atom_name[3] = temp_char;
-                    }
-
-                    // Tell the user what you thought this atom was...
-                    fprintf(logFile, " was assigned atom type \"%s\" (rec_index= %d, atom_type= %d).\n", found_parm->autogrid_type, found_parm->rec_index, atom_type[ia]);
-                    fflush(logFile);
-
-                    // Count the number of each atom type
-                    // ++receptor_atom_type_count[ atom_type[ia] ];
-
-                    // Keep track of the extents of the receptor
-                    for (i = 0; i < XYZ; i++)
-                    {
-                        cmax[i] = max(cmax[i], coord[ia][i]);
-                        cmin[i] = min(cmin[i], coord[ia][i]);
-                        csum[i] += coord[ia][i];
-                    }
-                    // Total up the partial charges as we go...
-                    q_tot += charge[ia];
-
-                    // Increment the atom counter
-                    ia++;
-
-                    // Check that there aren't too many atoms...
-                    if (ia > AG_MAX_ATOMS)
-                    {
-                        sprintf(message, "Too many atoms in receptor PDBQT file %s;", receptor_filename);
-                        print_error(programParams.programName, logFile, ERROR, message);
-                        sprintf(message, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
-                        print_error(programParams.programName, logFile, ERROR, message);
-                        sprintf(message, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
-                        print_error(programParams.programName, logFile, SUGGESTION, message);
-                        print_error(programParams.programName, logFile, SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
+                        // Output the serial number of this atom...
+                        fprintf(logFile, "Atom no. %2d, \"%s\"", ia + 1, atom_name);
                         fflush(logFile);
+
+                        // Read in this receptor atom's coordinates,partial charges, and solvation parameters in PDBQS format...
+                        sscanf(&line[30], "%lf", &coord[ia][X]);
+                        sscanf(&line[38], "%lf", &coord[ia][Y]);
+                        sscanf(&line[46], "%lf", &coord[ia][Z]);
+
+                        // Output the coordinates of this atom...
+                        fprintf(logFile, " at (%.3lf, %.3lf, %.3lf), ", coord[ia][X], coord[ia][Y], coord[ia][Z]);
+                        fflush(logFile);
+
+                        // 1:CHANGE HERE: need to set up vol and solpar
+                        sscanf(&line[70], "%lf", &charge[ia]);
+                        // printf("new type is: %s\n", &line[77]);
+                        sscanf(&line[77], "%s", thisparm.autogrid_type);
+                        found_parm = apm_find(thisparm.autogrid_type);
+                        if (found_parm != 0)
+                        {
+                            fprintf(logFile, "DEBUG: found_parm->rec_index = %d", found_parm->rec_index);
+                            if (found_parm->rec_index < 0)
+                            {
+                                strcpy(receptor_types[receptor_types_ct], found_parm->autogrid_type);
+                                found_parm->rec_index = receptor_types_ct++;
+                                fprintf(logFile, "DEBUG: found_parm->rec_index => %d", found_parm->rec_index);
+                            }
+                            atom_type[ia] = found_parm->rec_index;
+                            solpar[ia] = found_parm->solpar;
+                            vol[ia] = found_parm->vol;
+                            hbond[ia] = found_parm->hbond;  // NON=0, DS,D1, AS, A1, A2
+    #if defined(DEBUG)
+                            printf("%d:key=%s, type=%d,solpar=%f,vol=%f\n", ia, thisparm.autogrid_type, atom_type[ia], solpar[ia], vol[ia]);
+    #endif
+                            ++receptor_atom_type_count[found_parm->rec_index];
+                        }
+                        else
+                        {
+                            fprintf(logFile, "\n\nreceptor file contains unknown type: '%s'\nadd parameters for it to the parameter library first\n", thisparm.autogrid_type);
+                            exit(-1);
+                        }
+
+                        // if from pdbqs: convert cal/molA**3 to kcal/molA**3
+                        // solpar[ia] *= 0.001;
+                        q_max = max(q_max, charge[ia]);
+                        q_min = min(q_min, charge[ia]);
+
+                        if (atom_name[0] == ' ')
+                        {
+                            // truncate the first character...
+                            atom_name[0] = atom_name[1];
+                            atom_name[1] = atom_name[2];
+                            atom_name[2] = atom_name[3];
+                            atom_name[3] = '\0';
+                        }
+                        else if ((atom_name[0] == '0' || atom_name[0] == '1' || atom_name[0] == '2' ||
+                                 atom_name[0] == '3' || atom_name[0] == '4' || atom_name[0] == '5' ||
+                                 atom_name[0] == '6' || atom_name[0] == '7' || atom_name[0] == '8' ||
+                                 atom_name[0] == '9') && atom_name[1] == 'H')
+                        {
+                            /* Assume this is the 'mangled' name of a hydrogen atom, after the atom name has been changed from 'HD21' to '1HD2' for example. [0-9]H\(.\)\(.\) 0 1 2 3 : : :
+                               : V V V V tmp 0 1 2 tmp : V 0 1 2 3 : : : : V V V V H\(.\)\(.\)[0-9] */
+                            temp_char = atom_name[0];
+                            atom_name[0] = atom_name[1];
+                            atom_name[1] = atom_name[2];
+                            atom_name[2] = atom_name[3];
+                            atom_name[3] = temp_char;
+                        }
+
+                        // Tell the user what you thought this atom was...
+                        fprintf(logFile, " was assigned atom type \"%s\" (rec_index= %d, atom_type= %d).\n", found_parm->autogrid_type, found_parm->rec_index, atom_type[ia]);
+                        fflush(logFile);
+
+                        // Count the number of each atom type
+                        // ++receptor_atom_type_count[ atom_type[ia] ];
+
+                        // Keep track of the extents of the receptor
+                        for (int i = 0; i < XYZ; i++)
+                        {
+                            cmax[i] = max(cmax[i], coord[ia][i]);
+                            cmin[i] = min(cmin[i], coord[ia][i]);
+                            csum[i] += coord[ia][i];
+                        }
+                        // Total up the partial charges as we go...
+                        q_tot += charge[ia];
+
+                        // Increment the atom counter
+                        ia++;
+
+                        // Check that there aren't too many atoms...
+                        if (ia > AG_MAX_ATOMS)
+                        {
+                            sprintf(message, "Too many atoms in receptor PDBQT file %s;", receptor_filename);
+                            print_error(programParams.programName, logFile, ERROR, message);
+                            sprintf(message, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
+                            print_error(programParams.programName, logFile, ERROR, message);
+                            sprintf(message, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
+                            print_error(programParams.programName, logFile, SUGGESTION, message);
+                            print_error(programParams.programName, logFile, SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
+                            fflush(logFile);
+                            // FATAL_ERROR will cause AutoGrid to exit...
+                            print_error(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                        }           // endif
+                    }               // endif
+                }                   // endwhile
+                // Finished reading in the lines of the receptor file
+                fclose(receptor_fileptr);
+                if (has_receptor_types_in_gpf == 1)
+                    // Check that the number of atom types found in the receptor PDBQT
+                    // file match the number parsed in by the "receptor_types" command
+                    // in the GPF; if they do not match, exit!
+                    if (receptor_types_ct != receptor_types_gpf_ct)
+                    {
+                        sprintf(message,
+                                      "The number of atom types found in the receptor PDBQT (%d) does not match the number specified by the \"receptor_types\" command (%d) in the GPF!\n\n",
+                                      receptor_types_ct, receptor_types_gpf_ct);
+                        print_error(programParams.programName, logFile, ERROR, message);
                         // FATAL_ERROR will cause AutoGrid to exit...
                         print_error(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
-                    }           // endif
-                }               // endif
-            }                   // endwhile
-            // Finished reading in the lines of the receptor file
-            fclose(receptor_fileptr);
-            if (has_receptor_types_in_gpf == 1)
-                // Check that the number of atom types found in the receptor PDBQT
-                // file match the number parsed in by the "receptor_types" command
-                // in the GPF; if they do not match, exit!
-                if (receptor_types_ct != receptor_types_gpf_ct)
+                    }
+
+                // Update the total number of atoms in the receptor
+                num_receptor_atoms = ia;
+                fprintf(logFile, "\nMaximum partial atomic charge found = %+.3lf e\n", q_max);
+                fprintf(logFile, "Minimum partial atomic charge found = %+.3lf e\n\n", q_min);
+                fflush(logFile);
+                // Check there are partial charges...
+                if (q_max == 0. && q_min == 0.)
                 {
-                    sprintf(message,
-                                  "The number of atom types found in the receptor PDBQT (%d) does not match the number specified by the \"receptor_types\" command (%d) in the GPF!\n\n",
-                                  receptor_types_ct, receptor_types_gpf_ct);
+                    sprintf(message, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptor_filename);
                     print_error(programParams.programName, logFile, ERROR, message);
                     // FATAL_ERROR will cause AutoGrid to exit...
                     print_error(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
-                }
+                }                   // if there are no charges EXIT
 
-            // Update the total number of atoms in the receptor
-            num_receptor_atoms = ia;
-            fprintf(logFile, "\nMaximum partial atomic charge found = %+.3lf e\n", q_max);
-            fprintf(logFile, "Minimum partial atomic charge found = %+.3lf e\n\n", q_min);
-            fflush(logFile);
-            // Check there are partial charges...
-            if (q_max == 0. && q_min == 0.)
-            {
-                sprintf(message, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptor_filename);
-                print_error(programParams.programName, logFile, ERROR, message);
-                // FATAL_ERROR will cause AutoGrid to exit...
-                print_error(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
-            }                   // if there are no charges EXIT
-
-            for (ia = 0; ia < num_receptor_atoms; ia++)
-                rexp[ia] = 0;
-            fprintf(logFile, "Atom\tAtom\tNumber of this Type\n");
-            fprintf(logFile, "Type\t ID \t in Receptor\n");
-            fprintf(logFile, "____\t____\t___________________\n");
-            fflush(logFile);
-            // 2. CHANGE HERE: need to count number of each receptor_type
-            for (ia = 0; ia < receptor_types_ct; ia++)
-            {
-                i = 0;
-                if (receptor_atom_type_count[ia] != 0)
-                {
-                    fprintf(logFile, " %d\t %s\t\t%6d\n", (ia), receptor_types[ia], receptor_atom_type_count[ia]);
-                    i++;
-                }
+                for (int ia = 0; ia < num_receptor_atoms; ia++)
+                    rexp[ia] = 0;
+                fprintf(logFile, "Atom\tAtom\tNumber of this Type\n");
+                fprintf(logFile, "Type\t ID \t in Receptor\n");
+                fprintf(logFile, "____\t____\t___________________\n");
+                fflush(logFile);
+                // 2. CHANGE HERE: need to count number of each receptor_type
+                for (int ia = 0; ia < receptor_types_ct; ia++)
+                    if (receptor_atom_type_count[ia] != 0)
+                        fprintf(logFile, " %d\t %s\t\t%6d\n", (ia), receptor_types[ia], receptor_atom_type_count[ia]);
+                fprintf(logFile, "\nTotal number of atoms :\t\t%d atoms \n", num_receptor_atoms);
+                fflush(logFile);
+                fprintf(logFile, "Total charge :\t\t\t%.2lf e\n", q_tot);
+                fflush(logFile);
+                fprintf(logFile, "\n\nReceptor coordinates fit within the following volume:\n\n");
+                fflush(logFile);
+                fprintf(logFile, "                   _______(%.1lf, %.1lf, %.1lf)\n", cmax[X], cmax[Y], cmax[Z]);
+                fprintf(logFile, "                  /|     /|\n");
+                fprintf(logFile, "                 / |    / |\n");
+                fprintf(logFile, "                /______/  |\n");
+                fprintf(logFile, "                |  |___|__| Midpoint = (%.1lf, %.1lf, %.1lf)\n", (cmax[X] + cmin[X]) / 2., (cmax[Y] + cmin[Y]) / 2., (cmax[Z] + cmin[Z]) / 2.);
+                fprintf(logFile, "                |  /   |  /\n");
+                fprintf(logFile, "                | /    | /\n");
+                fprintf(logFile, "                |/_____|/\n");
+                fprintf(logFile, "(%.1lf, %.1lf, %.1lf)      \n", cmin[X], cmin[Y], cmin[Z]);
+                fprintf(logFile, "\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n", cmax[X], cmax[Y], cmax[Z]);
+                fprintf(logFile, "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cmin[X], cmin[Y], cmin[Z]);
+                fprintf(logFile, "\n");
+                cmean[0] = csum[0] / (double)num_receptor_atoms;
+                cmean[1] = csum[1] / (double)num_receptor_atoms;
+                cmean[2] = csum[2] / (double)num_receptor_atoms;
+                fflush(logFile);
             }
-            fprintf(logFile, "\nTotal number of atoms :\t\t%d atoms \n", num_receptor_atoms);
-            fflush(logFile);
-            fprintf(logFile, "Total charge :\t\t\t%.2lf e\n", q_tot);
-            fflush(logFile);
-            fprintf(logFile, "\n\nReceptor coordinates fit within the following volume:\n\n");
-            fflush(logFile);
-            fprintf(logFile, "                   _______(%.1lf, %.1lf, %.1lf)\n", cmax[X], cmax[Y], cmax[Z]);
-            fprintf(logFile, "                  /|     /|\n");
-            fprintf(logFile, "                 / |    / |\n");
-            fprintf(logFile, "                /______/  |\n");
-            fprintf(logFile, "                |  |___|__| Midpoint = (%.1lf, %.1lf, %.1lf)\n", (cmax[X] + cmin[X]) / 2., (cmax[Y] + cmin[Y]) / 2., (cmax[Z] + cmin[Z]) / 2.);
-            fprintf(logFile, "                |  /   |  /\n");
-            fprintf(logFile, "                | /    | /\n");
-            fprintf(logFile, "                |/_____|/\n");
-            fprintf(logFile, "(%.1lf, %.1lf, %.1lf)      \n", cmin[X], cmin[Y], cmin[Z]);
-            fprintf(logFile, "\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n", cmax[X], cmax[Y], cmax[Z]);
-            fprintf(logFile, "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cmin[X], cmin[Y], cmin[Z]);
-            fprintf(logFile, "\n");
-            cmean[0] = csum[0] / (double)num_receptor_atoms;
-            cmean[1] = csum[1] / (double)num_receptor_atoms;
-            cmean[2] = csum[2] / (double)num_receptor_atoms;
-            fflush(logFile);
             break;
 
         case GPF_GRIDFLD:
@@ -638,7 +633,7 @@ int main(int argc, char **argv)
 
         case GPF_NPTS:
             sscanf(GPF_line, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
-            for (i = 0; i < XYZ; i++)
+            for (int i = 0; i < XYZ; i++)
             {
                 nelements[i] = check_size(nelements[i], xyz[i], programParams.programName, logFile);
                 ne[i] = nelements[i] / 2;
@@ -665,7 +660,7 @@ int main(int argc, char **argv)
             sscanf(GPF_line, "%*s %s", token);
             if (equal(token, "auto", 4))
             {
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                     center[i] = cmean[i];
                 fprintf(logFile, "Grid maps will be centered on the center of mass.\n");
                 fprintf(logFile, "Coordinates of center of mass : (%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
@@ -676,10 +671,10 @@ int main(int argc, char **argv)
                 fprintf(logFile, "\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
             }
             // centering stuff...
-            for (ia = 0; ia < num_receptor_atoms; ia++)
-                for (i = 0; i < XYZ; i++)
+            for (int ia = 0; ia < num_receptor_atoms; ia++)
+                for (int i = 0; i < XYZ; i++)
                     coord[ia][i] -= center[i];  // transform to center of gridmaps
-            for (i = 0; i < XYZ; i++)
+            for (int i = 0; i < XYZ; i++)
             {
                 cext[i] = spacing * (double)ne[i];
                 cgridmax[i] = center[i] + cext[i];
@@ -695,11 +690,11 @@ int main(int argc, char **argv)
             fprintf(logFile, "                | /    | /\n");
             fprintf(logFile, "                |/_____|/\n");
             fprintf(logFile, "(%.1lf, %.1lf, %.1lf)      \n\n", cgridmin[X], cgridmin[Y], cgridmin[Z]);
-            for (i = 0; i < XYZ; i++)
+            for (int i = 0; i < XYZ; i++)
                 fprintf(logFile, "Grid map %c-dimension :\t\t%.1lf Angstroms\n", xyz[i], 2. * cext[i]);
             fprintf(logFile, "\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n", cgridmax[X], cgridmax[Y], cgridmax[Z]);
             fprintf(logFile, "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cgridmin[X], cgridmin[Y], cgridmin[Z]);
-            for (i = 0; i < XYZ; i++)
+            for (int i = 0; i < XYZ; i++)
                 fprintf(xyz_fileptr, "%.3lf %.3lf\n", cgridmin[i], cgridmax[i]);
             fclose(xyz_fileptr);
             fflush(logFile);
@@ -709,14 +704,14 @@ int main(int argc, char **argv)
             // Read in the list of atom types in the ligand.
             // GPF_line e.g.: "ligand_types N O A C HH NH"
             num_atom_maps = parsetypes(GPF_line, ligand_atom_types, MAX_ATOM_TYPES);
-            for (i = 0; i < num_atom_maps; i++)
+            for (int i = 0; i < num_atom_maps; i++)
             {
                 strcpy(ligand_types[i], ligand_atom_types[i]);
 #if defined(DEBUG)
                 fprintf(logFile, "%d %s ->%s\n", i, ligand_atom_types[i], ligand_types[i]);
 #endif
             }
-            for (i = 0; i < num_atom_maps; i++)
+            for (int i = 0; i < num_atom_maps; i++)
             {
                 found_parm = apm_find(ligand_types[i]);
                 if (found_parm != 0)
@@ -751,7 +746,7 @@ int main(int argc, char **argv)
             }
 
             // Initialize the gridmap MapObject
-            for (i = 0; i < num_maps; i++)
+            for (int i = 0; i < num_maps; i++)
             {
                 gridmap[i].atom_type = 0;   // corresponds to receptor numbers????
                 gridmap[i].map_index = 0;
@@ -772,7 +767,7 @@ int main(int argc, char **argv)
                 gridmap[i].Rij_hb = 0.0L;
                 gridmap[i].epsij_hb = 0.0L;
                 // per gridmap[i].receptor type parameters, ordered as in receptor_types
-                for (j = 0; j < NUM_RECEPTOR_TYPES; j++)
+                for (int j = 0; j < NUM_RECEPTOR_TYPES; j++)
                 {
                     gridmap[i].nbp_r[j] = 0.0L; // radius of energy-well minimum
                     gridmap[i].nbp_eps[j] = 0.0L;   // depth of energy-well minimum
@@ -810,7 +805,7 @@ int main(int argc, char **argv)
                 print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
 
-            for (i = 0; i < num_atom_maps; i++)
+            for (int i = 0; i < num_atom_maps; i++)
             {
                 gridmap[i].is_covalent = FALSE;
                 gridmap[i].is_hbonder = FALSE;
@@ -832,7 +827,7 @@ int main(int argc, char **argv)
                 fprintf(logFile, " setting ij parms for map %d \n", i);
                 fprintf(logFile, "for gridmap[%d], type->%s,Rij->%6.4f, epsij->%6.4f, hbond->%d\n", i, found_parm->autogrid_type, gridmap[i].Rij, gridmap[i].epsij, gridmap[i].hbond);
 #endif
-                for (j = 0; j < receptor_types_ct; j++)
+                for (int j = 0; j < receptor_types_ct; j++)
                 {
                     found_parm = apm_find(receptor_types[j]);
                     gridmap[i].nbp_r[j] = (gridmap[i].Rij + found_parm->Rij) / 2.;
@@ -880,7 +875,7 @@ int main(int argc, char **argv)
                 }              // initialize energy parms for each possible receptor type
             }                   // for each map
             fprintf(logFile, "\nAtom type names for ligand atom types 1-%d used for ligand-atom affinity grid maps:\n\n", num_atom_maps);
-            for (i = 0; i < num_atom_maps; i++)
+            for (int i = 0; i < num_atom_maps; i++)
             {
                 fprintf(logFile, "\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", gridmap[i].map_index, gridmap[i].type);
 
@@ -906,16 +901,14 @@ int main(int argc, char **argv)
             printf("receptor_types_gpf_ct=%d\n", receptor_types_gpf_ct);
             printf("receptor_types_ct=%d\n", receptor_types_ct);
 #endif
-            // for(i=0; i<receptor_types_gpf_ct; i++){
-            for (i = 0; i < receptor_types_ct; i++)
+            for (int i = 0; i < receptor_types_ct; i++)
             {
                 strcpy(receptor_types[i], receptor_atom_types[i]);
 #if defined(DEBUG)
                 printf("%d %s  ->%s\n", i, receptor_atom_types[i], receptor_types[i]);
 #endif
             }
-            // for (i=0; i<receptor_types_gpf_ct; i++) {
-            for (i = 0; i < receptor_types_ct; i++)
+            for (int i = 0; i < receptor_types_ct; i++)
             {
                 found_parm = apm_find(receptor_atom_types[i]);
                 if (found_parm != 0)
@@ -952,7 +945,7 @@ int main(int argc, char **argv)
             {
                 found_parm->vol = temp_vol;
                 found_parm->solpar = temp_solpar;
-                i = found_parm->map_index;
+                int i = found_parm->map_index;
                 if (i >= 0)
                 {
                     // DON'T!!!
@@ -1026,7 +1019,7 @@ int main(int argc, char **argv)
             fprintf(logFile, "\nCovalent well's half-width in Angstroms:         %8.3f\n", covhalfwidth);
             fprintf(logFile, "\nCovalent barrier energy in kcal/mol:             %8.3f\n", covbarrier);
             fprintf(logFile, "\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n", covpos[X], covpos[Y], covpos[Z]);
-            for (i = 0; i < XYZ; i++)
+            for (int i = 0; i < XYZ; i++)
                 // center covpos in the grid maps frame of reference,
                 covpos[i] -= center[i];
             break;
@@ -1060,17 +1053,17 @@ int main(int argc, char **argv)
                 // calculate ddd of Mehler & Solmajer
                 fprintf(logFile, "\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n");
                 epsilon[0] = 1.0;
-                for (indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
                     epsilon[indx_r] = calc_ddd_Mehler_Solmajer(angstrom(indx_r), APPROX_ZERO);
                 fprintf(logFile, "  d   Dielectric\n ___  __________\n");
-                for (i = 0; i <= 500; i += 10)
+                for (int i = 0; i <= 500; i += 10)
                 {
                     ri = angstrom(i);
                     fprintf(logFile, "%4.1lf%9.2lf\n", ri, epsilon[i]);
                 }
                 fprintf(logFile, "\n");
                 // convert epsilon to 1 / epsilon
-                for (i = 1; i < MAX_DIST; i++)
+                for (int i = 1; i < MAX_DIST; i++)
                     epsilon[i] = factor / epsilon[i];
             }
             else
@@ -1114,6 +1107,7 @@ int main(int argc, char **argv)
     if (!floating_grid)
         fprintf(logFile, "\n\nNo Floating Grid was requested.\n");
 
+#pragma region Writing to AVS_fld file
     fprintf(AVS_fld_fileptr, "# AVS field file\n#\n");
     fprintf(AVS_fld_fileptr, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
     fprintf(AVS_fld_fileptr, "# Created by %s.\n#\n", programParams.programName);
@@ -1130,41 +1124,43 @@ int main(int argc, char **argv)
     fprintf(AVS_fld_fileptr, "veclen=%d\t\t# number of affinity values at each point\n", num_maps);
     fprintf(AVS_fld_fileptr, "data=float\t\t# data type (byte, integer, float, double)\n");
     fprintf(AVS_fld_fileptr, "field=uniform\t\t# field type (uniform, rectilinear, irregular)\n");
-    for (i = 0; i < XYZ; i++)
+    for (int i = 0; i < XYZ; i++)
         fprintf(AVS_fld_fileptr, "coord %d file=%s filetype=ascii offset=%d\n", (i + 1), xyz_filename, (i * 2));
-    for (i = 0; i < num_atom_maps; i++)
+    for (int i = 0; i < num_atom_maps; i++)
         fprintf(AVS_fld_fileptr, "label=%s-affinity\t# component label for variable %d\n", gridmap[i].type, (i + 1));                           // i
     fprintf(AVS_fld_fileptr, "label=Electrostatics\t# component label for variable %d\n", num_maps - 2);
     fprintf(AVS_fld_fileptr, "label=Desolvation\t# component label for variable %d\n", num_maps - 1);
     if (floating_grid)
         fprintf(AVS_fld_fileptr, "label=Floating_Grid\t# component label for variable %d\n", num_maps);
     fprintf(AVS_fld_fileptr, "#\n# location of affinity grid files and how to read them\n#\n");
-    for (i = 0; i < num_atom_maps; i++)
+    for (int i = 0; i < num_atom_maps; i++)
         fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmap[i].map_filename);
     fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", num_atom_maps + 1, gridmap[elecPE].map_filename);
     fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", num_atom_maps + 2, gridmap[dsolvPE].map_filename);
     if (floating_grid)
         fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", num_maps, floating_grid_filename);
     fclose(AVS_fld_fileptr);
+#pragma endregion
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.1);
 #endif
 
+#pragma region Calculating pairwise interaction energies
     fprintf(logFile, "\n\nCalculating Pairwise Interaction Energies\n");
     fprintf(logFile, "=========================================\n\n");
 
     // do the map stuff here:
     // set up xA, xB, npb_r, npb_eps and hbonder
     // before this pt
-    for (ia = 0; ia < num_atom_maps; ia++)
+    for (int ia = 0; ia < num_atom_maps; ia++)
         if (gridmap[ia].is_covalent == FALSE)
         {
             // i is the index of the receptor atom type, that the ia type ligand probe will interact with. *//* GPF_MAP
 #if defined(DEBUG)
             printf("receptor_types_ct=%d\n", receptor_types_ct);
 #endif
-            for (i = 0; i < receptor_types_ct; i++)
+            for (int i = 0; i < receptor_types_ct; i++)
             {
                 // for each receptor_type
                 xA = gridmap[ia].xA[i];
@@ -1181,7 +1177,6 @@ int main(int argc, char **argv)
                     print_error(programParams.programName, logFile, FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
                 if (isnan(cB))
                     print_error(programParams.programName, logFile, FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
-                // printf("tmpconst = %6.4f, cA = %6.4f, cB = %6.4f\n",tmpconst, cA, cB);
                 dxA = (double)xA;
                 dxB = (double)xB;
                 if (xA == 0)
@@ -1195,7 +1190,7 @@ int main(int argc, char **argv)
                 // loop over distance index, indx_r, from 0 to MAX_DIST *//* GPF_MAP
                 fprintf(logFile, "Calculating energies for %s-%s interactions.\n", gridmap[ia].type, receptor_types[i]);
 
-                for (indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
                 {
                     r = angstrom(indx_r);
                     rA = pow(r, dxA);
@@ -1205,21 +1200,16 @@ int main(int argc, char **argv)
                 energy_lookup[i][0][ia] = EINTCLAMP;
                 energy_lookup[i][MD_1][ia] = 0.;
 
-                /* PRINT OUT INITIAL VALUES before smoothing here  fprintf(logFile, "before smoothing\n r "); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf(logFile,
-                   " %s ", receptor_types[iat]); }  fprintf(logFile, "\n ___"); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf(logFile, " ________"); }
-                   fprintf(logFile, "\n"); for (j = 0; j <= 500; j += 10) {  fprintf(logFile, "%4.1lf", angstrom(j)); for (iat = 0; iat < receptor_types_ct; iat++) {  fprintf(
-                   logFile, (energy_lookup[iat][j][ia]<100000.)?"%9.2lf":"%9.2lg", energy_lookup[iat][j][ia]); }  fprintf(logFile, "\n"); }  fprintf(logFile, "\n"); */
-
                 // smooth with min function *//* GPF_MAP
                 if (i_smooth > 0)
                 {
-                    for (indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
                     {
                         energy_smooth[indx_r] = 100000.;
-                        for (j = max(0, indx_r - i_smooth); j < min(MAX_DIST, indx_r + i_smooth); j++)
+                        for (int j = max(0, indx_r - i_smooth); j < min(MAX_DIST, indx_r + i_smooth); j++)
                             energy_smooth[indx_r] = min(energy_smooth[indx_r], energy_lookup[i][j][ia]);
                     }
-                    for (indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
                         energy_lookup[i][indx_r][ia] = energy_smooth[indx_r];
                 }               // endif smoothing
             }                   // for i in receptor types: build energy table for this map
@@ -1227,19 +1217,16 @@ int main(int argc, char **argv)
             // Print out a table, of distance versus energy...
             // GPF_MAP
             fprintf(logFile, "\n\nFinding the lowest pairwise interaction energy within %.1f Angstrom (\"smoothing\").\n\n  r ", r_smooth);
-            for (iat = 0; iat < receptor_types_ct; iat++)
-            {
+            for (int iat = 0; iat < receptor_types_ct; iat++)
                 fprintf(logFile, "    %s    ", receptor_types[iat]);
-                //  fprintf(logFile, " %c ", receptor_atom_type_string[iat]);
-            }                   // iat
             fprintf(logFile, "\n ___");
-            for (iat = 0; iat < receptor_types_ct; iat++)
+            for (int iat = 0; iat < receptor_types_ct; iat++)
                 fprintf(logFile, " ________");                   // iat
             fprintf(logFile, "\n");
-            for (j = 0; j <= 500; j += 10)
+            for (int j = 0; j <= 500; j += 10)
             {
                 fprintf(logFile, "%4.1lf", angstrom(j));
-                for (iat = 0; iat < receptor_types_ct; iat++)
+                for (int iat = 0; iat < receptor_types_ct; iat++)
                     fprintf(logFile, (energy_lookup[iat][j][ia] < 100000.) ? "%9.2lf" : "%9.2lg", energy_lookup[iat][j][ia]);               // iat
                 fprintf(logFile, "\n");
             }                   // j
@@ -1250,19 +1237,23 @@ int main(int argc, char **argv)
             // parsing for intnbp not needed for covalent maps
             fprintf(logFile, "\nAny internal non-bonded parameters will be ignored for this map, since this is a covalent map.\n");
         }                       // end of else parsing intnbp
+#pragma endregion
 
+#pragma region Precalculating of the exponential function for receptor and ligand desolvation
     // exponential function for receptor and ligand desolvation
     // note: the solvation term will not be smoothed
     sigma = 3.6;
     minus_inv_two_sigma_sqd = -1. / (2. * sigma * sigma);
-    for (indx_r = 1; indx_r < MAX_DIST; indx_r++)
+    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
     {
         r = angstrom(indx_r);
         // sol_fn[indx_r] = exp(-sq(r)/(2.*sigma*sigma));
         sol_fn[indx_r] = exp(sq(r) * minus_inv_two_sigma_sqd);
         sol_fn[indx_r] *= AD4.coeff_desolv;
     }
+#pragma endregion
 
+#pragma region Calculating bond vectors for directional H-bonds
     // Loop over all RECEPTOR atoms to
     // calculate bond vectors for directional H-bonds
     // setup the canned atom types here....
@@ -1278,7 +1269,7 @@ int main(int argc, char **argv)
     nonHB_sulphur = get_rec_index("S");
 
     // 7:CHANGE HERE: scan the 'map_index' from the input
-    for (ia = 0; ia < num_receptor_atoms; ia++)
+    for (int ia = 0; ia < num_receptor_atoms; ia++)
     {                                      //** ia = i_receptor_atom_a **
         disorder[ia] = FALSE;   // initialize disorder flag.
         warned = 'F';
@@ -1292,7 +1283,7 @@ int main(int argc, char **argv)
         // 8:CHANGE HERE: fix the atom_type vs atom_types problem in following
         if ((int)hbond[ia] == 2) // D1 hydrogen bond donor
         {
-            for (ib = from; ib <= to; ib++)
+            for (int ib = from; ib <= to; ib++)
                 if (ib != ia) // ib = i_receptor_atom_b
                 {
                     // =>  NH-> or OH->
@@ -1300,7 +1291,7 @@ int main(int argc, char **argv)
 
                     // Calculate the square of the N-H or O-H bond distance, rd2,
                     //                            ib-ia  ib-ia
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         d[i] = coord[ia][i] - coord[ib][i];
                     rd2 = sq(d[X]) + sq(d[Y]) + sq(d[Z]);
                     // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
@@ -1334,7 +1325,7 @@ int main(int argc, char **argv)
                         }
 
                         // Normalize the vector from ib to ia, N->H or O->H...
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             rvector[ia][i] = d[i] * inv_rd;
 
                         // First O-H/N-H H-bond-donor found; Go on to next atom,
@@ -1352,18 +1343,18 @@ int main(int argc, char **argv)
             //        to (ia + 5)th m/m-atom
             // determine number of atoms bonded to the oxygen
             nbond = 0;
-            for (ib = from; ib <= to; ib++)
+            int ib = from;
+            for (; ib <= to; ib++)
                 if (ib != ia)
                 {
                     rd2 = 0.;
 
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                     {
                         dc[i] = coord[ia][i] - coord[ib][i];
                         rd2 += sq(dc[i]);
                     }
 
-                    // for (i = 0; i < XYZ; i++) { rd2 += sq(coord[ia][i] - coord[ib][i]); }
                     if (((rd2 < 3.61) && ((atom_type[ib] != hydrogen) && (atom_type[ib] != nonHB_hydrogen))) ||
                         ((rd2 < 1.69) && ((atom_type[ib] == hydrogen) || (atom_type[ib] == nonHB_hydrogen))))
                     {
@@ -1397,7 +1388,7 @@ int main(int argc, char **argv)
             {
                 // calculate normalized carbonyl bond vector rvector[ia][]
                 rd2 = 0.;
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = coord[ia][i] - coord[i1][i];
                     rd2 += sq(rvector[ia][i]);
@@ -1413,15 +1404,15 @@ int main(int argc, char **argv)
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = 1. / sqrt(rd2);
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
 
                 // find a second atom (i2) bonded to carbonyl carbon (i1)
-                for (i2 = from; i2 <= to; i2++)
+                for (int i2 = from; i2 <= to; i2++)
                     if ((i2 != i1) && (i2 != ia))
                     {
                         rd2 = 0.;
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                         {
                             dc[i] = coord[i1][i] - coord[i2][i];
                             /*NEW*/ rd2 += sq(dc[i]);
@@ -1432,7 +1423,7 @@ int main(int argc, char **argv)
                             // found one
                             // d[i] vector from carbon to second atom
                             rd2 = 0.;
-                            for (i = 0; i < XYZ; i++)
+                            for (int i = 0; i < XYZ; i++)
                             {
                                 d[i] = coord[i2][i] - coord[i1][i];
                                 rd2 += sq(d[i]);
@@ -1448,7 +1439,7 @@ int main(int argc, char **argv)
                                 rd2 = APPROX_ZERO;
                             }
                             inv_rd = 1. / sqrt(rd2);
-                            for (i = 0; i < XYZ; i++)
+                            for (int i = 0; i < XYZ; i++)
                                 d[i] *= inv_rd;
 
                             // C=O cross C-X gives the lone pair plane normal
@@ -1456,7 +1447,7 @@ int main(int argc, char **argv)
                             rvector2[ia][1] = rvector[ia][2] * d[0] - rvector[ia][0] * d[2];
                             rvector2[ia][2] = rvector[ia][0] * d[1] - rvector[ia][1] * d[0];
                             rd2 = 0.;
-                            for (i = 0; i < XYZ; i++)
+                            for (int i = 0; i < XYZ; i++)
                                 rd2 += sq(rvector2[ia][i]);
                             if (rd2 < APPROX_ZERO)
                             {
@@ -1469,7 +1460,7 @@ int main(int argc, char **argv)
                                 rd2 = APPROX_ZERO;
                             }
                             inv_rd = 1. / sqrt(rd2);
-                            for (i = 0; i < XYZ; i++)
+                            for (int i = 0; i < XYZ; i++)
                                 rvector2[ia][i] *= inv_rd;
                         }
                     }
@@ -1480,14 +1471,13 @@ int main(int argc, char **argv)
                 // disordered hydroxyl
                 if (((atom_type[i1] == hydrogen) || (atom_type[i2] == hydrogen)) && (atom_type[i1] != atom_type[i2]) && (disorder_h == TRUE))
                 {
-
                     if ((atom_type[i1] == carbon) || (atom_type[i1] == arom_carbon))
                         ib = i1;
                     if ((atom_type[i2] == carbon) || (atom_type[i1] == arom_carbon))
                         ib = i2;
                     disorder[ia] = TRUE;
                     rd2 = 0.;
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                     {
                         rvector[ia][i] = coord[ia][i] - coord[ib][i];
                         rd2 += sq(rvector[ia][i]);
@@ -1503,7 +1493,7 @@ int main(int argc, char **argv)
                         rd2 = APPROX_ZERO;
                     }
                     inv_rd = 1. / sqrt(rd2);
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
                 }
                 else
@@ -1511,7 +1501,7 @@ int main(int argc, char **argv)
                     // not a disordered hydroxyl
                     // normalized X1 to X2 vector, defines lone pair plane
                     rd2 = 0.;
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                     {
                         rvector2[ia][i] = coord[i2][i] - coord[i1][i];
                         rd2 += sq(rvector2[ia][i]);
@@ -1527,7 +1517,7 @@ int main(int argc, char **argv)
                         rd2 = APPROX_ZERO;
                     }
                     inv_rd = 1. / sqrt(rd2);
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         rvector2[ia][i] *= inv_rd;
 
                     // vector pointing between the lone pairs:
@@ -1536,10 +1526,10 @@ int main(int argc, char **argv)
                     // coords of X1 gives the point on the X1-X2 line for the
                     // back of the vector.
                     rdot = 0.;
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         rdot += (coord[ia][i] - coord[i1][i]) * rvector2[ia][i];
                     rd2 = 0.;
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                     {
                         rvector[ia][i] = coord[ia][i] - ((rdot * rvector2[ia][i]) + coord[i1][i]);
                         rd2 += sq(rvector[ia][i]);
@@ -1555,7 +1545,7 @@ int main(int argc, char **argv)
                         rd2 = APPROX_ZERO;
                     }
                     inv_rd = 1. / sqrt(rd2);
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
                 }               // end disordered hydroxyl
         }
@@ -1565,17 +1555,17 @@ int main(int argc, char **argv)
             //        to (ia+5)th m/m-atom
             // determine number of atoms bonded to the oxygen
             nbond = 0;
-            for (ib = from; ib <= to; ib++)
+            int ib = from;
+            for (; ib <= to; ib++)
                 if (ib != ia)
                 {
                     rd2 = 0.;
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                     {
                         dc[i] = coord[ia][i] - coord[ib][i];
                         rd2 += sq(dc[i]);
                     }
 
-                    // for (i = 0; i < XYZ; i++) { rd2 += sq(coord[ia][i] - coord[ib][i]); }
                     if (((rd2 < 2.89) && ((atom_type[ib] != hydrogen) && (atom_type[ib] != nonHB_hydrogen))) ||
                         ((rd2 < 1.69) && ((atom_type[ib] == hydrogen) || (atom_type[ib] == nonHB_hydrogen))))
                     {
@@ -1609,7 +1599,7 @@ int main(int argc, char **argv)
             {
                 // calculate normalized N=C bond vector rvector[ia][]
                 rd2 = 0.;
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = coord[ia][i] - coord[i1][i];
                     rd2 += sq(rvector[ia][i]);
@@ -1625,7 +1615,7 @@ int main(int argc, char **argv)
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = 1. / sqrt(rd2);
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
             }                   // endif nbond==1
 
@@ -1634,7 +1624,7 @@ int main(int argc, char **argv)
             {
                 // normalized vector from Nitrogen to midpoint between X1 and X2
                 rd2 = 0.;
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = coord[ia][i] - (coord[i2][i] + coord[i1][i]) / 2.;
                     rd2 += sq(rvector[ia][i]);
@@ -1650,7 +1640,7 @@ int main(int argc, char **argv)
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = 1. / sqrt(rd2);
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
             }                   // end two bonds for nitrogen
 
@@ -1659,7 +1649,7 @@ int main(int argc, char **argv)
             {
                 // normalized vector from Nitrogen to midpoint between X1, X2, and X3
                 rd2 = 0.;
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = coord[ia][i] - (coord[i1][i] + coord[i2][i] + coord[i3][i]) / 3.;
                     rd2 += sq(rvector[ia][i]);
@@ -1675,32 +1665,30 @@ int main(int argc, char **argv)
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = 1. / sqrt(rd2);
-                for (i = 0; i < XYZ; i++)
+                for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
 
             }                   // end three bonds for Nitrogen
             // endNEW directional N Acceptor
         }                       // end test for atom type
     }                           // Do Next receptor atom...
+#pragma endregion
 
     // End bond vector loop
-    for (k = 0; k < num_atom_maps + 1; k++)
+    for (int k = 0; k < num_atom_maps + 1; k++)
     {
         gridmap[k].energy_max = (double)-BIG;
         gridmap[k].energy_min = (double)BIG;
     }
 
-    fprintf(logFile, "Beginning grid calculations.\n");
-    fprintf(logFile, "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n", num_maps, num_grid_points_per_map, num_receptor_atoms);
-    fflush(logFile);
-
+#pragma region Writing out the correct grid filenames and other parameters
     // Write out the  correct grid_data '.fld' file_name at the  head of each map
     // file, to avoid centering errors in subsequent dockings...
     // AutoDock can then  check to see  if the  center of each  map  matches that
     // specified in its parameter file...
 
     // change num_atom_maps +1 to num_atom_maps + 2 for new dsolvPE map
-    for (k = 0; k < num_atom_maps + 2; k++)
+    for (int k = 0; k < num_atom_maps + 2; k++)
     {
         fprintf(gridmap[k].map_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.gridParameterFilename);
         fprintf(gridmap[k].map_fileptr, "GRID_DATA_FILE %s\n", AVS_fld_filename);
@@ -1718,14 +1706,18 @@ int main(int argc, char **argv)
         fprintf(floating_grid_fileptr, "NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
         fprintf(floating_grid_fileptr, "CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
     }
+#pragma endregion
 
+#pragma region Calculating of gridmaps
+    fprintf(logFile, "Beginning grid calculations.\n");
+    fprintf(logFile, "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n", num_maps, num_grid_points_per_map, num_receptor_atoms);
     fprintf(logFile, "                    Percent   Estimated Time  Time/this plane\n");
     fprintf(logFile, "XY-plane  Z-coord   Done      Remaining       Real, User, System\n");
     fprintf(logFile, "            /Ang              /sec            /sec\n");
     fprintf(logFile, "________  ________  ________  ______________  __________________________\n\n");
+    fflush(logFile);
 
     // Iterate over all grid points, Z(Y (X)) (X is fastest)...
-
     ic = 0;
 
     ctr = 0;
@@ -1743,7 +1735,7 @@ int main(int argc, char **argv)
             {
                 c[X] = ((double)icoord[X]) * spacing;
 
-                for (j = 0; j < num_atom_maps + 2; j++)
+                for (int j = 0; j < num_atom_maps + 2; j++)
                     if (gridmap[j].is_covalent == TRUE)
                     {
                         // Calculate the distance from the current grid point, c, to the covalent attachment point, covpos
@@ -1762,7 +1754,7 @@ int main(int argc, char **argv)
                     r_min = BIG;
 
                 // Initialize Min Hbond variables for each new point
-                for (map_index = 0; map_index < num_atom_maps; map_index++)
+                for (int map_index = 0; map_index < num_atom_maps; map_index++)
                 {
                     hbondmin[map_index] = 999999.;
                     hbondmax[map_index] = -999999.;
@@ -1772,10 +1764,10 @@ int main(int argc, char **argv)
                 // NEW2: Find Closest Hbond
                 rmin = 999999.;
                 closestH = 0;
-                for (ia = 0; ia < num_receptor_atoms; ia++)
+                for (int ia = 0; ia < num_receptor_atoms; ia++)
                     if ((hbond[ia] == 1) || (hbond[ia] == 2))
                     {           // DS or D1
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             d[i] = coord[ia][i] - c[i];
                         r = hypotenuse(d[X], d[Y], d[Z]);
                         if (r < rmin)
@@ -1787,10 +1779,10 @@ int main(int argc, char **argv)
                 // END NEW2: Find Min Hbond
 
                 //  Do all Receptor (protein, DNA, etc.) atoms...
-                for (ia = 0; ia < num_receptor_atoms; ia++)
+                for (int ia = 0; ia < num_receptor_atoms; ia++)
                 {
                     //  Get distance, r, from current grid point, c, to this receptor atom, coord,
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         d[i] = coord[ia][i] - c[i];
                     r = hypotenuse(d[X], d[Y], d[Z]);
                     if (r < APPROX_ZERO)
@@ -1798,10 +1790,10 @@ int main(int argc, char **argv)
                     inv_r = 1. / r;
                     inv_rmax = 1. / max(r, 0.5);
 
-                    for (i = 0; i < XYZ; i++)
+                    for (int i = 0; i < XYZ; i++)
                         d[i] *= inv_r;
                     // make sure lookup index is in the table
-                    indx_r = min(lookup(r), MD_1);
+                    int indx_r = min(lookup(r), MD_1);
 
                     if (floating_grid)
                         // Calculate the so-called "Floating Grid"...
@@ -1842,7 +1834,7 @@ int main(int argc, char **argv)
                         cos_theta = 0.;
                         //  d[] = Unit vector from current grid pt to ia_th m/m atom.
                         //  cos_theta = d dot rvector == cos(angle) subtended.
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
 
                         if (cos_theta <= 0.)
@@ -1875,7 +1867,7 @@ int main(int argc, char **argv)
                             else
                             {
                                 cos_theta = 0.;
-                                for (i = 0; i < XYZ; i++)
+                                for (int i = 0; i < XYZ; i++)
                                     cos_theta += rvector[closestH][i] * rvector[ia][i];
                                 cos_theta = min(cos_theta, 1.0);
                                 cos_theta = max(cos_theta, -1.0);
@@ -1894,7 +1886,7 @@ int main(int argc, char **argv)
                         cos_theta = 0.;
                         //  d[] = Unit vector from current grid pt to ia_th m/m atom.
                         //  cos_theta = d dot rvector == cos(angle) subtended.
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
 
                         if (cos_theta <= 0.)
@@ -1916,13 +1908,13 @@ int main(int argc, char **argv)
 
                         // check to see that probe is in front of oxygen, not behind
                         cos_theta = 0.;
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
                         // t0 is the angle out of the lone pair plane, calculated
                         // as 90 deg - acos (vector to grid point DOT lone pair
                         // plane normal)
                         t0 = 0.;
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             t0 += d[i] * rvector2[ia][i];
                         if (t0 > 1.)
                         {
@@ -1958,7 +1950,7 @@ int main(int argc, char **argv)
                         }
                         inv_rd = 1. / sqrt(rd2);
                         ti = 0.;
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             ti += cross[i] * inv_rd * rvector[ia][i];
 
                         // rdon expressions from Goodford
@@ -1994,7 +1986,7 @@ int main(int argc, char **argv)
 
                         // cylindrically disordered hydroxyl
                         cos_theta = 0.;
-                        for (i = 0; i < XYZ; i++)
+                        for (int i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * rvector[ia][i];
                         if (cos_theta > 1.)
                         {
@@ -2023,7 +2015,7 @@ int main(int argc, char **argv)
                     // Sum pairwise interactions between each probe
                     // at this grid point (c[0:2])
                     // and the current receptor atom, ia...
-                    for (map_index = 0; map_index < num_atom_maps; map_index++)
+                    for (int map_index = 0; map_index < num_atom_maps; map_index++)
                     {
                         // We do not want to change the current enrg value for any covalent maps, make sure iscovalent is false...
                         maptypeptr = gridmap[map_index].type;
@@ -2078,7 +2070,7 @@ int main(int argc, char **argv)
                     }           // map_index
                     gridmap[dsolvPE].energy += solpar_q * vol[ia] * sol_fn[indx_r];
                 }               // ia loop, over all receptor atoms...
-                for (map_index = 0; map_index < num_atom_maps; map_index++)
+                for (int map_index = 0; map_index < num_atom_maps; map_index++)
                     if (hbondflag[map_index])
                     {
                         gridmap[map_index].energy += hbondmin[map_index];
@@ -2088,7 +2080,7 @@ int main(int argc, char **argv)
                 // O U T P U T . . .
                 // Now output this grid point's energies to the maps:
                 // 2 includes new dsolvPE
-                for (k = 0; k < num_atom_maps + 2; k++)
+                for (int k = 0; k < num_atom_maps + 2; k++)
                 {
                     if (!problem_wrt)
                     {
@@ -2124,11 +2116,13 @@ int main(int argc, char **argv)
         timesys(grd_end - grd_start, &tms_grd_start, &tms_grd_end, idct, logFile);
         fflush(logFile);
     }                           // icoord[Z] loop
+#pragma endregion
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
 #endif
 
+#pragma region Writing out summary
     // Print a summary of extrema-values from the atomic-affinity and
     // electrostatics grid-maps,
     fprintf(logFile, "\nGrid\tAtom\tMinimum   \tMaximum\n");
@@ -2136,17 +2130,19 @@ int main(int argc, char **argv)
     fprintf(logFile, "\t\t(kcal/mol)\t(kcal/mol)\n");
     fprintf(logFile, "____\t____\t_____________\t_____________\n");
 
-    for (i = 0; i < num_atom_maps; i++)
-        fprintf(logFile, " %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmap[i].type, gridmap[i].energy_min, gridmap[i].energy_max);
-
-    fprintf(logFile, " %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n", num_atom_maps + 1, 'e', gridmap[elecPE].energy_min, gridmap[i].energy_max);
-
-    fprintf(logFile, " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n", num_atom_maps + 2, 'd', gridmap[dsolvPE].energy_min, gridmap[i + 1].energy_max);
+    {
+        int i = 0;
+        for (; i < num_atom_maps; i++)
+            fprintf(logFile, " %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmap[i].type, gridmap[i].energy_min, gridmap[i].energy_max);
+        fprintf(logFile, " %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n", num_atom_maps + 1, 'e', gridmap[elecPE].energy_min, gridmap[i].energy_max);
+        fprintf(logFile, " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n", num_atom_maps + 2, 'd', gridmap[dsolvPE].energy_min, gridmap[i + 1].energy_max);
+    }
     fprintf(logFile, "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n", EINTCLAMP);
+#pragma endregion
 
+#pragma region Closing all files
     // Close all files
-
-    for (i = 0; i < num_atom_maps + 2; i++)
+    for (int i = 0; i < num_atom_maps + 2; i++)
         fclose(gridmap[i].map_fileptr);
     if (floating_grid)
         fclose(floating_grid_fileptr);
@@ -2160,6 +2156,7 @@ int main(int argc, char **argv)
     timesyshms(job_end - job_start, &tms_job_start, &tms_job_end, idct, logFile);
 
     fclose(logFile);
+#pragma endregion
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(1.);
