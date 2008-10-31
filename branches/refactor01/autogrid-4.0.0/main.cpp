@@ -52,8 +52,6 @@
 
 #pragma region struct MapObject
 
-#define NUM_RECEPTOR_TYPES  NUM_ALL_TYPES
-
 struct MapObject
 {
     int atom_type;          // corresponds to receptor numbers????
@@ -133,39 +131,19 @@ int main(int argc, char **argv)
 
 #pragma region Declarations of variables
 
-    // LIGAND: maximum is MAX_MAPS
-    // each type is now at most two characters plus '\0'
-    // currently ligand_atom_types is sparse... some types are not set
-    char ligand_types[MAX_MAPS][3] = {0};
-
-    // array of ptrs used to parse input line
-    char *ligand_atom_types[MAX_MAPS];
-
     // malloc this after the number of receptor types is parsed
     // MAX_DIST is really NBCUTOFF times 100
     double energy_lookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
 
-    char *maptypeptr;           // ptr for current map->type
-    MapObject *gridmap;         // was statically assigned MapObject gridmap[MAX_MAPS];
-
-    // needed to make regression tests work between platforms
-    Real *dummy_map;
+    MapObject *gridmap; // array gridmap[MAX_MAPS] is dynamically alocated
 
     // variables for RECEPTOR:
     // each type is now at most two characters, eg 'NA\0'
     // NB: these are sparse arrays, some entries are not set
     char receptor_types[NUM_RECEPTOR_TYPES][3] = {0};
 
-    // number of different receptor atom types declared on receptor_types line in GPF
-    int receptor_types_gpf_ct = 0;
-    int has_receptor_types_in_gpf = 0;
-
     // number of different receptor atom types actually found in receptor PDBQT
     int receptor_types_ct = 0;
-
-    // array of numbers of each type
-    // NB: this is a sparse int array, some entries are 0
-    int receptor_atom_type_count[NUM_RECEPTOR_TYPES] = {0};
 
     // array of ptrs used to parse input line
     char *receptor_atom_types[NUM_RECEPTOR_TYPES];
@@ -189,21 +167,11 @@ int main(int argc, char **argv)
     int nonHB_hydrogen, nonHB_nitrogen, sulphur, nonHB_sulphur;
 
     // XYZ
-    double cross[XYZ];
-    double c[XYZ];
-    double cext[XYZ];
-    double cgridmax[XYZ];
     double cgridmin[XYZ];
-    double cmax[XYZ] = {-BIG, -BIG, -BIG};
-    double cmin[XYZ] = {BIG, BIG, BIG};
-    double csum[XYZ] = {0, 0, 0};
-    double cmean[XYZ];
 
     double center[XYZ];
     double covpos[XYZ] = {0, 0, 0};         // Cartesian-coordinate of covalent affinity well.
     double d[XYZ];
-    double dc[XYZ];
-    int icoord[XYZ] = {0};            // int icenter;
     int ne[XYZ];
     int n1[XYZ];
     int nelements[XYZ];
@@ -214,61 +182,25 @@ int main(int argc, char **argv)
     char receptor_filename[MAX_CHARS];
     char xyz_filename[MAX_CHARS];
 
-    // LINE_LEN
-    char line[LINE_LEN];
-    char GPF_line[LINE_LEN];
-    int length = LINE_LEN;
-
     // MAX_DIST
     double epsilon[MAX_DIST];
     int MD_1 = MAX_DIST - 1;
     double sol_fn[MAX_DIST];
-    double energy_smooth[MAX_DIST];
 
-    int ctr;
-    char atom_name[6];
-    char record[7];
-    char temp_char = ' ';
-    char token[5];
     char warned = 'F';
-    char xyz[5] = "xyz";
 
-    FILE *receptor_fileptr, *AVS_fld_fileptr, *xyz_fileptr, *floating_grid_fileptr;
+    FILE *AVS_fld_fileptr, *floating_grid_fileptr;
 
     // for NEW3 desolvation terms
     double solpar_q = .01097;   // unweighted value restored 3:9:05
-    double q_tot = 0.0;
-    double diel, invdielcal;
-    double dxA;
-    double dxB;
-    double minus_inv_two_sigma_sqd;
+    double invdielcal;
     double percentdone = 0.0;
-    double PI_halved = PI / 2;
-    double q_max = -BIG, q_min = BIG;
-    double rA;
-    double rB;                  // double e;
-    double rcov = 0.0;          // Distance from current grid point to the covalent attachment point
-    double ri, inv_rd, rd2, r;  // re, r2, rd,
-    double r_min, inv_r, inv_rmax, racc, rdon, rsph, cos_theta, theta, tmp;
+    double inv_rd, rd2, r;
     double r_smooth = 0.;
-    double rdot;
-    double Rij, epsij;
     double spacing = 0.375;     // One quarter of a C-C bond length.
-    double t0, ti;
-    double ln_half = log(0.5);
     double covhalfwidth = 1.0;
     double covbarrier = 1000.0;
-    double cA, cB, tmpconst;
-    double sigma;
     double version_num = 4.00;
-
-    // are these necessary??
-    double temp_vol, temp_solpar;
-    double temp_hbond_enrg, hbondmin[MAX_MAPS], hbondmax[MAX_MAPS];
-    double rmin, Hramp;
-    double factor = 332.0L;     // Used to convert between calories and SI units
-
-    float timeRemaining = 0.;
 
     int num_maps = 0;
     int num_atom_maps = -1;
@@ -276,25 +208,10 @@ int main(int argc, char **argv)
     int elecPE = 0;
     int dsolvPE = 0;
 
-    int from, to;
-    int fprintf_retval = 0;
-    int GPF_keyword = -1;
-    int indcom = 0;
-    int infld;
-    int nbond;
-    int nDone = 0;
-    int problem_wrt = FALSE;
-    int xA, xB;
-    int hbondflag[MAX_MAPS];
-
     int outlev = -1;
 
-#define INIT_NUM_GRID_PTS -1
     int num_grid_points_per_map = INIT_NUM_GRID_PTS;
-    int ii = 0, i_smooth = 0;
-
-    int ic = 0, map_index = -1, i1 = 0, i2 = 0, i3 = 0;
-    int closestH = 0;
+    int i_smooth = 0;
 
     int num_receptor_atoms;
 
@@ -303,12 +220,7 @@ int main(int argc, char **argv)
     struct tms tms_job_start;
     struct tms tms_job_end;
 
-    Clock grd_start;
-    Clock grd_end;
-    struct tms tms_grd_start;
-    struct tms tms_grd_end;
     Real idct = 1/float(CLOCKS_PER_SEC);
-    char strtmp[MAX_CHARS];
 
 #pragma endregion
 
@@ -336,8 +248,11 @@ int main(int argc, char **argv)
     fprintf(logFile, "                           $Revision: 1.58 $\n\n\n");
     fprintf(logFile, "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n", MAX_MAPS);
     fprintf(logFile, "This file was created at:\t\t\t");
-    fprintf(logFile, getdate(1, strtmp, MAX_CHARS));
-    fprintf(logFile, "                   using:\t\t\t\"%s\"\n", ag_gethostname(strtmp, MAX_CHARS));
+    {
+        char strtmp[MAX_CHARS];
+        fprintf(logFile, getdate(1, strtmp, MAX_CHARS));
+        fprintf(logFile, "                   using:\t\t\t\"%s\"\n", ag_gethostname(strtmp, MAX_CHARS));
+    }
     fprintf(logFile, "\n\n");
 
     // Read in default parameters
@@ -346,6 +261,56 @@ int main(int argc, char **argv)
 
 #pragma region Reading in the grid parameter file
 {
+    // LIGAND: maximum is MAX_MAPS
+    // each type is now at most two characters plus '\0'
+    // currently ligand_atom_types is sparse... some types are not set
+    char ligand_types[MAX_MAPS][3] = {0};
+
+    // array of ptrs used to parse input line
+    char *ligand_atom_types[MAX_MAPS];
+
+    // needed to make regression tests work between platforms
+    Real *dummy_map;
+
+    // number of different receptor atom types declared on receptor_types line in GPF
+    int receptor_types_gpf_ct = 0;
+    int has_receptor_types_in_gpf = 0;
+
+    // array of numbers of each type
+    // NB: this is a sparse int array, some entries are 0
+    int receptor_atom_type_count[NUM_RECEPTOR_TYPES] = {0};
+
+    double cext[XYZ];
+    double cgridmax[XYZ];
+    double cmax[XYZ] = {-BIG, -BIG, -BIG};
+    double cmin[XYZ] = {BIG, BIG, BIG};
+    double csum[XYZ] = {0, 0, 0};
+    double cmean[XYZ];
+
+    // LINE_LEN
+    char line[LINE_LEN];
+    char GPF_line[LINE_LEN];
+    int length = LINE_LEN;
+
+    char atom_name[6];
+    char record[7];
+    char temp_char = ' ';
+    char token[5];
+    char xyz[5] = "xyz";
+    FILE *receptor_fileptr, *xyz_fileptr;
+
+    double q_tot = 0.0;
+    double diel;
+    double q_max = -BIG, q_min = BIG;
+    double ri;
+    double temp_vol, temp_solpar;
+    double factor = 332.0L;     // Used to convert between calories and SI units
+
+    int GPF_keyword = -1;
+    int indcom = 0;
+    int infld;
+    int map_index = -1;
+
     // Initializes the grid parameter file
     FILE *GPF = stdin;
     if (programParams.gridParameterFilename[0])
@@ -1128,6 +1093,16 @@ int main(int argc, char **argv)
 #endif
 
 #pragma region Calculating pairwise interaction energies
+{
+    double energy_smooth[MAX_DIST];
+    double dxA;
+    double dxB;
+    double rA;
+    double rB;
+    double Rij, epsij;
+    double cA, cB, tmpconst;
+    int xA, xB;
+
     fprintf(logFile, "\n\nCalculating Pairwise Interaction Energies\n");
     fprintf(logFile, "=========================================\n\n");
 
@@ -1218,9 +1193,14 @@ int main(int argc, char **argv)
             // parsing for intnbp not needed for covalent maps
             fprintf(logFile, "\nAny internal non-bonded parameters will be ignored for this map, since this is a covalent map.\n");
         }                       // end of else parsing intnbp
+}
 #pragma endregion
 
 #pragma region Precalculating of the exponential function for receptor and ligand desolvation
+{
+    double minus_inv_two_sigma_sqd;
+    double sigma;
+
     // exponential function for receptor and ligand desolvation
     // note: the solvation term will not be smoothed
     sigma = 3.6;
@@ -1232,9 +1212,17 @@ int main(int argc, char **argv)
         sol_fn[indx_r] = exp(sq(r) * minus_inv_two_sigma_sqd);
         sol_fn[indx_r] *= AD4.coeff_desolv;
     }
+}
 #pragma endregion
 
 #pragma region Calculating bond vectors for directional H-bonds
+{
+    double dc[XYZ];
+    double rdot;
+    int from, to;
+    int nbond;
+    int i1 = 0, i2 = 0, i3 = 0;
+
     // Loop over all RECEPTOR atoms to
     // calculate bond vectors for directional H-bonds
     // setup the canned atom types here....
@@ -1632,6 +1620,7 @@ int main(int argc, char **argv)
             // endNEW directional N Acceptor
         }                       // end test for atom type
     }                           // Do Next receptor atom...
+}
 #pragma endregion
 
     // End bond vector loop
@@ -1669,6 +1658,32 @@ int main(int argc, char **argv)
 #pragma endregion
 
 #pragma region Calculating of gridmaps
+{
+    char *maptypeptr;           // ptr for current map->type
+    double cross[XYZ];
+    double c[XYZ];
+    int icoord[XYZ] = {0};
+    int ctr;
+    double PI_halved = PI / 2;
+    double rcov = 0.0;          // Distance from current grid point to the covalent attachment point
+    double racc, cos_theta, r_min, tmp, rdon, inv_r, inv_rmax, rsph, theta;
+    double t0, ti;
+    double ln_half = log(0.5);
+    double temp_hbond_enrg, hbondmin[MAX_MAPS], hbondmax[MAX_MAPS];
+    double rmin, Hramp;
+    float timeRemaining = 0.;
+    int fprintf_retval = 0;
+    int nDone = 0;
+    int problem_wrt = FALSE;
+    int hbondflag[MAX_MAPS];
+    int ii = 0;
+    int ic = 0;
+    int closestH = 0;
+    Clock grd_start;
+    Clock grd_end;
+    struct tms tms_grd_start;
+    struct tms tms_grd_end;
+
     fprintf(logFile, "Beginning grid calculations.\n");
     fprintf(logFile, "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n", num_maps, num_grid_points_per_map, num_receptor_atoms);
     fprintf(logFile, "                    Percent   Estimated Time  Time/this plane\n");
@@ -2066,6 +2081,7 @@ int main(int argc, char **argv)
         timesys(grd_end - grd_start, &tms_grd_start, &tms_grd_end, idct, logFile);
         fflush(logFile);
     }                           // icoord[Z] loop
+}
 #pragma endregion
 
 #if defined(BOINCCOMPOUND)
