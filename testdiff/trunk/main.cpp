@@ -56,7 +56,7 @@ std::ostream &operator <<(std::ostream &s, const FileDiff &diff)
         s << '[' << i << "]-" << *it << '\n';
     i = 0;
     for (std::vector<std::string>::const_iterator it = diff.added.begin(); it != diff.added.end(); ++it, ++i)
-        s << '[' << i << "]-" << *it << '\n';
+        s << '[' << i << "]+" << *it << '\n';
     return s;
 }
 
@@ -164,9 +164,9 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2)
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        std::cout << "usage: testdiff [filename]\n";
+        std::cout << "usage: testdiff [diff_filename] [autogrid_log]\n";
         return 0;
     }
 
@@ -184,6 +184,7 @@ int main(int argc, char **argv)
     line.reserve(256);
     FileDiff diff;
 
+    bool skipLog = false;
     while (f.getline(buf, 512))
     {
         line = buf;
@@ -193,14 +194,24 @@ int main(int argc, char **argv)
         case 'd':
             if (!diff.ExamineChanges(std::cout))
                 returnValue = 1;
-            diff.Clear();
-            if (std::string(line, 0, 4) == "diff")
-                diff.ReadFileInfo(line, f);
+            skipLog = line.find(argv[2]) != std::string::npos;
+            if (!skipLog)
+            {
+                diff.Clear();
+                if (std::string(line, 0, 4) == "diff")
+                    diff.ReadFileInfo(line, f);
+                else
+                {
+                    std::cerr << "Error: unknown identifier '" << std::string(line, 0, line.find(' ')) << "'.\n";
+                    return 2;
+                }
+            }
             break;
 
         case '+':
         case '-':
-            diff.InsertLine(line);
+            if (!skipLog)
+                diff.InsertLine(line);
             break;
         }
     }
