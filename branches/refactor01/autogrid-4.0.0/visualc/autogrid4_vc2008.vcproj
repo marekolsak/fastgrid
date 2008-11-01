@@ -93,7 +93,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat"
 			/>
 		</Configuration>
 		<Configuration
@@ -181,7 +181,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;echo Performing Test...&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat --no-pause&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -266,7 +266,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat"
 			/>
 		</Configuration>
 	</Configurations>

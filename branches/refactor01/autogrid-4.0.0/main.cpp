@@ -148,12 +148,10 @@ int main(int argc, char **argv)
     // array of ptrs used to parse input line
     char *receptor_atom_types[NUM_RECEPTOR_TYPES];
 
-    // AG_MAX_ATOMS
     double charge[AG_MAX_ATOMS];
     double vol[AG_MAX_ATOMS];
     double solpar[AG_MAX_ATOMS];
 
-    // integers are simpler!
     int atom_type[AG_MAX_ATOMS];
     hbond_type hbond[AG_MAX_ATOMS];
     int disorder[AG_MAX_ATOMS];
@@ -162,13 +160,7 @@ int main(int argc, char **argv)
     double rvector[AG_MAX_ATOMS][XYZ];
     double rvector2[AG_MAX_ATOMS][XYZ];
 
-    // canned atom type number
-    int hydrogen, carbon, arom_carbon, oxygen, nitrogen;
-    int nonHB_hydrogen, nonHB_nitrogen, sulphur, nonHB_sulphur;
-
-    // XYZ
     double cgridmin[XYZ];
-
     double center[XYZ];
     double covpos[XYZ] = {0, 0, 0};         // Cartesian-coordinate of covalent affinity well.
     double d[XYZ];
@@ -176,20 +168,18 @@ int main(int argc, char **argv)
     int n1[XYZ];
     int nelements[XYZ];
 
-    // MAX_CHARS
-    char AVS_fld_filename[MAX_CHARS];
-    char floating_grid_filename[MAX_CHARS];
-    char receptor_filename[MAX_CHARS];
-    char xyz_filename[MAX_CHARS];
+    char AVS_fld_filename[MAX_CHARS] = {0};
+    char floating_grid_filename[MAX_CHARS] = {0};
+    char receptor_filename[MAX_CHARS] = {0};
+    char xyz_filename[MAX_CHARS] = {0};
 
-    // MAX_DIST
     double epsilon[MAX_DIST];
     int MD_1 = MAX_DIST - 1;
     double sol_fn[MAX_DIST];
 
     char warned = 'F';
 
-    FILE *AVS_fld_fileptr, *floating_grid_fileptr;
+    FILE *AVS_fld_fileptr;
 
     // for NEW3 desolvation terms
     double solpar_q = .01097;   // unweighted value restored 3:9:05
@@ -204,7 +194,7 @@ int main(int argc, char **argv)
 
     int num_maps = 0;
     int num_atom_maps = -1;
-    int floating_grid = FALSE, dddiel = FALSE, disorder_h = FALSE;
+    int dddiel = FALSE, disorder_h = FALSE;
     int elecPE = 0;
     int dsolvPE = 0;
 
@@ -421,9 +411,6 @@ int main(int argc, char **argv)
                             solpar[ia] = found_parm->solpar;
                             vol[ia] = found_parm->vol;
                             hbond[ia] = found_parm->hbond;  // NON=0, DS,D1, AS, A1, A2
-    #if defined(DEBUG)
-                            printf("%d:key=%s, type=%d,solpar=%f,vol=%f\n", ia, thisparm.autogrid_type, atom_type[ia], solpar[ia], vol[ia]);
-    #endif
                             ++receptor_atom_type_count[found_parm->rec_index];
                         }
                         else
@@ -568,13 +555,6 @@ int main(int argc, char **argv)
                 xyz_filename[infld + 1] = 'y';
                 xyz_filename[infld + 2] = 'z';
             }
-            if ((AVS_fld_fileptr = ag_fopen(AVS_fld_filename, "w")) == 0)
-            {
-                print_errorf(programParams.programName, logFile, ERROR, "can't create grid dimensions data file %s\n", AVS_fld_filename);
-                print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
-            else
-                fprintf(logFile, "\nCreating (AVS-readable) grid maps file : %s\n", AVS_fld_filename);
             if ((xyz_fileptr = ag_fopen(xyz_filename, "w")) == 0)
             {
                 print_errorf(programParams.programName, logFile, ERROR, "can't create grid extrema data file %s\n", xyz_filename);
@@ -660,22 +640,12 @@ int main(int argc, char **argv)
             // GPF_line e.g.: "ligand_types N O A C HH NH"
             num_atom_maps = parsetypes(GPF_line, ligand_atom_types, MAX_ATOM_TYPES);
             for (int i = 0; i < num_atom_maps; i++)
-            {
                 strcpy(ligand_types[i], ligand_atom_types[i]);
-#if defined(DEBUG)
-                fprintf(logFile, "%d %s ->%s\n", i, ligand_atom_types[i], ligand_types[i]);
-#endif
-            }
             for (int i = 0; i < num_atom_maps; i++)
             {
                 found_parm = apm_find(ligand_types[i]);
-                if (found_parm != 0)
-                {
+                if (found_parm)
                     found_parm->map_index = i;
-#if defined(DEBUG)
-                    fprintf(logFile, "found ligand type: %-6s%2d\n", found_parm->autogrid_type, found_parm->map_index);
-#endif
-                }
                 else
                 {
                     // return error here
@@ -774,10 +744,6 @@ int main(int argc, char **argv)
                 if (gridmap[i].hbond > 0)
                     gridmap[i].is_hbonder = TRUE;
 
-#if defined(DEBUG)
-                fprintf(logFile, " setting ij parms for map %d \n", i);
-                fprintf(logFile, "for gridmap[%d], type->%s,Rij->%6.4f, epsij->%6.4f, hbond->%d\n", i, found_parm->autogrid_type, gridmap[i].Rij, gridmap[i].epsij, gridmap[i].hbond);
-#endif
                 for (int j = 0; j < receptor_types_ct; j++)
                 {
                     found_parm = apm_find(receptor_types[j]);
@@ -800,9 +766,6 @@ int main(int argc, char **argv)
 
                         // apply the hbond forcefield parameter/weight here
                         // This was removed because "setup_p_l" does this for us... gridmap[i].nbp_eps[j] *= FE_coeff_hbond;
-#if defined(DEBUG)
-                        fprintf(logFile, "set %d-%d hb eps to %6.4f*%6.4f=%6.4f\n", i, j, gridmap[i].epsij_hb, found_parm->epsij_hb, gridmap[i].nbp_eps[j]);
-#endif
                     }
                     else if (((int)gridmap[i].hbond == 1 || (int)gridmap[i].hbond == 2) && ((int)found_parm->hbond > 2))
                     {           // DS,D1 map vs AS,A1,A2 probe
@@ -815,14 +778,7 @@ int main(int argc, char **argv)
 
                         // apply the hbond forcefield parameter/weight here
                         // This was removed because "setup_p_l" does this for us... gridmap[i].nbp_eps[j] *= FE_coeff_hbond;
-#if defined(DEBUG)
-                        fprintf(logFile, "2: set %d-%d hb eps to %6.4f*%6.4f=%6.4f\n", i, j, gridmap[i].epsij_hb, found_parm->epsij_hb, gridmap[i].nbp_eps[j]);
-#endif
                     }
-#if defined(DEBUG)
-                    fprintf(logFile, "vs receptor_type[%d]:type->%s, hbond->%d ", j, found_parm->autogrid_type, (int)found_parm->hbond);
-                    fprintf(logFile, "nbp_r->%6.4f, nbp_eps->%6.4f,xB=%d,hbonder=%d\n", gridmap[i].nbp_r[j], gridmap[i].nbp_eps[j], gridmap[i].xB[j], gridmap[i].hbonder[j]);
-#endif
                 }              // initialize energy parms for each possible receptor type
             }                   // for each map
             fprintf(logFile, "\nAtom type names for ligand atom types 1-%d used for ligand-atom affinity grid maps:\n\n", num_atom_maps);
@@ -848,17 +804,9 @@ int main(int argc, char **argv)
             receptor_types_ct = parsetypes(GPF_line, receptor_atom_types, MAX_ATOM_TYPES);
             receptor_types_gpf_ct = receptor_types_ct;
             has_receptor_types_in_gpf = 1;
-#if defined(DEBUG)
-            printf("receptor_types_gpf_ct=%d\n", receptor_types_gpf_ct);
-            printf("receptor_types_ct=%d\n", receptor_types_ct);
-#endif
+
             for (int i = 0; i < receptor_types_ct; i++)
-            {
                 strcpy(receptor_types[i], receptor_atom_types[i]);
-#if defined(DEBUG)
-                printf("%d %s  ->%s\n", i, receptor_atom_types[i], receptor_types[i]);
-#endif
-            }
             for (int i = 0; i < receptor_types_ct; i++)
             {
                 found_parm = apm_find(receptor_atom_types[i]);
@@ -870,20 +818,6 @@ int main(int argc, char **argv)
                     print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
             }
-            // at this point set up hydrogen, carbon, oxygen and nitrogen
-            hydrogen = get_rec_index("HD");
-            nonHB_hydrogen = get_rec_index("H");
-            carbon = get_rec_index("C");
-            arom_carbon = get_rec_index("A");
-            oxygen = get_rec_index("OA");
-            nitrogen = get_rec_index("NA");
-            nonHB_nitrogen = get_rec_index("N");
-            sulphur = get_rec_index("SA");
-            nonHB_sulphur = get_rec_index("S");
-#if defined(DEBUG)
-            printf("assigned receptor types:arom_carbon->%d, hydrogen->%d,nonHB_hydrogen->%d, carbon->%d, oxygen->%d, nitrogen->%d\n, nonHB_nitrogen->%d, sulphur->%d, nonHB_sulphur->%d\n",
-                   arom_carbon, hydrogen, nonHB_hydrogen, carbon, oxygen, nitrogen, nonHB_nitrogen, sulphur, nonHB_sulphur);
-#endif
             fflush(logFile);
             break;
 
@@ -1026,14 +960,8 @@ int main(int argc, char **argv)
 
         case GPF_FMAP:
             sscanf(GPF_line, "%*s %s", floating_grid_filename);
-            if ((floating_grid_fileptr = ag_fopen(floating_grid_filename, "w")) == 0)
-            {
-                print_errorf(programParams.programName, logFile, ERROR, "can't open grid map \"%s\" for writing.\n", floating_grid_filename);
-                print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
             fprintf(logFile, "\nFloating Grid file name = %s\n", floating_grid_filename);
             ++num_maps;
-            floating_grid = TRUE;
             break;
 
         case GPF_PARAM_FILE:
@@ -1050,10 +978,17 @@ int main(int argc, char **argv)
 }
 #pragma endregion
 
-    if (!floating_grid)
+    if (!floating_grid_filename[0])
         fprintf(logFile, "\n\nNo Floating Grid was requested.\n");
 
 #pragma region Writing to AVS_fld file
+    if ((AVS_fld_fileptr = ag_fopen(AVS_fld_filename, "w")) == 0)
+    {
+        print_errorf(programParams.programName, logFile, ERROR, "can't create grid dimensions data file %s\n", AVS_fld_filename);
+        print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+    }
+    else
+        fprintf(logFile, "\nCreating (AVS-readable) grid maps file : %s\n", AVS_fld_filename);
     fprintf(AVS_fld_fileptr, "# AVS field file\n#\n");
     fprintf(AVS_fld_fileptr, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
     fprintf(AVS_fld_fileptr, "# Created by %s.\n#\n", programParams.programName);
@@ -1076,14 +1011,14 @@ int main(int argc, char **argv)
         fprintf(AVS_fld_fileptr, "label=%s-affinity\t# component label for variable %d\n", gridmap[i].type, (i + 1));                           // i
     fprintf(AVS_fld_fileptr, "label=Electrostatics\t# component label for variable %d\n", num_maps - 2);
     fprintf(AVS_fld_fileptr, "label=Desolvation\t# component label for variable %d\n", num_maps - 1);
-    if (floating_grid)
+    if (floating_grid_filename[0])
         fprintf(AVS_fld_fileptr, "label=Floating_Grid\t# component label for variable %d\n", num_maps);
     fprintf(AVS_fld_fileptr, "#\n# location of affinity grid files and how to read them\n#\n");
     for (int i = 0; i < num_atom_maps; i++)
         fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmap[i].map_filename);
     fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", num_atom_maps + 1, gridmap[elecPE].map_filename);
     fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", num_atom_maps + 2, gridmap[dsolvPE].map_filename);
-    if (floating_grid)
+    if (floating_grid_filename[0])
         fprintf(AVS_fld_fileptr, "variable %d file=%s filetype=ascii skip=6\n", num_maps, floating_grid_filename);
     fclose(AVS_fld_fileptr);
 #pragma endregion
@@ -1113,9 +1048,6 @@ int main(int argc, char **argv)
         if (gridmap[ia].is_covalent == FALSE)
         {
             // i is the index of the receptor atom type, that the ia type ligand probe will interact with. *//* GPF_MAP
-#if defined(DEBUG)
-            printf("receptor_types_ct=%d\n", receptor_types_ct);
-#endif
             for (int i = 0; i < receptor_types_ct; i++)
             {
                 // for each receptor_type
@@ -1123,9 +1055,7 @@ int main(int argc, char **argv)
                 xB = gridmap[ia].xB[i];
                 Rij = gridmap[ia].nbp_r[i];
                 epsij = gridmap[ia].nbp_eps[i];
-#if defined(DEBUG)
-                printf("%d-%d-built xA=%d, xB=%d, npb_r=%6.3lf, nbp_eps=%10.8f for %s\n", ia, i, xA, xB, Rij, epsij, gridmap[ia].type);
-#endif
+
                 // for each receptor_type get its parms and fill in tables
                 cA = (tmpconst = epsij / (double)(xA - xB)) * pow(Rij, (double)xA) * (double)xB;
                 cB = tmpconst * pow(Rij, (double)xB) * (double)xA;
@@ -1214,6 +1144,10 @@ int main(int argc, char **argv)
     }
 }
 #pragma endregion
+
+    // canned atom type number
+    int hydrogen, carbon, arom_carbon, oxygen, nitrogen;
+    int nonHB_hydrogen, nonHB_nitrogen, sulphur, nonHB_sulphur;
 
 #pragma region Calculating bond vectors for directional H-bonds
 {
@@ -1646,8 +1580,14 @@ int main(int argc, char **argv)
         fprintf(gridmap[k].map_fileptr, "NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
         fprintf(gridmap[k].map_fileptr, "CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
     }
-    if (floating_grid)
+    FILE *floating_grid_fileptr;
+    if (floating_grid_filename[0])
     {
+        if ((floating_grid_fileptr = ag_fopen(floating_grid_filename, "w")) == 0)
+        {
+            print_errorf(programParams.programName, logFile, ERROR, "can't open grid map \"%s\" for writing.\n", floating_grid_filename);
+            print_error(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+        }
         fprintf(floating_grid_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.gridParameterFilename);
         fprintf(floating_grid_fileptr, "GRID_DATA_FILE %s\n", AVS_fld_filename);
         fprintf(floating_grid_fileptr, "MACROMOLECULE %s\n", receptor_filename);
@@ -1663,7 +1603,7 @@ int main(int argc, char **argv)
     double cross[XYZ];
     double c[XYZ];
     int icoord[XYZ] = {0};
-    int ctr;
+    int ctr = 0;
     double PI_halved = PI / 2;
     double rcov = 0.0;          // Distance from current grid point to the covalent attachment point
     double racc, cos_theta, r_min, tmp, rdon, inv_r, inv_rmax, rsph, theta;
@@ -1693,9 +1633,6 @@ int main(int argc, char **argv)
     fflush(logFile);
 
     // Iterate over all grid points, Z(Y (X)) (X is fastest)...
-    ic = 0;
-
-    ctr = 0;
     for (icoord[Z] = -ne[Z]; icoord[Z] <= ne[Z]; icoord[Z]++)
     {
         //  c[0:2] contains the current grid point.
@@ -1725,7 +1662,7 @@ int main(int argc, char **argv)
                     else // is not covalent
                         gridmap[j].energy = 0.; // used to initialize to 'constant'for this gridmap
 
-                if (floating_grid)
+                if (floating_grid_filename[0])
                     r_min = BIG;
 
                 // Initialize Min Hbond variables for each new point
@@ -1770,7 +1707,7 @@ int main(int argc, char **argv)
                     // make sure lookup index is in the table
                     int indx_r = min(lookup(r), MD_1);
 
-                    if (floating_grid)
+                    if (floating_grid_filename[0])
                         // Calculate the so-called "Floating Grid"...
                         r_min = min(r, r_min);
 
@@ -2063,7 +2000,7 @@ int main(int argc, char **argv)
                     gridmap[k].energy_max = max(gridmap[k].energy_max, gridmap[k].energy);
                     gridmap[k].energy_min = min(gridmap[k].energy_min, gridmap[k].energy);
                 }
-                if (floating_grid)
+                if (floating_grid_filename[0])
                     if ((!problem_wrt) && (fprintf(floating_grid_fileptr, "%.3f\n", (float)round3dp(r_min)) < 0))
                         problem_wrt = TRUE;
                 ctr++;
@@ -2083,6 +2020,9 @@ int main(int argc, char **argv)
     }                           // icoord[Z] loop
 }
 #pragma endregion
+
+    if (floating_grid_filename[0])
+        fclose(floating_grid_fileptr);
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
@@ -2110,8 +2050,6 @@ int main(int argc, char **argv)
     // Close all files
     for (int i = 0; i < num_atom_maps + 2; i++)
         fclose(gridmap[i].map_fileptr);
-    if (floating_grid)
-        fclose(floating_grid_fileptr);
     // Free up the memory allocated to the gridmap objects...
     free(gridmap);
 
