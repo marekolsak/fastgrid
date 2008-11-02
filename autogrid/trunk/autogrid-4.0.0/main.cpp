@@ -48,6 +48,10 @@
 #include "program_parameters.h"
 #include "read_parameter_library.h"
 
+// objects
+#include "exceptions.h" // ExitProgram
+#include "logfile.h"    // LogFile
+
 #pragma endregion
 
 #pragma region struct MapObject
@@ -83,8 +87,6 @@ struct MapObject
 
 #pragma endregion
 
-//****************************************************************************
-// Name: main (executable's name is "autogrid").
 // Function: Calculation of interaction energy grids for Autodock.
 // Directional H_bonds from Goodford:
 // Distance dependent dielectric after Mehler and Solmajer.
@@ -107,80 +109,35 @@ struct MapObject
 // Bruce Duncan, Yng Chen, Michael Pique, Victoria Roberts
 // Lindy Lindstrom
 //
-// Date: 07/07/04
-//
 // Inputs: Control file, receptor PDBQT file, parameter file
 // Returns: Atomic affinity, desolvation and electrostatic grid maps.
-// Globals: MAX_DIST, MAX_MAPS
-// increased from 8 to 16 6/4/2004
-//
-// Modification Record
-// Date Inits Comments
-// 07/06/89 DSG FORTRAN implementation
-// 07/05/92 GMM C translation
-// 20/09/95 GMM/DSG AutoGrid3
-// 07/07/04 DSG/RH AutoGrid4
-//****************************************************************************
-/* Note: 21/03/03 GMM note: ATOM_MAPS is no longer used here; was used for is_covalent and is_hbonder, but these are now folded into the MapObject and arrayed up to MAX_MAPS (currently).
-   MAX_MAPS is always larger than ATOM_MAPS, so this is safe. */
-int main(int argc, char **argv)
+void appmain(int argc, char **argv)
 {
 #if defined(_WIN32)
     SetThreadAffinityMask(GetCurrentThread(), 1);
 #endif
 
-    double version_num = 4.00;
+    double versionNumber = 4.00;
 
-    ProgramParameters programParams;
     Linear_FE_Model AD4;
-    FILE *logFile;
     int outlev = -1;
 
-    Clock job_start;
-    struct tms tms_job_start;
-
-#pragma region Initialization
-{
-    ag_boinc_init();
-
     // Get the time at the start of the run...
-    job_start = times(&tms_job_start);
+    struct tms tms_job_start;
+    Clock job_start = times(&tms_job_start);
 
-    // Parse the command line...
-    process_program_parameters(argc, argv, programParams);
+    // Initialization
+    ag_boinc_init(); // Initialize BOINC if needed
+    ProgramParameters programParams;
+    process_program_parameters(argc, argv, programParams); // Parse the command line...
 
-    // Initializes the log file
-    if (!programParams.logFilename[0])
-        logFile = stdout;
-    else
-    {
-        if (!(logFile = ag_fopen(programParams.logFilename, "w")))
-        {
-            fprintf(stderr, "\n%s: Sorry, I can't create the log file \"%s\"\n", programParams.programName, programParams.logFilename);
-            fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.programName);
-            exit(911);
-        }
-    }
-
-    // Output basic information
-    fprint_banner(logFile, version_num);
-    fprintf(logFile, "                           $Revision: 1.58 $\n\n\n");
-    fprintf(logFile, "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n", MAX_MAPS);
-    fprintf(logFile, "This file was created at:\t\t\t");
-    {
-        char strtmp[MAX_CHARS];
-        fprintf(logFile, getdate(1, strtmp, MAX_CHARS));
-        fprintf(logFile, "                   using:\t\t\t\"%s\"\n", ag_gethostname(strtmp, MAX_CHARS));
-    }
-    fprintf(logFile, "\n\n");
+    LogFile logFile(versionNumber, programParams.programName, programParams.logFilename); // Initialize the log file
 
     // Read in default parameters
     setup_parameter_library(outlev, programParams.programName, programParams.debug, logFile, AD4);
-}
-#pragma endregion
 
     // Declarations of variables needed below
-    MapObject *gridmaps; // array gridmaps[MAX_MAPS] is dynamically alocated
+    MapObject *gridmaps = 0; // array gridmaps[MAX_MAPS] is dynamically alocated
 
     // variables for RECEPTOR:
     // each type is now at most two characters, eg 'NA\0'
@@ -213,7 +170,7 @@ int main(int argc, char **argv)
 
     // for NEW3 desolvation terms
     double solpar_q = .01097;   // unweighted value restored 3:9:05
-    double invdielcal;
+    double invdielcal = 0;
     double percentdone = 0.0;
     double r_smooth = 0.;
     double spacing = 0.375;     // One quarter of a C-C bond length.
@@ -228,7 +185,7 @@ int main(int argc, char **argv)
 
     int num_grid_points_per_map = INIT_NUM_GRID_PTS;
     int i_smooth = 0;
-    int num_receptor_atoms;
+    int num_receptor_atoms = 0;
 
 #pragma region Reading in the grid parameter file
 {
@@ -265,7 +222,7 @@ int main(int argc, char **argv)
     char temp_char = ' ';
     char token[5];
     char xyz[5] = "xyz";
-    FILE *receptor_fileptr, *xyz_fileptr;
+    FILE *receptor_fileptr, *xyz_fileptr = 0;
 
     double q_tot = 0.0;
     double diel;
@@ -282,12 +239,15 @@ int main(int argc, char **argv)
     // Initializes the grid parameter file
     FILE *GPF = stdin;
     if (programParams.gridParameterFilename[0])
-        if (!(GPF = ag_fopen(programParams.gridParameterFilename, "r")))
+    {
+        GPF = ag_fopen(programParams.gridParameterFilename, "r");
+        if (!GPF)
         {
             fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programParams.programName, programParams.gridParameterFilename);
             fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.programName);
-            exit(911);
+            throw ExitProgram(911);
         }
+    }
 
     // Read in the grid parameter file...
     ParameterEntry thisparm;
@@ -834,9 +794,6 @@ int main(int argc, char **argv)
             fflush(logFile);
             break;              // end solvation parameter
 
-        /*case GPF_CONSTANT:
-            break;*/
-
         case GPF_MAP:
             /* The variable "map_index" is the 0-based index of the ligand atom type we are calculating a map for. If the "types" line was CNOSH, there would be 5 ligand atom maps to
                calculate, and since "map_index" is initialized to -1, map_index will increment each time there is a "map" keyword in the GPF.  The value of map_index should therefore go
@@ -963,11 +920,11 @@ int main(int argc, char **argv)
     fprintf(logFile, "\n>>> Closing the grid parameter file (GPF)... <<<\n\n");
     fprintf(logFile, UnderLine);
     fclose(GPF);
-}
-#pragma endregion
 
     if (!floating_grid_filename[0])
         fprintf(logFile, "\n\nNo Floating Grid was requested.\n");
+}
+#pragma endregion
 
 #pragma region Writing to AVS_fld file
 {
@@ -1589,7 +1546,7 @@ int main(int argc, char **argv)
         fprintf(gridmaps[k].map_fileptr, "NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
         fprintf(gridmaps[k].map_fileptr, "CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
     }
-    FILE *floating_grid_fileptr;
+    FILE *floating_grid_fileptr = 0;
     if (floating_grid_filename[0])
     {
         if ((floating_grid_fileptr = ag_fopen(floating_grid_filename, "w")) == 0)
@@ -1617,7 +1574,7 @@ int main(int argc, char **argv)
     int ctr = 0;
     double PI_halved = PI / 2;
     double rcov = 0.0;          // Distance from current grid point to the covalent attachment point
-    double racc, cos_theta, r_min, tmp, rdon, inv_r, inv_rmax, rsph, theta;
+    double racc, cos_theta, r_min = 0, tmp, rdon, inv_r, inv_rmax, rsph, theta;
     double t0, ti;
     double ln_half = log(0.5);
     double temp_hbond_enrg, hbondmin[MAX_MAPS], hbondmax[MAX_MAPS];
@@ -2011,7 +1968,7 @@ int main(int argc, char **argv)
                     gridmaps[k].energy_max = max(gridmaps[k].energy_max, gridmaps[k].energy);
                     gridmaps[k].energy_min = min(gridmaps[k].energy_min, gridmaps[k].energy);
                 }
-                if (floating_grid_filename[0])
+                if (floating_grid_fileptr)
                     if ((!problem_wrt) && (fprintf(floating_grid_fileptr, "%.3f\n", (float)round3dp(r_min)) < 0))
                         problem_wrt = TRUE;
                 ctr++;
@@ -2072,7 +2029,6 @@ int main(int argc, char **argv)
     Clock job_end = times(&tms_job_end);
     timesyshms(job_end - job_start, &tms_job_start, &tms_job_end, idct, logFile);
 
-    fclose(logFile);
 #pragma endregion
 
 #if defined(BOINCCOMPOUND)
@@ -2082,5 +2038,17 @@ int main(int argc, char **argv)
 #if defined(BOINC)
     boinc_finish(0);            // should not return
 #endif
-    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    try
+    {
+        appmain(argc, argv);
+        return 0;
+    }
+    catch (ExitProgram &e)
+    {
+        return e.getExitCode();
+    }
 }

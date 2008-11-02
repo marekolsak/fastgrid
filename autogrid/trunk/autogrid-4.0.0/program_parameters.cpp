@@ -30,6 +30,7 @@
 #include <cstring>
 #include "program_parameters.h"
 #include "utils.h"
+#include "exceptions.h"
 
 ProgramParameters::ProgramParameters(): debug(0)
 {
@@ -80,7 +81,7 @@ int process_program_parameters(int argc, char **argv, ProgramParameters &out)
                             "                -l log_filename\n"
                             "                -d (increment debug level)\n"
                             "                -u (display this message)\n\n", argv[0]);
-	        exit(0);
+	        throw ExitProgram(0);
             break;
         case 'l':
             strncpy(out.logFilename, argv[2], MAX_CHARS);
@@ -96,7 +97,7 @@ int process_program_parameters(int argc, char **argv, ProgramParameters &out)
             break;
         default:
             fprintf(stderr,"%s: unknown switch -%c\n",argv[0],argv[1][1]);
-            exit(1);
+            throw ExitProgram(1);
             break;
         }
         argindex++;

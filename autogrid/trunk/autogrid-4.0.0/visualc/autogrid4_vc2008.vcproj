@@ -93,7 +93,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -266,7 +266,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -282,7 +282,19 @@
 			>
 		</File>
 		<File
+			RelativePath="..\exceptions.h"
+			>
+		</File>
+		<File
 			RelativePath="..\grid.h"
+			>
+		</File>
+		<File
+			RelativePath="..\logfile.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\logfile.h"
 			>
 		</File>
 		<File

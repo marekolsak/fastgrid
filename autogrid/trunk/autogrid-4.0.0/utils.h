@@ -91,7 +91,7 @@ FILE *ag_fopen(const char *path, const char *mode);
 char *ag_gethostname(char *buffer, int size);
 ParameterEntry *apm_find(const char key[]);
 void apm_enter(const char key[], ParameterEntry value);
-void fprint_banner(FILE *logFile, double version_num);
+void fprint_banner(FILE *logFile, double versionNumber);
 double calc_ddd_Mehler_Solmajer(double distance, double aprrox_zero);
 int check_size(int nelements, char axischar, const char *programname, FILE *logFile);
 int get_rec_index(const char key[]);

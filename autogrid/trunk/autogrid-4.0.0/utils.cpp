@@ -12,6 +12,7 @@
 #include <cerrno>
 #include "autogrid.h"
 #include "constants.h"
+#include "exceptions.h"
 
 // initializes BOINC
 void ag_boinc_init()
@@ -116,7 +117,7 @@ PE * apm_find(const char key[]) {
 }
 
 // Output banner...
-void fprint_banner(FILE *logFile, double version_num)
+void fprint_banner(FILE *logFile, double versionNumber)
 {
     fprintf(logFile,"\n       _______________________________________________________\n");
     fprintf(logFile,"\n");
@@ -144,7 +145,7 @@ void fprint_banner(FILE *logFile, double version_num)
     fprintf(logFile,"\n");
     fprintf(logFile,"                ______________________________________ \n");
     fprintf(logFile,"               |                                      |\n");
-    fprintf(logFile,"               |            AutoGrid %3.2lf             |\n",version_num);
+    fprintf(logFile,"               |            AutoGrid %3.2lf             |\n",versionNumber);
     fprintf(logFile,"               |                                      |\n");
     fprintf(logFile,"               |        Garrett M. Morris, TSRI       |\n");
     fprintf(logFile,"               |            Ruth Huey, TSRI           |\n");
@@ -713,7 +714,7 @@ void beginTimer(const char *description)
     if (indexOfNesting > 255)
     {
         fprintf(stderr, "ERROR: Cannot initiate a timer\n");
-        exit(1);
+        throw ExitProgram(1);
     }
 
     for (unsigned int i = 0; i < indexOfNesting; i++)
@@ -729,7 +730,7 @@ void endTimer()
     if (indexOfNesting <= 0)
     {
         fprintf(stderr, "ERROR: Cannot terminate a timer\n");
-        exit(1);
+        throw ExitProgram(1);
     }
 
     --indexOfNesting;
