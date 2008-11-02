@@ -306,10 +306,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\parm.h"
-			>
-		</File>
-		<File
 			RelativePath="..\parse_param_line.cpp"
 			>
 		</File>

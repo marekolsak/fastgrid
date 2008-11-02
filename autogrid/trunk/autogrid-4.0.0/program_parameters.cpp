@@ -1,6 +1,6 @@
 /*
 
- $Id: process_program_parameters.cpp,v 1.8 2007/05/03 20:46:06 garrett Exp $
+ $Id: processProgramParameters.cpp,v 1.8 2007/05/03 20:46:06 garrett Exp $
 
  AutoGrid
 
@@ -40,7 +40,7 @@ ProgramParameters::ProgramParameters(): debug(0)
 }
 
 /******************************************************************************/
-/*      Name: process_program_parameters                                      */
+/*      Name: processProgramParameters                                      */
 /*  Function: read flags from argv; return argindex of first non arg.         */
 /* Copyright: (C) Garrett Matthew Morris, TSRI.                               */
 /*----------------------------------------------------------------------------*/
@@ -63,7 +63,7 @@ ProgramParameters::ProgramParameters(): debug(0)
 /*                  -o = Use old PDBq format (q in columns 55-61)             */
 /* 04/01/93 GMM     Created for use in makefile.                              */
 /******************************************************************************/
-int process_program_parameters(int argc, char **argv, ProgramParameters &out)
+int processProgramParameters(int argc, char **argv, ProgramParameters &out)
 {
     strncpy(out.programName, argv[0], MAX_CHARS);
 

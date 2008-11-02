@@ -1,6 +1,6 @@
 /*
 
- $Id: parse_param_line.cpp,v 1.2 2007/05/03 20:46:06 garrett Exp $
+ $Id: parseParamLine.cpp,v 1.2 2007/05/03 20:46:06 garrett Exp $
 
  AutoGrid
 
@@ -37,7 +37,7 @@
 #include "autogrid.h"
 
 /******************************************************************************/
-/*      Name: parse_param_line                                                */
+/*      Name: parseParamLine                                                */
 /*  Function: Parse the docking parameter file line                           */
 /* Copyright: (C) 2005, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
@@ -52,7 +52,7 @@
 /* Date     Inits   Comments                                                  */
 /* 08/03/05 GMM     Entered code.                                             */
 /******************************************************************************/
-int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile)
+int parseParamLine(char line[LINE_LEN], int debug, FILE *logFile)
 {
     int j, i, token = PAR_;               /* return -1 if nothing is recognized. */
     char c[LINE_LEN];

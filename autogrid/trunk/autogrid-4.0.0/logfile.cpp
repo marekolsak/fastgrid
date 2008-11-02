@@ -9,7 +9,7 @@ LogFile::LogFile(double versionNumber, const char *programName, const char *file
         file = stdout;
     else
     {
-        file = ag_fopen(filename, "w");
+        file = openFile(filename, "w");
         if (!file)
         {
             fprintf(stderr, "\n%s: Sorry, I can't create the log file \"%s\"\n", programName, filename);
@@ -19,14 +19,14 @@ LogFile::LogFile(double versionNumber, const char *programName, const char *file
     }
 
     // Output basic information
-    fprint_banner(file, versionNumber);
+    printBanner(file, versionNumber);
     fprintf(file, "                           $Revision: 1.58 $\n\n\n");
     fprintf(file, "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n", MAX_MAPS);
     fprintf(file, "This file was created at:\t\t\t");
     {
         char strtmp[MAX_CHARS];
-        fprintf(file, getdate(1, strtmp, MAX_CHARS));
-        fprintf(file, "                   using:\t\t\t\"%s\"\n", ag_gethostname(strtmp, MAX_CHARS));
+        fprintf(file, getDate(1, strtmp, MAX_CHARS));
+        fprintf(file, "                   using:\t\t\t\"%s\"\n", getHostname(strtmp, MAX_CHARS));
     }
     fprintf(file, "\n\n");
 }

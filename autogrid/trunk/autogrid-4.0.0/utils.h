@@ -22,7 +22,7 @@
     #undef ERROR
 #endif
 
-// print_error() is used with error_level where:
+// printError() is used with error_level where:
 // error_level = one of the following:
 #define FATAL_ERROR -2
 #define ERROR -1
@@ -34,7 +34,7 @@
     #if defined(CLOCKS_PER_SEC)
         #undef CLOCKS_PER_SEC
     #endif
-    #define CLOCKS_PER_SEC (get_clocks_per_sec())
+    #define CLOCKS_PER_SEC (getClocksPerSec())
 #endif
 
 // Define tokens for parsing AutoDock atomic parameter files
@@ -86,30 +86,29 @@ struct tms
 #endif
 
 // functions
-void ag_boinc_init();
-FILE *ag_fopen(const char *path, const char *mode);
-char *ag_gethostname(char *buffer, int size);
-ParameterEntry *apm_find(const char key[]);
-void apm_enter(const char key[], ParameterEntry value);
-void fprint_banner(FILE *logFile, double versionNumber);
-double calc_ddd_Mehler_Solmajer(double distance, double aprrox_zero);
-int check_size(int nelements, char axischar, const char *programname, FILE *logFile);
-int get_rec_index(const char key[]);
-int gpfparser(char line[LINE_LEN]);
-int parsetypes(char * line, char *words[], int maxwords);
-void prHMSfixed(float t, FILE *logFile);
-char *getdate(int flag, char *buffer, int size);
-void printhms(float t, FILE *logFile);
-void print_error(const char *programname, FILE *fileptr, int error_level, char message[LINE_LEN]);
-void print_errorf(const char *programname, FILE *fileptr, int error_level, const char *format, ...);
-int strindex(char s[], char t[]);
-void timesys(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile);
-void timesyshms(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile);
+void initBoinc();
+FILE *openFile(const char *path, const char *mode);
+char *getHostname(char *buffer, int size);
+ParameterEntry *atomParameterManager_find(const char key[]);
+void atomParameterManager_enter(const char key[], ParameterEntry value);
+void printBanner(FILE *logFile, double versionNumber);
+double calculateDDDMehlerSolmajer(double distance, double aprrox_zero);
+int checkSize(int nelements, char axischar, const char *programname, FILE *logFile);
+int getRecIndex(const char key[]);
+int parseGPFLine(char line[LINE_LEN]);
+int parseTypes(char * line, char *words[], int maxwords);
+void printTimeFixed(float t, FILE *logFile);
+char *getDate(int flag, char *buffer, int size);
+void printError(const char *programname, FILE *fileptr, int error_level, char message[LINE_LEN]);
+void printErrorFormatted(const char *programname, FILE *fileptr, int error_level, const char *format, ...);
+int strIndex(char s[], char t[]);
+void printClockTime(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile);
+void printClockTimeInHMS(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile);
 
 #if defined(_WIN32)
 clock_t times(struct tms *buffer);
 #else
-int get_clocks_per_sec();
+int getClocksPerSec();
 #endif
 
 void beginTimer(const char *description);

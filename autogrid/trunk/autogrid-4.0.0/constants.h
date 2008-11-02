@@ -57,7 +57,7 @@
  * 29/10/92 GMM     Application Visualization System (AVS) readable grid      *
  *                    display file input.                                     *
  *                    [AVS is a trademark of Stardent Computer Inc.]          *
- * 06/11/92 GMM     Command line parsing, using Bruce S. Duncan's "process_program_parameters". *
+ * 06/11/92 GMM     Command line parsing, using Bruce S. Duncan's "processProgramParameters". *
  * 06/11/92 GMM     New command mode, allowing communication between Autodock *
  *                    and other, invoking programs.                           *
  ******************************************************************************/
@@ -329,7 +329,7 @@
 #endif
 #else
 // This is platform-independent RNG-based.
-#include "ranlib.h"
+//#include "ranlib.h"   // removed until it's used
 #define seed_random(t)      setall((FourByteLong)(t), (FourByteLong)(t)); initgn(-1)
 #define local_random()      genunf(0., 1.)
 #endif

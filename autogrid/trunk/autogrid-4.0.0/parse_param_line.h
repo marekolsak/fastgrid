@@ -1,6 +1,6 @@
 /*
 
- $Id: parse_param_line.h,v 1.2 2007/05/03 20:46:06 garrett Exp $
+ $Id: parseParamLine.h,v 1.2 2007/05/03 20:46:06 garrett Exp $
 
  AutoGrid
 
@@ -29,6 +29,6 @@
 #define PARSE_PAR_LINE
 
 #include "constants.h"
-int parse_param_line(char line[LINE_LEN], int debug, FILE *logFile);
+int parseParamLine(char line[LINE_LEN], int debug, FILE *logFile);
 
 #endif

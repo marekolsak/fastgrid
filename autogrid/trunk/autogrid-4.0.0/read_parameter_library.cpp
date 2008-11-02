@@ -35,7 +35,7 @@
 #include "../autodock-4.0.1/default_parameters.h"
 #include "utils.h"
 
-void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
+void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
 {
     static ParameterEntry thisParameter;
     FILE *parameter_library_file;
@@ -48,13 +48,13 @@ void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, co
 
     // Open and read the parameter library
     //
-    if ((parameter_library_file = ag_fopen(FN_parameter_library, "r")) == 0) {
+    if ((parameter_library_file = openFile(FN_parameter_library, "r")) == 0) {
          fprintf(stderr,"Sorry, I can't find or open %s\n", FN_parameter_library);
          exit(-1);
     }
 
     while (fgets(parameter_library_line, sizeof(parameter_library_line), parameter_library_file) != 0) {
-        param_keyword = parse_param_line(parameter_library_line, debug, logFile);
+        param_keyword = parseParamLine(parameter_library_line, debug, logFile);
         if (debug > 0) {
             fprintf(logFile, "DEBUG: parameter_library_line = %sDEBUG: param_keyword          = %d\n", parameter_library_line, param_keyword);
         }
@@ -114,17 +114,17 @@ void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, co
                 // Read in one line of atom parameters;
                 // NB: scanf doesn't try to write missing fields
                 nfields = sscanf(parameter_library_line, "%*s %s %lf %lf %lf %lf %lf %lf %d %d %d %d",
-                                    thisParameter.autogrid_type,
+                                    thisParameter.autogridType,
                                     &thisParameter.Rij,
                                     &thisParameter.epsij,
                                     &thisParameter.vol,
                                     &thisParameter.solpar,
-                                    &thisParameter.Rij_hb,
-                                    &thisParameter.epsij_hb,
+                                    &thisParameter.RijHB,
+                                    &thisParameter.epsijHB,
                                     &int_hbond_type,
-                                    &thisParameter.rec_index,
-                                    &thisParameter.map_index,
-                                    &thisParameter.bond_index);
+                                    &thisParameter.recIndex,
+                                    &thisParameter.mapIndex,
+                                    &thisParameter.bondIndex);
                 if (nfields < 2) {
                     continue; // skip any parameter_library_line without enough info
                 }
@@ -146,19 +146,19 @@ void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, co
                 }
 
                 thisParameter.epsij    *= AD4.coeff_vdW;
-                thisParameter.epsij_hb *= AD4.coeff_hbond;
+                thisParameter.epsijHB *= AD4.coeff_hbond;
 
-                apm_enter(thisParameter.autogrid_type, thisParameter);
-                fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogrid_type);
+                atomParameterManager_enter(thisParameter.autogridType, thisParameter);
+                fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
 
                 if (outlev > 2) {
                     fprintf(logFile, "\tR-eqm = %5.2f Angstrom\n\tweighted epsilon = %5.3f\n\tAtomic fragmental volume = %5.3f\n\tAtomic solvation parameter = %5.3f\n\tH-bonding R-eqm = %5.3f\n\tweighted H-bonding epsilon = %5.3f\n\tH-bonding type = %d,  bond index = %d\n\n",
                             thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
-                            thisParameter.Rij_hb, thisParameter.epsij_hb, thisParameter.hbond, thisParameter.bond_index);
+                            thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
                 } else {
                     fprintf(logFile, "\tR-eqm = %.2f Angstrom,  weighted epsilon = %.3f,  At.frag.vol. = %.3f,  At.solv.par. = %.3f, \n\tHb R-eqm = %.3f,  weighted Hb epsilon = %.3f,  Hb type = %d,  bond index = %d\n\n",
                             thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
-                            thisParameter.Rij_hb, thisParameter.epsij_hb, thisParameter.hbond, thisParameter.bond_index);
+                            thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
                 }
                 break;
 
@@ -168,7 +168,7 @@ void read_parameter_library(char FN_parameter_library[MAX_CHARS], int outlev, co
     } // while there is another line of parameters to read in
 }
 
-void setup_parameter_library(int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
+void setupParameterLibrary(int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
 {
     static ParameterEntry thisParameter;
     char parameter_library_line[MAX_CHARS];
@@ -185,7 +185,7 @@ void setup_parameter_library(int outlev, const char *programname, int debug, FIL
     // and stored in the param_string[MAX_LINES] array
 
     while (param_string[counter] != 0) {
-        param_keyword = parse_param_line(param_string[counter], debug, logFile);
+        param_keyword = parseParamLine(param_string[counter], debug, logFile);
 
         strcpy(parameter_library_line, param_string[counter]);
         counter++;
@@ -248,17 +248,17 @@ void setup_parameter_library(int outlev, const char *programname, int debug, FIL
                 // Read in one line of atom parameters;
                 // NB: scanf doesn't try to write missing fields
                 nfields = sscanf(parameter_library_line, "%*s %s %lf %lf %lf %lf %lf %lf %d %d %d %d",
-                                    thisParameter.autogrid_type,
+                                    thisParameter.autogridType,
                                     &thisParameter.Rij,
                                     &thisParameter.epsij,
                                     &thisParameter.vol,
                                     &thisParameter.solpar,
-                                    &thisParameter.Rij_hb,
-                                    &thisParameter.epsij_hb,
+                                    &thisParameter.RijHB,
+                                    &thisParameter.epsijHB,
                                     &int_hbond_type,
-                                    &thisParameter.rec_index,
-                                    &thisParameter.map_index,
-                                    &thisParameter.bond_index);
+                                    &thisParameter.recIndex,
+                                    &thisParameter.mapIndex,
+                                    &thisParameter.bondIndex);
                 if (nfields < 2) {
                     continue; // skip any parameter_library_line without enough info
                 }
@@ -280,19 +280,19 @@ void setup_parameter_library(int outlev, const char *programname, int debug, FIL
                 }
 
                 thisParameter.epsij    *= AD4.coeff_vdW;
-                thisParameter.epsij_hb *= AD4.coeff_hbond;
+                thisParameter.epsijHB *= AD4.coeff_hbond;
 
-                apm_enter(thisParameter.autogrid_type, thisParameter);
-                fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogrid_type);
+                atomParameterManager_enter(thisParameter.autogridType, thisParameter);
+                fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
 
                 if (outlev > 2) {
                     fprintf(logFile, "\tR-eqm = %5.2f Angstrom\n\tweighted epsilon = %5.3f\n\tAtomic fragmental volume = %5.3f\n\tAtomic solvation parameter = %5.3f\n\tH-bonding R-eqm = %5.3f\n\tweighted H-bonding epsilon = %5.3f\n\tH-bonding type = %d,  bond index = %d\n\n",
                             thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
-                            thisParameter.Rij_hb, thisParameter.epsij_hb, thisParameter.hbond, thisParameter.bond_index);
+                            thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
                 } else {
                     fprintf(logFile, "\tR-eqm = %.2f Angstrom,  weighted epsilon = %.3f,  At.frag.vol. = %.3f,  At.solv.par. = %.3f, \n\tHb R-eqm = %.3f,  weighted Hb epsilon = %.3f,  Hb type = %d,  bond index = %d\n\n",
                             thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
-                            thisParameter.Rij_hb, thisParameter.epsij_hb, thisParameter.hbond, thisParameter.bond_index);
+                            thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
                 }
                 break;
 

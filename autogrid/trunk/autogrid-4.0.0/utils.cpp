@@ -15,7 +15,7 @@
 #include "exceptions.h"
 
 // initializes BOINC
-void ag_boinc_init()
+void initBoinc()
 {
 #if defined(BOINC)
     boinc_init_diagnostics(BOINC_DIAG_DUMPCALLSTACKENABLED | BOINC_DIAG_HEAPCHECKENABLED | BOINC_DIAG_REDIRECTSTDERR | BOINC_DIAG_REDIRECTSTDOUT);
@@ -51,7 +51,7 @@ void ag_boinc_init()
 }
 
 // fopen rewrite to either use BOINC api or normal system call
-FILE *ag_fopen(const char *path, const char *mode)
+FILE *openFile(const char *path, const char *mode)
 {
     FILE *filep;
 
@@ -73,7 +73,7 @@ FILE *ag_fopen(const char *path, const char *mode)
     return filep;
 }
 
-char *ag_gethostname(char *buffer, int size)
+char *getHostname(char *buffer, int size)
 {
 #if defined(_WIN32)
     WSADATA wsaData;
@@ -89,7 +89,7 @@ char *ag_gethostname(char *buffer, int size)
     return buffer;
 }
 
-// Atom Parameter Manager (hash, apm_enter, apm_find)
+// Atom Parameter Manager (hash, atomParameterManager_enter, atomParameterManager_find)
 
 #define MAXKEY (256*256)
 
@@ -104,7 +104,7 @@ static unsigned int hash(const char key[]) {
     }
 }
 
-void apm_enter(const char key[], PE value) {
+void atomParameterManager_enter(const char key[], PE value) {
     if (dictionary[hash(key)] == 0) {
         dictionary[hash(key)] = (PE *) calloc(1, sizeof(PE));
     }
@@ -112,12 +112,12 @@ void apm_enter(const char key[], PE value) {
     return;
 }
 
-PE * apm_find(const char key[]) {
+PE * atomParameterManager_find(const char key[]) {
     return dictionary[hash(key)];
 }
 
 // Output banner...
-void fprint_banner(FILE *logFile, double versionNumber)
+void printBanner(FILE *logFile, double versionNumber)
 {
     fprintf(logFile,"\n       _______________________________________________________\n");
     fprintf(logFile,"\n");
@@ -169,7 +169,7 @@ void fprint_banner(FILE *logFile, double versionNumber)
     fprintf(logFile,"\n");
 }
 
-double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
+double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
     /*____________________________________________________________________________
      * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
      *____________________________________________________________________________*/
@@ -192,7 +192,7 @@ double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
 }
 
 /******************************************************************************/
-/*      Name: check_size                                                      */
+/*      Name: checkSize                                                      */
 /*  Function: Checks that number of grid elements is valid.                   */
 /* Copyright: (C) 1994, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
@@ -207,7 +207,7 @@ double calc_ddd_Mehler_Solmajer(double distance, double approx_zero) {
 /* Date     Inits   Comments                                                  */
 /* 04/01/93 GMM     Created for use in makefile.                              */
 /******************************************************************************/
-int check_size(int nelements, char axischar, const char *programname, FILE *logFile)
+int checkSize(int nelements, char axischar, const char *programname, FILE *logFile)
 {
     int oldnelements;
 
@@ -231,30 +231,30 @@ int check_size(int nelements, char axischar, const char *programname, FILE *logF
 }
 
 #if !defined(WIN32)
-int get_clocks_per_sec()
+int getClocksPerSec()
 {
     long clocks = sysconf(_SC_CLK_TCK);
     if (clocks < 0)
     {
-        fprintf(stderr, "\"sysconf(_SC_CLK_TCK)\" failed in get_clocks_per_sec()\n");
+        fprintf(stderr, "\"sysconf(_SC_CLK_TCK)\" failed in getClocksPerSec()\n");
         exit(-1);
     }
     return clocks;
 }
 #endif
 
-int get_rec_index(const char key[])
+int getRecIndex(const char key[])
 {
     ParameterEntry *found_parm;
 
-    found_parm = apm_find(key);
+    found_parm = atomParameterManager_find(key);
     if (found_parm != 0)
-        return found_parm->rec_index;
+        return found_parm->recIndex;
     return -1;
 }
 
 /******************************************************************************/
-/*      Name: gpfparser                                                       */
+/*      Name: parseGPFLine                                                       */
 /*  Function: Parse the AutoGrid parameter file line                          */
 /* Copyright: (C) 1995, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
@@ -270,14 +270,14 @@ int get_rec_index(const char key[])
 /* 02/01/95 GMM     Entered code.                                             */
 /******************************************************************************/
 
-int gpfparser(char line[LINE_LEN])
+int parseGPFLine(char line[LINE_LEN])
 {
     int l, i, token = -1 ;	       /* return -1 if nothing is recognized. */
     char c[LINE_LEN];
 
-    l = (int)strindex(line, " ");
+    l = (int)strIndex(line, " ");
     if (l == -1) {
-        l = (int)strindex(line, "\t");
+        l = (int)strIndex(line, "\t");
         if (l == -1) {
             l = (int)strlen(line);
 	}
@@ -364,7 +364,7 @@ int gpfparser(char line[LINE_LEN])
 }
 
 /******************************************************************************/
-/*      Name: parsetypes                                                      */
+/*      Name: parseTypes                                                      */
 /*  Function: Parse the AutoGrid types lines                                  */
 /* Copyright: (C) 1995, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
@@ -379,7 +379,7 @@ int gpfparser(char line[LINE_LEN])
 /* Date     Inits   Comments                                                  */
 /* 06/02/03 RH      Entered code.                                             */
 /******************************************************************************/
-int parsetypes(char * line, char *words[], int maxwords)
+int parseTypes(char * line, char *words[], int maxwords)
 /*utility func for parsing types*/
 {
     char *char_ptr = line;
@@ -428,7 +428,7 @@ int parsetypes(char * line, char *words[], int maxwords)
     }
 }
 
-void prHMSfixed(float t, FILE *logFile)
+void printTimeFixed(float t, FILE *logFile)
 {
     int   h, m;
     float T, s;
@@ -449,7 +449,7 @@ void prHMSfixed(float t, FILE *logFile)
     }
 }
 
-char *getdate(int flag, char *buffer, int size)
+char *getDate(int flag, char *buffer, int size)
 {
     time_t tn; /* tn = "time_now" */
     char *StringTimeDate;
@@ -474,32 +474,9 @@ char *getdate(int flag, char *buffer, int size)
     return buffer;
 }
 
-void printhms(Real t, FILE *logFile)
-{
-    int   h,
-          m;
-    Real T, s;
-    Real min = 60.,
-	  hrs = 3600.;
-
-    h = (int)(t/hrs);
-    T = t - ((Real)h)*hrs;
-    m = (int)(T/min);
-    s = T - ((Real)m)*min;
-
-    if (h == 0) {
-        if (m == 0)
-            fprintf(logFile,       "%.2fs",       s);
-        else
-            fprintf(logFile,    "%dm %05.2fs",    m, s);
-    } else {
-            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
-    }
-}
-
 // print an error or informational message to a file-pointer or
 // standard error
-void print_error(const char *programname, FILE * fileptr, int error_level, char message[LINE_LEN])
+void printError(const char *programname, FILE * fileptr, int error_level, char message[LINE_LEN])
 {
     char output_message[LINE_LEN];
     char tag[LINE_LEN];
@@ -541,31 +518,31 @@ void print_error(const char *programname, FILE * fileptr, int error_level, char 
         exit(error_level);
 }
 
-void print_errorf(const char *programname, FILE *fileptr, int error_level, const char *format, ...)
+void printErrorFormatted(const char *programname, FILE *fileptr, int error_level, const char *format, ...)
 {
     char message[LINE_LEN];
     va_list ap;
     va_start(ap, format);
     vsprintf(message, format, ap);
     va_end(ap);
-    print_error(programname, fileptr, error_level, message);
+    printError(programname, fileptr, error_level, message);
 }
 
 // returns index of t in s, -1 if none.
-int strindex(char s[], char t[])
+int strIndex(char s[], char t[])
 {
     char *r = strstr(s, t);
     return r? int(r-s) : -1;
 }
 
-void timesys(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile)
+void printClockTime(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile)
 {
 	fprintf(logFile, "Real= %.2f,  CPU= %.2f,  System= %.2f\n",     (Real)duration * idct,
                          (Real)(end->tms_utime  - start->tms_utime) * idct,
                          (Real)(end->tms_stime  - start->tms_stime) * idct);
 }
 
-void timesyshms(Clock duration, struct tms  *start, struct tms  *end, Real idct, FILE *logFile)
+void printClockTimeInHMS(Clock duration, struct tms  *start, struct tms  *end, Real idct, FILE *logFile)
 {
     int h, m;
     Real t, T, s;

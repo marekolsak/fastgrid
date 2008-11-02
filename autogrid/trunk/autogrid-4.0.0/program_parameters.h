@@ -11,4 +11,4 @@ struct ProgramParameters
     ProgramParameters();
 };
 
-int process_program_parameters(int argc, char **argv, ProgramParameters &out);
+int processProgramParameters(int argc, char **argv, ProgramParameters &out);

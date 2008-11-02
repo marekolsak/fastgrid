@@ -13,5 +13,5 @@ public:
 private:
     FILE *file;
 
-    void WriteBanner();
+    void writeBanner();
 };
