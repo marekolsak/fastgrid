@@ -314,15 +314,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\program_parameters.cpp"
+			RelativePath="..\programparameters.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\program_parameters.h"
-			>
-		</File>
-		<File
-			RelativePath="..\ranlib.h"
+			RelativePath="..\programparameters.h"
 			>
 		</File>
 		<File
@@ -347,10 +343,6 @@
 		</File>
 		<File
 			RelativePath="..\utils.h"
-			>
-		</File>
-		<File
-			RelativePath="..\version.h"
 			>
 		</File>
 	</Files>

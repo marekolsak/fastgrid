@@ -28,15 +28,37 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include "program_parameters.h"
+#include "programparameters.h"
 #include "utils.h"
 #include "exceptions.h"
 
-ProgramParameters::ProgramParameters(): debug(0)
+ProgramParameters::ProgramParameters(int argc, char **argv): debug(0)
 {
     programName[0] = 0;
     gridParameterFilename[0] = 0;
     logFilename[0] = 0;
+
+    Parse(argc, argv);
+}
+
+const char *ProgramParameters::getProgramName() const
+{
+    return programName;
+}
+
+const char *ProgramParameters::getGridParameterFilename() const
+{
+    return gridParameterFilename;
+}
+
+const char *ProgramParameters::getLogFilename() const
+{
+    return logFilename;
+}
+
+int ProgramParameters::getDebugLevel() const
+{
+    return debug;
 }
 
 /******************************************************************************/
@@ -63,9 +85,9 @@ ProgramParameters::ProgramParameters(): debug(0)
 /*                  -o = Use old PDBq format (q in columns 55-61)             */
 /* 04/01/93 GMM     Created for use in makefile.                              */
 /******************************************************************************/
-int processProgramParameters(int argc, char **argv, ProgramParameters &out)
+int ProgramParameters::Parse(int argc, char **argv)
 {
-    strncpy(out.programName, argv[0], MAX_CHARS);
+    strncpy(programName, argv[0], MAX_CHARS);
 
     // Loop over arguments
     int argindex = 1;
@@ -74,7 +96,7 @@ int processProgramParameters(int argc, char **argv, ProgramParameters &out)
         switch(argv[1][1])
         {
         case 'd':
-            out.debug++;
+            debug++;
             break;
         case 'u':
 	        fprintf(stderr, "usage: %s -p parameter_filename\n"
@@ -84,13 +106,13 @@ int processProgramParameters(int argc, char **argv, ProgramParameters &out)
 	        throw ExitProgram(0);
             break;
         case 'l':
-            strncpy(out.logFilename, argv[2], MAX_CHARS);
+            strncpy(logFilename, argv[2], MAX_CHARS);
             argv++;
             argc--;
             argindex++;
             break;
         case 'p':
-            strncpy(out.gridParameterFilename, argv[2], MAX_CHARS);
+            strncpy(gridParameterFilename, argv[2], MAX_CHARS);
             argv++;
             argc--;
             argindex++;

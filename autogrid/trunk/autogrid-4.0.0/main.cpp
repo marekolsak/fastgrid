@@ -45,7 +45,7 @@
 
 #include "autogrid.h"
 #include "utils.h"
-#include "program_parameters.h"
+#include "programparameters.h"
 #include "read_parameter_library.h"
 
 // objects
@@ -128,13 +128,11 @@ void appMain(int argc, char **argv)
 
     // Initialization
     initBoinc(); // Initialize BOINC if needed
-    ProgramParameters programParams;
-    processProgramParameters(argc, argv, programParams); // Parse the command line...
-
-    LogFile logFile(versionNumber, programParams.programName, programParams.logFilename); // Initialize the log file
+    ProgramParameters programParams(argc, argv); // Initialize the ProgramParameters object, which parses the command-line arguments
+    LogFile logFile(versionNumber, programParams.getProgramName(), programParams.getLogFilename()); // Initialize the log file
 
     // Read in default parameters
-    setupParameterLibrary(outlev, programParams.programName, programParams.debug, logFile, AD4);
+    setupParameterLibrary(outlev, programParams.getProgramName(), programParams.getDebugLevel(), logFile, AD4);
 
     // Declarations of variables needed below
     MapObject *gridmaps = 0; // array gridmaps[MAX_MAPS] is dynamically alocated
@@ -238,13 +236,13 @@ void appMain(int argc, char **argv)
 
     // Initializes the grid parameter file
     FILE *GPF = stdin;
-    if (programParams.gridParameterFilename[0])
+    if (programParams.getGridParameterFilename()[0])
     {
-        GPF = openFile(programParams.gridParameterFilename, "r");
+        GPF = openFile(programParams.getGridParameterFilename(), "r");
         if (!GPF)
         {
-            fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programParams.programName, programParams.gridParameterFilename);
-            fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.programName);
+            fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programParams.getProgramName(), programParams.getGridParameterFilename());
+            fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.getProgramName());
             throw ExitProgram(911);
         }
     }
@@ -264,7 +262,7 @@ void appMain(int argc, char **argv)
         {
         case -1:
             fprintf(logFile, "GPF> %s", GPF_line);
-            printError(programParams.programName, logFile, WARNING, "Unrecognized keyword in grid parameter file.\n");
+            printError(programParams.getProgramName(), logFile, WARNING, "Unrecognized keyword in grid parameter file.\n");
             continue;           // while fgets GPF_line...
 
         case GPF_NULL:
@@ -299,8 +297,8 @@ void appMain(int argc, char **argv)
                 // try to open receptor file
                 if ((receptor_fileptr = openFile(receptor_filename, "r")) == 0)
                 {
-                    printErrorFormatted(programParams.programName, logFile, ERROR, "can't find or open receptor PDBQT file \"%s\".\n", receptor_filename);
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "can't find or open receptor PDBQT file \"%s\".\n", receptor_filename);
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
 
                 // start to read in the lines of the receptor file
@@ -407,13 +405,13 @@ void appMain(int argc, char **argv)
                         // Check that there aren't too many atoms...
                         if (ia > AG_MAX_ATOMS)
                         {
-                            printErrorFormatted(programParams.programName, logFile, ERROR, "Too many atoms in receptor PDBQT file %s;", receptor_filename);
-                            printErrorFormatted(programParams.programName, logFile, ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
-                            printErrorFormatted(programParams.programName, logFile, SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
-                            printError(programParams.programName, logFile, SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
+                            printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "Too many atoms in receptor PDBQT file %s;", receptor_filename);
+                            printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
+                            printErrorFormatted(programParams.getProgramName(), logFile, SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
+                            printError(programParams.getProgramName(), logFile, SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
                             fflush(logFile);
                             // FATAL_ERROR will cause AutoGrid to exit...
-                            printError(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                            printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                         }           // endif
                     }               // endif
                 }                   // endwhile
@@ -425,11 +423,11 @@ void appMain(int argc, char **argv)
                     // in the GPF; if they do not match, exit!
                     if (receptor_types_ct != receptor_types_gpf_ct)
                     {
-                        printErrorFormatted(programParams.programName, logFile, ERROR,
+                        printErrorFormatted(programParams.getProgramName(), logFile, ERROR,
                             "The number of atom types found in the receptor PDBQT (%d) does not match the number specified by the \"receptor_types\" command (%d) in the GPF!\n\n",
                             receptor_types_ct, receptor_types_gpf_ct);
                         // FATAL_ERROR will cause AutoGrid to exit...
-                        printError(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                        printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                     }
 
                 // Update the total number of atoms in the receptor
@@ -440,9 +438,9 @@ void appMain(int argc, char **argv)
                 // Check there are partial charges...
                 if (q_max == 0. && q_min == 0.)
                 {
-                    printErrorFormatted(programParams.programName, logFile, ERROR, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptor_filename);
+                    printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptor_filename);
                     // FATAL_ERROR will cause AutoGrid to exit...
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                 }                   // if there are no charges EXIT
 
                 fprintf(logFile, "Atom\tAtom\tNumber of this Type\n");
@@ -482,7 +480,7 @@ void appMain(int argc, char **argv)
             sscanf(GPF_line, "%*s %s", AVS_fld_filename);
             infld = strIndex(AVS_fld_filename, ".fld");
             if (infld == -1)
-                printError(programParams.programName, logFile, FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
+                printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
             else
             {
                 infld = strIndex(AVS_fld_filename, "fld");
@@ -493,9 +491,9 @@ void appMain(int argc, char **argv)
             }
             if ((xyz_fileptr = openFile(xyz_filename, "w")) == 0)
             {
-                printErrorFormatted(programParams.programName, logFile, ERROR, "can't create grid extrema data file %s\n", xyz_filename);
-                printError(programParams.programName, logFile, ERROR, "SORRY!    unable to create the \".xyz\" file.\n\n");
-                printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "can't create grid extrema data file %s\n", xyz_filename);
+                printError(programParams.getProgramName(), logFile, ERROR, "SORRY!    unable to create the \".xyz\" file.\n\n");
+                printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             else
                 fprintf(logFile, "\nCreating (AVS-readable) grid-coordinates extrema file : %s\n\n", xyz_filename);
@@ -506,7 +504,7 @@ void appMain(int argc, char **argv)
             sscanf(GPF_line, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
             for (int i = 0; i < XYZ; i++)
             {
-                nelements[i] = checkSize(nelements[i], xyz[i], programParams.programName, logFile);
+                nelements[i] = checkSize(nelements[i], xyz[i], programParams.getProgramName(), logFile);
                 ne[i] = nelements[i] / 2;
                 n1[i] = nelements[i] + 1;
             }
@@ -607,8 +605,8 @@ void appMain(int argc, char **argv)
 
                 if (gridmaps == 0)
                 {
-                    printError(programParams.programName, logFile, ERROR, "Could not allocate memory to create the MapObject \"gridmaps\".\n");
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    printError(programParams.getProgramName(), logFile, ERROR, "Could not allocate memory to create the MapObject \"gridmaps\".\n");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
 
                 // Initialize the gridmaps MapObject
@@ -649,7 +647,7 @@ void appMain(int argc, char **argv)
                     dummy_map = (Real *) malloc(sizeof(Real) * (num_maps * num_grid_points_per_map));
                     if (!dummy_map)
                         // Too many maps requested
-                        printErrorFormatted(programParams.programName, logFile, WARNING,
+                        printErrorFormatted(programParams.getProgramName(), logFile, WARNING,
                             "There will not be enough memory to store these grid maps in AutoDock; \ntry reducing the number of ligand atom types (you have %d including electrostatics) \nor reducing the size of the grid maps (you asked for %d x %d x %d grid points); \n or try running AutoDock on a machine with more RAM than this one.\n",
                             num_maps, n1[X], n1[Y], n1[Z]);
                     else
@@ -658,13 +656,13 @@ void appMain(int argc, char **argv)
                 }
                 else
                 {
-                    printError(programParams.programName, logFile, ERROR, "You need to set the number of grid points using \"npts\" before setting the ligand atom types, using \"ligand_types\".\n");
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    printError(programParams.getProgramName(), logFile, ERROR, "You need to set the number of grid points using \"npts\" before setting the ligand atom types, using \"ligand_types\".\n");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }                   // ZZZZZZZZZZZZZZZZZ
                 if (!gridmaps)
                 {
-                    printErrorFormatted(programParams.programName, logFile, ERROR, "Too many ligand atom types; there is not enough memory to create these maps.  Try using fewer atom types than %d.\n", num_atom_maps);
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "Too many ligand atom types; there is not enough memory to create these maps.  Try using fewer atom types than %d.\n", num_atom_maps);
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
 
                 for (int i = 0; i < num_atom_maps; i++)
@@ -761,8 +759,8 @@ void appMain(int argc, char **argv)
                         found_parm->recIndex = i;
                     else
                     {
-                        printErrorFormatted(programParams.programName, logFile, ERROR, "Unknown receptor type: \"%s\"\n -- Add parameters for it to the parameter library first!\n", receptor_atom_types[i]);
-                        printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                        printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "Unknown receptor type: \"%s\"\n -- Add parameters for it to the parameter library first!\n", receptor_atom_types[i]);
+                        printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
                     }
                 }
                 fflush(logFile);
@@ -802,17 +800,17 @@ void appMain(int argc, char **argv)
             ++mapIndex;
             if (mapIndex > num_atom_maps - 1)
             {
-                printErrorFormatted(programParams.programName, logFile, ERROR,
+                printErrorFormatted(programParams.getProgramName(), logFile, ERROR,
                     "Too many \"map\" keywords (%d);  the \"types\" command declares only %d maps.\nRemove a \"map\" keyword from the GPF.\n", mapIndex + 1,
                     num_atom_maps);
-                printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             // Read in the filename for this grid map *//* GPF_MAP
             sscanf(GPF_line, "%*s %s", gridmaps[mapIndex].map_filename);
             if ((gridmaps[mapIndex].map_fileptr = openFile(gridmaps[mapIndex].map_filename, "w")) == 0)
             {
-                printErrorFormatted(programParams.programName, logFile, ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].map_filename);
-                printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].map_filename);
+                printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nOutput Grid Map %d:   %s\n\n", (mapIndex + 1), gridmaps[mapIndex].map_filename);
             fflush(logFile);
@@ -823,8 +821,8 @@ void appMain(int argc, char **argv)
             sscanf(GPF_line, "%*s %s", gridmaps[elecPE].map_filename);
             if ((gridmaps[elecPE].map_fileptr = openFile(gridmaps[elecPE].map_filename, "w")) == 0)
             {
-                printErrorFormatted(programParams.programName, logFile, ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps[elecPE].map_filename);
-                printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps[elecPE].map_filename);
+                printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmaps[elecPE].map_filename);
             break;
@@ -833,8 +831,8 @@ void appMain(int argc, char **argv)
             sscanf(GPF_line, "%*s %s", gridmaps[dsolvPE].map_filename);
             if ((gridmaps[dsolvPE].map_fileptr = openFile(gridmaps[dsolvPE].map_filename, "w")) == 0)
             {
-                printErrorFormatted(programParams.programName, logFile, ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps[dsolvPE].map_filename);
-                printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+                printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps[dsolvPE].map_filename);
+                printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             fprintf(logFile, "\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmaps[dsolvPE].map_filename);
             break;
@@ -912,7 +910,7 @@ void appMain(int argc, char **argv)
         case GPF_PARAM_FILE:
             // open and read the AD4 parameters .dat file
             parameter_library_found = sscanf(GPF_line, "%*s %s ", FN_parameter_library);
-            readParameterLibrary(FN_parameter_library, outlev, programParams.programName, programParams.debug, logFile, AD4);
+            readParameterLibrary(FN_parameter_library, outlev, programParams.getProgramName(), programParams.getDebugLevel(), logFile, AD4);
             break;
         }                       // second switch
     }                           // while
@@ -932,19 +930,19 @@ void appMain(int argc, char **argv)
 
     if ((AVS_fld_fileptr = openFile(AVS_fld_filename, "w")) == 0)
     {
-        printErrorFormatted(programParams.programName, logFile, ERROR, "can't create grid dimensions data file %s\n", AVS_fld_filename);
-        printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+        printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "can't create grid dimensions data file %s\n", AVS_fld_filename);
+        printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
     }
     else
         fprintf(logFile, "\nCreating (AVS-readable) grid maps file : %s\n", AVS_fld_filename);
     fprintf(AVS_fld_fileptr, "# AVS field file\n#\n");
     fprintf(AVS_fld_fileptr, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
-    fprintf(AVS_fld_fileptr, "# Created by %s.\n#\n", programParams.programName);
+    fprintf(AVS_fld_fileptr, "# Created by %s.\n#\n", programParams.getProgramName());
     fprintf(AVS_fld_fileptr, "#SPACING %.3f\n", (float)spacing);
     fprintf(AVS_fld_fileptr, "#NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
     fprintf(AVS_fld_fileptr, "#CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
     fprintf(AVS_fld_fileptr, "#MACROMOLECULE %s\n", receptor_filename);
-    fprintf(AVS_fld_fileptr, "#GRID_PARAMETER_FILE %s\n#\n", programParams.gridParameterFilename);
+    fprintf(AVS_fld_fileptr, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
     fprintf(AVS_fld_fileptr, "ndim=3\t\t\t# number of dimensions in the field\n");
     fprintf(AVS_fld_fileptr, "dim1=%d\t\t\t# number of x-elements\n", n1[X]);
     fprintf(AVS_fld_fileptr, "dim2=%d\t\t\t# number of y-elements\n", n1[Y]);
@@ -1014,15 +1012,15 @@ void appMain(int argc, char **argv)
                 cA = (tmpconst = epsij / (double)(xA - xB)) * pow(Rij, (double)xA) * (double)xB;
                 cB = tmpconst * pow(Rij, (double)xB) * (double)xA;
                 if (isnan(cA))
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
                 if (isnan(cB))
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
                 dxA = (double)xA;
                 dxB = (double)xB;
                 if (xA == 0)
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
                 if (xB == 0)
-                    printError(programParams.programName, logFile, FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
+                    printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
                 fprintf(logFile, "\n             %9.1lf       %9.1lf \n", cA, cB);
                 fprintf(logFile, "    E    =  -----------  -  -----------\n");
                 fprintf(logFile, "     %s, %s         %2d              %2d\n", gridmaps[ia].type, receptor_types[i], xA, xB);
@@ -1169,7 +1167,7 @@ void appMain(int argc, char **argv)
                         if (rd2 < APPROX_ZERO)
                         {
                             if (rd2 == 0.)
-                                printErrorFormatted(programParams.programName, logFile, WARNING,
+                                printErrorFormatted(programParams.getProgramName(), logFile, WARNING,
                                     "While calculating an H-O or H-N bond vector...\nAttempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n",
                                     ia + 1, ib + 1);
                             rd2 = APPROX_ZERO;
@@ -1225,7 +1223,7 @@ void appMain(int argc, char **argv)
                         ((rd2 < 1.69) && ((atom_type[ib] == hydrogen) || (atom_type[ib] == nonHB_hydrogen))))
                     {
                         if (nbond == 2)
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "Found an H-bonding atom with three bonded atoms, atom serial number %d\n", ia + 1);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Found an H-bonding atom with three bonded atoms, atom serial number %d\n", ia + 1);
                         if (nbond == 1)
                         {
                             nbond = 2;
@@ -1241,7 +1239,7 @@ void appMain(int argc, char **argv)
 
             // if no bonds, something is wrong
             if (nbond == 0)
-                printErrorFormatted(programParams.programName, logFile, WARNING, "Oxygen atom found with no bonded atoms, atom serial number %d, atom_type %d\n", ia + 1, atom_type[ia]);
+                printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Oxygen atom found with no bonded atoms, atom serial number %d, atom_type %d\n", ia + 1, atom_type[ia]);
 
             // one bond: Carbonyl Oxygen O=C-X
             if (nbond == 1)
@@ -1257,7 +1255,7 @@ void appMain(int argc, char **argv)
                 {
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
-                        printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, i1 + 1);
+                        printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, i1 + 1);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1291,7 +1289,7 @@ void appMain(int argc, char **argv)
                             {
                                 if ((rd2 == 0.) && (warned == 'F'))
                                 {
-                                    printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
+                                    printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
                                     warned = 'T';
                                 }
                                 rd2 = APPROX_ZERO;
@@ -1311,7 +1309,7 @@ void appMain(int argc, char **argv)
                             {
                                 if ((rd2 == 0.) && (warned == 'F'))
                                 {
-                                    printError(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\n\n");
+                                    printError(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\n\n");
                                     warned = 'T';
                                 }
                                 rd2 = APPROX_ZERO;
@@ -1343,7 +1341,7 @@ void appMain(int argc, char **argv)
                     {
                         if ((rd2 == 0.) && (warned == 'F'))
                         {
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, ib + 1);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, ib + 1);
                             warned = 'T';
                         }
                         rd2 = APPROX_ZERO;
@@ -1366,7 +1364,7 @@ void appMain(int argc, char **argv)
                     {
                         if ((rd2 == 0.) && (warned == 'F'))
                         {
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
                             warned = 'T';
                         }
                         rd2 = APPROX_ZERO;
@@ -1393,7 +1391,7 @@ void appMain(int argc, char **argv)
                     {
                         if ((rd2 == 0.) && (warned == 'F'))
                         {
-                            printError(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\n\n");
+                            printError(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\n\n");
                             warned = 'T';
                         }
                         rd2 = APPROX_ZERO;
@@ -1443,7 +1441,7 @@ void appMain(int argc, char **argv)
 
             // if no bonds, something is wrong
             if (nbond == 0)
-                printErrorFormatted(programParams.programName, logFile, WARNING, "Nitrogen atom found with no bonded atoms, atom serial number %d\n", ia);
+                printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Nitrogen atom found with no bonded atoms, atom serial number %d\n", ia);
 
             // one bond: Azide Nitrogen :N=C-X
             if (nbond == 1)
@@ -1459,7 +1457,7 @@ void appMain(int argc, char **argv)
                 {
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
-                        printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
+                        printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1483,7 +1481,7 @@ void appMain(int argc, char **argv)
                 {
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
-                        printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
+                        printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1507,7 +1505,7 @@ void appMain(int argc, char **argv)
                 {
                     if ((rd2 == 0.) && (warned == 'F'))
                     {
-                        printErrorFormatted(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
+                        printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
                         warned = 'T';
                     }
                     rd2 = APPROX_ZERO;
@@ -1539,7 +1537,7 @@ void appMain(int argc, char **argv)
     // change num_atom_maps +1 to num_atom_maps + 2 for new dsolvPE map
     for (int k = 0; k < num_atom_maps + 2; k++)
     {
-        fprintf(gridmaps[k].map_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.gridParameterFilename);
+        fprintf(gridmaps[k].map_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.getGridParameterFilename());
         fprintf(gridmaps[k].map_fileptr, "GRID_DATA_FILE %s\n", AVS_fld_filename);
         fprintf(gridmaps[k].map_fileptr, "MACROMOLECULE %s\n", receptor_filename);
         fprintf(gridmaps[k].map_fileptr, "SPACING %.3lf\n", spacing);
@@ -1551,10 +1549,10 @@ void appMain(int argc, char **argv)
     {
         if ((floating_grid_fileptr = openFile(floating_grid_filename, "w")) == 0)
         {
-            printErrorFormatted(programParams.programName, logFile, ERROR, "can't open grid map \"%s\" for writing.\n", floating_grid_filename);
-            printError(programParams.programName, logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
+            printErrorFormatted(programParams.getProgramName(), logFile, ERROR, "can't open grid map \"%s\" for writing.\n", floating_grid_filename);
+            printError(programParams.getProgramName(), logFile, FATAL_ERROR, "Unsuccessful completion.\n\n");
         }
-        fprintf(floating_grid_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.gridParameterFilename);
+        fprintf(floating_grid_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.getGridParameterFilename());
         fprintf(floating_grid_fileptr, "GRID_DATA_FILE %s\n", AVS_fld_filename);
         fprintf(floating_grid_fileptr, "MACROMOLECULE %s\n", receptor_filename);
         fprintf(floating_grid_fileptr, "SPACING %.3lf\n", spacing);
@@ -1798,12 +1796,12 @@ void appMain(int argc, char **argv)
                             t0 += d[i] * rvector2[ia][i];
                         if (t0 > 1.)
                         {
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", t0);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", t0);
                             t0 = 1.;
                         }
                         else if (t0 < -1.)
                         {
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", t0);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", t0);
                             t0 = -1.;
                         }
                         t0 = PI_halved - acos(t0);
@@ -1820,7 +1818,7 @@ void appMain(int argc, char **argv)
                         {
                             if ((rd2 == 0.) && (warned == 'F'))
                             {
-                                printError(programParams.programName, logFile, WARNING, "Attempt to divide by zero was just prevented.\n\n");
+                                printError(programParams.getProgramName(), logFile, WARNING, "Attempt to divide by zero was just prevented.\n\n");
                                 warned = 'T';
                             }
                             rd2 = APPROX_ZERO;
@@ -1836,12 +1834,12 @@ void appMain(int argc, char **argv)
                         {
                             if (ti > 1.)
                             {
-                                printErrorFormatted(programParams.programName, logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", ti);
+                                printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", ti);
                                 ti = 1.;
                             }
                             else if (ti < -1.)
                             {
-                                printErrorFormatted(programParams.programName, logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", ti);
+                                printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", ti);
                                 ti = -1.;
                             }
                             ti = acos(ti) - PI_halved;
@@ -1865,12 +1863,12 @@ void appMain(int argc, char **argv)
                             cos_theta -= d[i] * rvector[ia][i];
                         if (cos_theta > 1.)
                         {
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", cos_theta);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", cos_theta);
                             cos_theta = 1.;
                         }
                         else if (cos_theta < -1.)
                         {
-                            printErrorFormatted(programParams.programName, logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", cos_theta);
+                            printErrorFormatted(programParams.getProgramName(), logFile, WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", cos_theta);
                             cos_theta = -1.;
                         }
                         theta = acos(cos_theta);
@@ -1976,7 +1974,7 @@ void appMain(int argc, char **argv)
         }                       // icoord[Y] loop
 
         if (problem_wrt)
-            printError(programParams.programName, logFile, WARNING, "Problems writing grid maps - there may not be enough disk space.\n");
+            printError(programParams.getProgramName(), logFile, WARNING, "Problems writing grid maps - there may not be enough disk space.\n");
         grd_end = times(&tms_grd_end);
         ++nDone;
         timeRemaining = (float)(grd_end - grd_start) * idct * (float)(n1[Z] - nDone);
@@ -2022,8 +2020,8 @@ void appMain(int argc, char **argv)
     // Free up the memory allocated to the gridmaps objects...
     delete [] gridmaps;
 
-    fprintf(stderr, "\n%s: Successful Completion.\n", programParams.programName);
-    fprintf(logFile, "\n%s: Successful Completion.\n", programParams.programName);
+    fprintf(stderr, "\n%s: Successful Completion.\n", programParams.getProgramName());
+    fprintf(logFile, "\n%s: Successful Completion.\n", programParams.getProgramName());
 
     struct tms tms_job_end;
     Clock job_end = times(&tms_job_end);
