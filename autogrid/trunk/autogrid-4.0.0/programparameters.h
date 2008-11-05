@@ -16,5 +16,5 @@ private:
     char logFilename[MAX_CHARS];
     int debug;
 
-    int Parse(int argc, char **argv);
+    int parse(int argc, char **argv);
 };

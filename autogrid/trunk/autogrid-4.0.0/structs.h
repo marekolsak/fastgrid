@@ -108,7 +108,7 @@ typedef struct molecule
 {
   Real     crdpdb[MAX_ATOMS][SPACE];	    /* original coordinates of atoms */
   Real     crd[MAX_ATOMS][SPACE];      	/* current coordinates of atoms */
-  char              atomstr[MAX_ATOMS][MAX_CHARS];	/* strings describing atoms, from PDB file, cols,1-30. */
+  char              atomstr[MAX_ATOMS][MAX_CHARS];	/* strings describing atoms, from PDB file, cols,1-30 */
   int               natom;			                /* number of atoms in molecule */
   Real     vt[MAX_TORS][SPACE];        	/* vectors  of torsions */
   int               tlist[MAX_TORS][MAX_ATOMS];	    /* torsion list of movable atoms */

@@ -1,9 +1,32 @@
+#if defined(_WIN32)
+    #define WIN32_LEAN_AND_MEAN
+    #include <Winsock2.h>
+#endif
 #include "logfile.h"
-#include "utils.h"
 #include "exceptions.h"
+#include "utils.h"
 
-LogFile::LogFile(double versionNumber, const char *programName, const char *filename): file(0)
+#define FORMATTED_MSG_MAX_SIZE (1<<14)
+
+#define FORMAT_MESSAGE(message, format) \
+    do \
+    { \
+        message[sizeof(message)-1] = 0; \
+        va_list ap; \
+        va_start(ap, format); \
+        /* if the message buffer is not long enough or hasn't been terminated by zero */ \
+        if (vsnprintf(message, sizeof(message), format, ap) == -1 || message[sizeof(message)-1] != 0) \
+        { \
+            printError(WARNING, "The following formatted string will be truncated."); \
+            message[sizeof(message)-1] = 0; \
+        } \
+        va_end(ap); \
+    } while (0);
+
+LogFile::LogFile(double versionNumber, const char *programName, const char *filename): file(0), invClocksPerSec(1 / float(getClocksPerSec()))
 {
+    strncpy(this->programName, programName, MAX_CHARS);
+
     // Initialize the log file
     if (!filename || !filename[0])
         file = stdout;
@@ -19,20 +42,204 @@ LogFile::LogFile(double versionNumber, const char *programName, const char *file
     }
 
     // Output basic information
-    printBanner(file, versionNumber);
-    fprintf(file, "                           $Revision: 1.58 $\n\n\n");
-    fprintf(file, "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n", MAX_MAPS);
-    fprintf(file, "This file was created at:\t\t\t");
-    {
-        char strtmp[MAX_CHARS];
-        fprintf(file, getDate(1, strtmp, MAX_CHARS));
-        fprintf(file, "                   using:\t\t\t\"%s\"\n", getHostname(strtmp, MAX_CHARS));
-    }
-    fprintf(file, "\n\n");
+    printBanner(versionNumber);
+    fprintf(file, "                           $Revision: 1.58 $\n\n\n"
+                  "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n"
+                  "This file was created at:\t\t\t", MAX_MAPS);
+    printCurrentDate(1);
+    printHostname();
+    print("\n\n");
 }
 
 LogFile::~LogFile()
 {
     if (file && file != stdout)
         fclose(file);
+}
+
+void LogFile::print(const char *msg)
+{
+    fprintf(file, "%s", msg);
+}
+
+void LogFile::printFormatted(const char *format, ...)
+{
+    char message[FORMATTED_MSG_MAX_SIZE];
+    FORMAT_MESSAGE(message, format);
+    print(message);
+}
+
+void LogFile::printTitled(const char *msg)
+{
+    fprintf(file, "%s: %s", programName, msg);
+}
+
+void LogFile::printTitledFormatted(const char *format, ...)
+{
+    char message[FORMATTED_MSG_MAX_SIZE];
+    FORMAT_MESSAGE(message, format);
+    printTitled(message);
+}
+
+void LogFile::printError(ErrorLevel errorLevel, const char *msg)
+{
+    char *tags[5] = {
+        "ERROR",
+        "ERROR",
+        "WARNING",
+        "INFORMATION",
+        "SUGGESTION"
+    };
+
+    char outputMessage[LINE_LEN];
+    snprintf(outputMessage, LINE_LEN, "\n%s: %s:  %s\n", programName, tags[errorLevel+2], msg);
+
+    fprintf(file, "%s\n", outputMessage);
+
+    // Only send errors, fatal errors and warnings to standard error.
+    if (errorLevel <= WARNING)
+        fprintf(stderr, "%s\n", outputMessage);
+
+    // If this is a fatal error, exit now.
+    if (errorLevel == FATAL_ERROR)
+        throw ExitProgram(errorLevel);
+}
+
+void LogFile::printErrorFormatted(ErrorLevel errorLevel, const char *format, ...)
+{
+    char message[FORMATTED_MSG_MAX_SIZE];
+    FORMAT_MESSAGE(message, format);
+    printError(errorLevel, message);
+}
+
+void LogFile::printExecutionTimes(Clock startTime, Clock endTime, tms *start, tms *end)
+{
+	fprintf(file, "Real= %.2f,  CPU= %.2f,  System= %.2f\n",
+        invClocksPerSec * (endTime - startTime),
+        invClocksPerSec * (end->tms_utime - start->tms_utime),
+        invClocksPerSec * (end->tms_stime - start->tms_stime));
+}
+
+void LogFile::printTimeInHMS(Clock time, bool fixedOutputLength)
+{
+    printTimeInHMS(invClocksPerSec * time, fixedOutputLength);
+}
+
+void LogFile::printTimeInHMS(float time, bool fixedOutputLength)
+{
+    float hrs = 3600, min = 60;
+    int h = int(time / hrs);
+    float T = time - h*hrs;
+    int m = int(T / min);
+    float s = T - m*min;
+
+    if (h == 0)
+        if (m == 0)
+            fprintf(file, fixedOutputLength ? "        %5.2fs" : "%.2fs", s);
+        else
+            fprintf(file, fixedOutputLength ? "    %2dm %05.2fs" : "%dm %05.2fs", m, s);
+    else
+        fprintf(file, fixedOutputLength ? "%2dh %02dm %05.2fs" : "%dh %02dm %05.2fs", h, m, s);
+}
+
+void LogFile::printExecutionTimesInHMS(Clock startTime, Clock endTime, tms *start, tms *end)
+{
+    print("Real= ");
+    printTimeInHMS(invClocksPerSec * (endTime - startTime), false);
+    print(",  CPU= ");
+    printTimeInHMS(invClocksPerSec * (end->tms_utime - start->tms_utime), false);
+    print(",  System= ");
+    printTimeInHMS(invClocksPerSec * (end->tms_stime  - start->tms_stime), false);
+    print("\n");
+}
+
+// Output banner...
+void LogFile::printBanner(double versionNumber)
+{
+    fprintf(file, 
+        "\n       _______________________________________________________\n"
+        "\n"
+        "__________//____________________________/////_________________/________\n"
+        "_________/__/____________/_____________/______________/_______/________\n"
+        "________/____/___________/_____________/______________________/________\n"
+        "________/____/__/_____/_/////___/////__/__////_/_///__/__////_/________\n"
+        "_______/______/_/_____/__/_____/_____/_/_____/_//___/_/_/____//________\n"
+        "_______////////_/_____/__/_____/_____/_/_____/_/______/_/_____/________\n"
+        "_______/______/_/____//__/___/_/_____/_/_____/_/______/_/____//________\n"
+        "_______/______/__////_/___///___/////___/////__/______/__////_/________\n"
+        "\n"
+        "       _______________________________________________________\n"
+        "\n"
+        "                                ______\n"
+        "                               /      \\\n"
+        "                              /        \\\n"
+        "                             /          \\\n"
+        "                             \\    /\\    /\n"
+        "                              \\  /  \\  /\n"
+        "                               \\/ /\\ \\/\n"
+        "                                 /  \\\n"
+        "                                /____\\\n"
+        "\n"
+        "\n"
+        "                ______________________________________ \n"
+        "               |                                      |\n"
+        "               |            AutoGrid %3.2lf             |\n"
+        "               |                                      |\n"
+        "               |        Garrett M. Morris, TSRI       |\n"
+        "               |            Ruth Huey, TSRI           |\n"
+        "               |        David S. Goodsell, TSRI       |\n"
+        "               |         Arthur J. Olson, TSRI        |\n"
+        "               |                                      |\n"
+        "               |        (c) 1989-2005, TSRI           |\n"
+        "               |   The Scripps Research Institute     |\n"
+        "               |______________________________________|\n"
+        "\n"
+        "                ______________________________________ \n"
+        "               |                                      |\n"
+        "               | Calculation of van der Waals, H-Bond,|\n"
+        "               |   Electrostatic Potential Energy, &  |\n"
+        "               |   Desolvation Free Energy Grid Maps  |\n"
+        "               |             for AutoDock             |\n"
+        "               |______________________________________|\n"
+        "\n"
+        "\n"
+        "\n"
+        "\n", versionNumber);
+}
+
+void LogFile::printCurrentDate(int flag)
+{
+    time_t timeNow;
+    timeNow = time(&timeNow);
+    tm *ts = localtime(&timeNow);
+
+    if (flag == 1)
+        fprintf(file, "%d:%02d %02d\" %s, %02d/%02d/%4d\n",
+            ((ts->tm_hour >  12) ? (ts->tm_hour-12) : ts->tm_hour), ts->tm_min, ts->tm_sec,
+            ((ts->tm_hour >= 12) ? "p.m." : "a.m."),
+            (ts->tm_mon + 1), ts->tm_mday, 1900+ts->tm_year);
+    else if (flag == 2)
+        fprintf(file, "%s", ctime(&timeNow));
+    else
+        fprintf(file, "%d:%02d %02d\" %s\n",
+            ((ts->tm_hour >  12) ? (ts->tm_hour-12) : ts->tm_hour), ts->tm_min, ts->tm_sec,
+            ((ts->tm_hour >= 12) ? "pm" : "am"));
+}
+
+void LogFile::printHostname()
+{
+#if defined(_WIN32)
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+
+    char buffer[MAX_CHARS];
+    if (gethostname(buffer, MAX_CHARS) != 0)
+        strncpy(buffer, "(gethostname returned an error)", MAX_CHARS);
+
+#if defined(_WIN32)
+    WSACleanup();
+#endif
+
+    fprintf(file, "                   using:\t\t\t\"%s\"\n", buffer);
 }

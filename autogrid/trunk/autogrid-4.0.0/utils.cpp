@@ -1,18 +1,14 @@
 #ifdef HAVE_CONFIG_H
     #include <config.h>
 #endif
-#if defined(_WIN32)
-    #define WIN32_LEAN_AND_MEAN
-    #include <windows.h>
-    #include <Winsock2.h>
-#endif
 #include "utils.h"
+#include "constants.h"
+#include "exceptions.h"
 #include <cstdlib>
 #include <cmath>
 #include <cerrno>
-#include "autogrid.h"
-#include "constants.h"
-#include "exceptions.h"
+#include <cctype>
+#include <cstring>
 
 // initializes BOINC
 void initBoinc()
@@ -35,7 +31,7 @@ void initBoinc()
     if (rc)
     {
         fprintf(stderr, "BOINC_ERROR: boinc_init_options() failed \n");
-        exit(rc);
+        throw ExitProgram(rc);
     }
 
 #else
@@ -44,7 +40,7 @@ void initBoinc()
     if (rc)
     {
         fprintf(stderr, "BOINC_ERROR: boinc_init() failed.\n");
-        exit(rc);
+        throw ExitProgram(rc);
     }
 #endif
 #endif
@@ -71,22 +67,6 @@ FILE *openFile(const char *path, const char *mode)
     filep = fopen(path, mode);
 #endif
     return filep;
-}
-
-char *getHostname(char *buffer, int size)
-{
-#if defined(_WIN32)
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
-    if (gethostname(buffer, size) != 0)
-        strncpy(buffer, "(gethostname returned error)", size);
-
-#if defined(_WIN32)
-    WSACleanup();
-#endif
-    return buffer;
 }
 
 // Atom Parameter Manager (hash, atomParameterManager_enter, atomParameterManager_find)
@@ -116,59 +96,6 @@ PE * atomParameterManager_find(const char key[]) {
     return dictionary[hash(key)];
 }
 
-// Output banner...
-void printBanner(FILE *logFile, double versionNumber)
-{
-    fprintf(logFile,"\n       _______________________________________________________\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"__________//____________________________/////_________________/________\n");
-    fprintf(logFile,"_________/__/____________/_____________/______________/_______/________\n");
-    fprintf(logFile,"________/____/___________/_____________/______________________/________\n");
-    fprintf(logFile,"________/____/__/_____/_/////___/////__/__////_/_///__/__////_/________\n");
-    fprintf(logFile,"_______/______/_/_____/__/_____/_____/_/_____/_//___/_/_/____//________\n");
-    fprintf(logFile,"_______////////_/_____/__/_____/_____/_/_____/_/______/_/_____/________\n");
-    fprintf(logFile,"_______/______/_/____//__/___/_/_____/_/_____/_/______/_/____//________\n");
-    fprintf(logFile,"_______/______/__////_/___///___/////___/////__/______/__////_/________\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"       _______________________________________________________\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"                                ______\n");
-    fprintf(logFile,"                               /      \\\n");
-    fprintf(logFile,"                              /        \\\n");
-    fprintf(logFile,"                             /          \\\n");
-    fprintf(logFile,"                             \\    /\\    /\n");
-    fprintf(logFile,"                              \\  /  \\  /\n");
-    fprintf(logFile,"                               \\/ /\\ \\/\n");
-    fprintf(logFile,"                                 /  \\\n");
-    fprintf(logFile,"                                /____\\\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"                ______________________________________ \n");
-    fprintf(logFile,"               |                                      |\n");
-    fprintf(logFile,"               |            AutoGrid %3.2lf             |\n",versionNumber);
-    fprintf(logFile,"               |                                      |\n");
-    fprintf(logFile,"               |        Garrett M. Morris, TSRI       |\n");
-    fprintf(logFile,"               |            Ruth Huey, TSRI           |\n");
-    fprintf(logFile,"               |        David S. Goodsell, TSRI       |\n");
-    fprintf(logFile,"               |         Arthur J. Olson, TSRI        |\n");
-    fprintf(logFile,"               |                                      |\n");
-    fprintf(logFile,"               |        (c) 1989-2005, TSRI           |\n");
-    fprintf(logFile,"               |   The Scripps Research Institute     |\n");
-    fprintf(logFile,"               |______________________________________|\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"                ______________________________________ \n");
-    fprintf(logFile,"               |                                      |\n");
-    fprintf(logFile,"               | Calculation of van der Waals, H-Bond,|\n");
-    fprintf(logFile,"               |   Electrostatic Potential Energy, &  |\n");
-    fprintf(logFile,"               |   Desolvation Free Energy Grid Maps  |\n");
-    fprintf(logFile,"               |             for AutoDock             |\n");
-    fprintf(logFile,"               |______________________________________|\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"\n");
-    fprintf(logFile,"\n");
-}
-
 double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
     /*____________________________________________________________________________
      * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
@@ -192,7 +119,7 @@ double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
 }
 
 /******************************************************************************/
-/*      Name: checkSize                                                      */
+/*      Name: checkSize                                                       */
 /*  Function: Checks that number of grid elements is valid.                   */
 /* Copyright: (C) 1994, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
@@ -207,41 +134,26 @@ double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
 /* Date     Inits   Comments                                                  */
 /* 04/01/93 GMM     Created for use in makefile.                              */
 /******************************************************************************/
-int checkSize(int nelements, char axischar, const char *programname, FILE *logFile)
+int checkSize(int nelements, char axischar, LogFile &logFile)
 {
-    int oldnelements;
-
-    if (nelements < 0) {
-        fprintf(stderr, "\n%s: Error! Negative number of %c-grid elements!  Aborting.\n\n", programname, axischar);
-        exit(-2);
-    }
-    if (nelements == 0) {
-        fprintf(stderr, "\n%s: Warning! 0 %c-grid elements!\n\n", programname, axischar);
-    }
-    if (nelements>MAX_GRID_PTS) {
-        fprintf(logFile, "%s: Warning! Maximum number of %c-grid elements allowed is %d. Using this value.\n", programname, axischar, MAX_GRID_PTS);
+    // nelements mustn't be negative, shouldn't be zero or larger than MAX_GRID_PTS and should be even
+    if (nelements < 0)
+        logFile.printErrorFormatted(FATAL_ERROR, "Negative number of %c-grid elements!  Aborting.\n\n", axischar);
+    else if (nelements == 0)
+        logFile.printErrorFormatted(WARNING, "0 %c-grid elements!\n\n", axischar);
+    else if (nelements > MAX_GRID_PTS)
+    {
+        logFile.printErrorFormatted(WARNING, "Maximum number of %c-grid elements allowed is %d. Using this value.\n", axischar, MAX_GRID_PTS);
         nelements = MAX_GRID_PTS;
     }
-    oldnelements = nelements;
-    nelements = (int) ((nelements/2) * 2); // N.B.: integer divide truncates remainder.
-    if (oldnelements != nelements)
-        fprintf(logFile, "%s: Number of grid elements must be even; %c-elements changed to: %d\n", programname, axischar, nelements);
+    else if (nelements % 2 == 1)
+    {
+        logFile.printTitledFormatted("Number of grid elements must be even; %c-elements changed to: %d\n", axischar, nelements);
+        nelements -= 1;
+    }
 
     return nelements;
 }
-
-#if !defined(WIN32)
-int getClocksPerSec()
-{
-    long clocks = sysconf(_SC_CLK_TCK);
-    if (clocks < 0)
-    {
-        fprintf(stderr, "\"sysconf(_SC_CLK_TCK)\" failed in getClocksPerSec()\n");
-        exit(-1);
-    }
-    return clocks;
-}
-#endif
 
 int getRecIndex(const char key[])
 {
@@ -428,106 +340,6 @@ int parseTypes(char * line, char *words[], int maxwords)
     }
 }
 
-void printTimeFixed(float t, FILE *logFile)
-{
-    int   h, m;
-    float T, s;
-    float hrs = 3600., min = 60.;
-
-    h = (int) (t/hrs);
-    T = t - h*hrs;
-    m = (int) (T/min);
-    s = T - m*min;
-
-    if (h == 0) {
-        if (m == 0)
-            fprintf(logFile,    "        %5.2fs",        s);
-        else
-            fprintf(logFile,   "    %2dm %05.2fs",    m, s);
-    } else {
-            fprintf(logFile, "%2dh %02dm %05.2fs", h, m, s);
-    }
-}
-
-char *getDate(int flag, char *buffer, int size)
-{
-    time_t tn; /* tn = "time_now" */
-    char *StringTimeDate;
-    struct tm *ts;
-
-    tn = time(&tn);
-    ts = localtime(&tn);
-
-    if (flag==1) {
-        _snprintf(buffer, size, "%d:%02d %02d\" %s, %02d/%02d/%4d\n",
-        ((ts->tm_hour >  12) ? (ts->tm_hour-12) : ts->tm_hour), ts->tm_min, ts->tm_sec,
-        ((ts->tm_hour >= 12) ? "p.m." : "a.m."),
-        (ts->tm_mon + 1), ts->tm_mday, 1900+ts->tm_year);
-    } else if (flag==2) {
-          StringTimeDate = ctime(&tn);
-          _snprintf(buffer, size, "%s", StringTimeDate);
-    } else {
-        _snprintf(buffer, size, "%d:%02d %02d\" %s\n",
-        ((ts->tm_hour >  12) ? (ts->tm_hour-12) : ts->tm_hour), ts->tm_min, ts->tm_sec,
-        ((ts->tm_hour >= 12) ? "pm" : "am"));
-    }
-    return buffer;
-}
-
-// print an error or informational message to a file-pointer or
-// standard error
-void printError(const char *programname, FILE * fileptr, int error_level, char message[LINE_LEN])
-{
-    char output_message[LINE_LEN];
-    char tag[LINE_LEN];
-
-    switch (error_level)
-    {
-    case ERROR:
-    case FATAL_ERROR:
-        strncpy(tag, "ERROR", LINE_LEN);
-        break;
-    case WARNING:
-        strncpy(tag, "WARNING", LINE_LEN);
-        break;
-    case INFORMATION:
-        strncpy(tag, "INFORMATION", LINE_LEN);
-        break;
-    case SUGGESTION:
-        strncpy(tag, "SUGGESTION", LINE_LEN);
-        break;
-    }
-
-    _snprintf(output_message, LINE_LEN, "\n%s: %s:  %s\n", programname, tag, message);
-
-    // Records all messages in the logFile.
-    fprintf(fileptr, "%s\n", output_message);
-
-    // Only send errors, fatal errors and warnings to standard error, stderr.
-    switch (error_level)
-    {
-    case ERROR:
-    case FATAL_ERROR:
-    case WARNING:
-        fprintf(stderr, "%s\n", output_message);
-        break;
-    }
-
-    // If this is a fatal error, exit now.
-    if (error_level == FATAL_ERROR)
-        exit(error_level);
-}
-
-void printErrorFormatted(const char *programname, FILE *fileptr, int error_level, const char *format, ...)
-{
-    char message[LINE_LEN];
-    va_list ap;
-    va_start(ap, format);
-    vsprintf(message, format, ap);
-    va_end(ap);
-    printError(programname, fileptr, error_level, message);
-}
-
 // returns index of t in s, -1 if none.
 int strIndex(char s[], char t[])
 {
@@ -535,151 +347,8 @@ int strIndex(char s[], char t[])
     return r? int(r-s) : -1;
 }
 
-void printClockTime(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile)
-{
-	fprintf(logFile, "Real= %.2f,  CPU= %.2f,  System= %.2f\n",     (Real)duration * idct,
-                         (Real)(end->tms_utime  - start->tms_utime) * idct,
-                         (Real)(end->tms_stime  - start->tms_stime) * idct);
-}
-
-void printClockTimeInHMS(Clock duration, struct tms  *start, struct tms  *end, Real idct, FILE *logFile)
-{
-    int h, m;
-    Real t, T, s;
-#ifndef USE_DOUBLE
-    const Real min = 60., hrs = 3600.;
-#else
-    const Real min = 60.L, hrs = 3600.L;
-#endif
-
-    fprintf(logFile, "Real= ");
-    t = (Real)duration * idct;
-    h = (int)(t/hrs);
-    T = t - ((Real)h)*hrs;
-    m = (int)(T/min);
-    s = T - ((Real)m)*min;
-    if (h == 0) {
-        if (m == 0)
-#ifndef USE_DOUBLE
-            fprintf(logFile,       "%.2fs",       s);
-#else
-            fprintf(logFile,       "%.2lfs",       s);
-#endif
-        else
-#ifndef USE_DOUBLE
-            fprintf(logFile,    "%dm %05.2fs",    m, s);
-#else
-            fprintf(logFile,    "%dm %05.2lfs",    m, s);
-#endif
-    } else {
-#ifndef USE_DOUBLE
-            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
-#else
-            fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s);
-#endif
-    }
-
-    fprintf(logFile, ",  CPU= ");
-    t =      (Real)((end->tms_utime  - start->tms_utime) * idct);
-    h = (int)(t/hrs);
-    T = t - ((Real)h)*hrs;
-    m = (int)(T/min);
-    s = T - ((Real)m)*min;
-    if (h == 0) {
-        if (m == 0)
-#ifndef USE_DOUBLE
-            fprintf(logFile,       "%.2fs",       s);
-#else
-            fprintf(logFile,       "%.2lfs",       s);
-#endif
-        else
-#ifndef USE_DOUBLE
-            fprintf(logFile,    "%dm %05.2fs",    m, s);
-#else
-            fprintf(logFile,    "%dm %05.2lfs",    m, s);
-#endif
-    } else {
-#ifndef USE_DOUBLE
-            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
-#else
-            fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s);
-#endif
-    }
-
-    fprintf(logFile, ",  System= ");
-    t = (Real)((end->tms_stime  - start->tms_stime) * idct);
-    h = (int)(t/hrs);
-    T = t - ((Real)h)*hrs;
-    m = (int)(T/min);
-    s = T - ((Real)m)*min;
-    if (h == 0) {
-        if (m == 0)
-#ifndef USE_DOUBLE
-            fprintf(logFile,       "%.2fs",       s);
-#else
-            fprintf(logFile,       "%.2lfs",       s);
-#endif
-        else
-#ifndef USE_DOUBLE
-            fprintf(logFile,    "%dm %05.2fs",    m, s);
-#else
-            fprintf(logFile,    "%dm %05.2lfs",    m, s);
-#endif
-    } else {
-#ifndef USE_DOUBLE
-            fprintf(logFile, "%dh %02dm %05.2fs", h, m, s);
-#else
-            fprintf(logFile, "%dh %02dm %05.2lfs", h, m, s);
-#endif
-    }
-
-    fprintf(logFile, "\n");
-}
-
 #if defined(_WIN32)
 
-// converts WinAPI's FILETIME to clock_t
-static clock_t FileTimeToClockTime(unsigned long long fileTime)
-{
-    // fileTime contains the time in 100s of nanoseconds
-    return clock_t((fileTime * CLOCKS_PER_SEC) / 10000000ull);
-}
-
-// there is no times(..) function on Windows so we have to implement it on our
-// own
-clock_t times(struct tms *buffer)
-{
-    if (!buffer)
-    {
-        _set_errno(EFAULT);
-        return clock_t(-1);
-    }
-
-    unsigned long long creationTime, exitTime, kernelTime, userTime;
-    GetProcessTimes(GetCurrentProcess(),
-                    reinterpret_cast<FILETIME*>(&creationTime),
-                    reinterpret_cast<FILETIME*>(&exitTime),
-                    reinterpret_cast<FILETIME*>(&kernelTime),
-                    reinterpret_cast<FILETIME*>(&userTime));
-
-    // Fill in the tms structure
-    buffer->tms_cstime = 0; // We do not use these two anyway
-    buffer->tms_cutime = 0;
-    buffer->tms_stime = FileTimeToClockTime(kernelTime);
-    buffer->tms_utime = FileTimeToClockTime(userTime);
-
-    // Use the high-resolution performance counter.
-    // The drawback is that we cannot let this thread switch between
-    // individual processors because that would give us incorrect values.
-    // This can be solved by calling SetThreadAffinityMask at the beginning
-    // of main(..) function in case times(..) is invoked from the main thread
-    // only.
-    unsigned long long freq, time;
-    QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&freq));
-    QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&time));
-    clock_t ret = clock_t((time * CLOCKS_PER_SEC) / (freq? freq : 1));
-    return ret;
-}
 
 #endif
 
@@ -715,7 +384,7 @@ void endTimer()
     clock_t time = times(&_t) - timers[indexOfNesting];
     for (unsigned int i = 0; i < indexOfNesting; i++)
         fprintf(stderr, "  ");
-    fprintf(stderr, "} took %i ms.\n", (time*1000/CLOCKS_PER_SEC));
+    fprintf(stderr, "} took %i ms.\n", (time*1000/getClocksPerSec()));
 }
 
 // Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.

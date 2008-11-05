@@ -334,6 +334,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\times.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\times.h"
+			>
+		</File>
+		<File
 			RelativePath="..\typedefs.h"
 			>
 		</File>

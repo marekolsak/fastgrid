@@ -1,13 +1,11 @@
 #pragma once
-#include <ctime>
 #include <cstdio>
-#include <sys/types.h>
 #if !defined(_WIN32)
-    #include <sys/times.h>
     #include <unistd.h>
 #endif
 #include "autogrid.h"
 #include "structs.h"
+#include "logfile.h"
 
 // round() is a C99 function and not universally available
 // Required to round %.3f consistently on different platforms
@@ -15,26 +13,6 @@
     #define round3dp(x) ((round((x)*1000.0L))/1000.0L)
 #else
     #define round3dp(x) ((floor((x)*1000.0 + 0.5)) / 1000.0)
-#endif
-
-// WinAPI defines ERROR, we have to #undef it since we use the same name
-#if defined(ERROR)
-    #undef ERROR
-#endif
-
-// printError() is used with error_level where:
-// error_level = one of the following:
-#define FATAL_ERROR -2
-#define ERROR -1
-#define WARNING  0
-#define INFORMATION 1
-#define SUGGESTION 2
-
-#if !defined(_WIN32)
-    #if defined(CLOCKS_PER_SEC)
-        #undef CLOCKS_PER_SEC
-    #endif
-    #define CLOCKS_PER_SEC (getClocksPerSec())
 #endif
 
 // Define tokens for parsing AutoDock atomic parameter files
@@ -73,43 +51,17 @@
 #define GPF_DSOLVMAP	22
 #define GPF_QASP	23
 
-// tms structure
-#if defined(_WIN32)
-struct tms
-{
-    clock_t tms_utime;	// CPU time used in executing the instructions of the calling process.
-    clock_t tms_stime;	// CPU time used by the system on behalf of the calling process.
-    clock_t tms_cutime;	// sum of the tms_utime values and the tms_cutime values of all terminated child processes of the calling process, whose status has been reported to the parent process by wait or waitpid; see section Process Completion. In other words, it represents the total CPU time used in executing the instructions of all the terminated child processes of the calling process, excluding child processes which have not yet been reported by wait or waitpid.
-    clock_t tms_cstime;	// similar to tms_cutime, but represents the total CPU time used by the system on behalf of all the terminated child processes of the calling process.
-    // All of the times are given in clock ticks. These are absolute values; in a newly created process, they are all zero. See section Creating a Process.
-};
-#endif
-
 // functions
 void initBoinc();
 FILE *openFile(const char *path, const char *mode);
-char *getHostname(char *buffer, int size);
 ParameterEntry *atomParameterManager_find(const char key[]);
 void atomParameterManager_enter(const char key[], ParameterEntry value);
-void printBanner(FILE *logFile, double versionNumber);
 double calculateDDDMehlerSolmajer(double distance, double aprrox_zero);
-int checkSize(int nelements, char axischar, const char *programname, FILE *logFile);
+int checkSize(int nelements, char axischar, LogFile &logFile);
 int getRecIndex(const char key[]);
 int parseGPFLine(char line[LINE_LEN]);
 int parseTypes(char * line, char *words[], int maxwords);
-void printTimeFixed(float t, FILE *logFile);
-char *getDate(int flag, char *buffer, int size);
-void printError(const char *programname, FILE *fileptr, int error_level, char message[LINE_LEN]);
-void printErrorFormatted(const char *programname, FILE *fileptr, int error_level, const char *format, ...);
 int strIndex(char s[], char t[]);
-void printClockTime(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile);
-void printClockTimeInHMS(Clock duration, struct tms *start, struct tms *end, Real idct, FILE *logFile);
-
-#if defined(_WIN32)
-clock_t times(struct tms *buffer);
-#else
-int getClocksPerSec();
-#endif
 
 void beginTimer(const char *description);
 void endTimer();

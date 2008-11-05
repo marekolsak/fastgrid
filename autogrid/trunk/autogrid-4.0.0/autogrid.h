@@ -37,6 +37,7 @@
     // Some functions in Visual C++ differ from those in the linux/unix environment
     #define isnan _isnan
     #define strncasecmp _strnicmp
+    #define snprintf _snprintf
 #endif
 
 #include "../autodock-4.0.1/autocomm.h"
@@ -77,11 +78,11 @@
 #define CYLINDRICAL 	1
 #define SPHERICAL 	2
 
-#define A_DIVISOR    100.    /* Angstrom is divided by this in look-up table. */
+#define A_DIVISOR    100    /* Angstrom is divided by this in look-up table. */
 
-#define	NBCUTOFF     8.      /* non-bond cutoff = 8 Angstroms.                */
+#define	NBCUTOFF     8      /* non-bond cutoff = 8 Angstroms.                */
 
-#define PRECISION 0.0001 /* fabs(Energies) less than this will be written as '0.' */
+#define PRECISION 0.0001 /* fabs(Energies) less than this will be written as '0' */
 
 /*----------------------------------------------------------------------------*/
 /* Macros,                                                                    */

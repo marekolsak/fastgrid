@@ -38,7 +38,7 @@ ProgramParameters::ProgramParameters(int argc, char **argv): debug(0)
     gridParameterFilename[0] = 0;
     logFilename[0] = 0;
 
-    Parse(argc, argv);
+    parse(argc, argv);
 }
 
 const char *ProgramParameters::getProgramName() const
@@ -61,31 +61,7 @@ int ProgramParameters::getDebugLevel() const
     return debug;
 }
 
-/******************************************************************************/
-/*      Name: processProgramParameters                                      */
-/*  Function: read flags from argv; return argindex of first non arg.         */
-/* Copyright: (C) Garrett Matthew Morris, TSRI.                               */
-/*----------------------------------------------------------------------------*/
-/*    Author: Garrett Matthew Morris, TSRI.                                   */
-/*            (Adapted from code supplied by Bruce Duncan, TSRI.)             */
-/*      Date: 06/11/92                                                        */
-/*----------------------------------------------------------------------------*/
-/*    Inputs: argc,argv                                                       */
-/*   Returns: argindex                                                        */
-/*   Globals: *GPF;                                                           */
-/*            *logFile;                                                       */
-/*            *programname;                                                   */
-/*            gridParameterFilename[];                                        */
-/*----------------------------------------------------------------------------*/
-/* Modification Record                                                        */
-/* Date     Inits   Comments                                                  */
-/* 06/11/92 GMM     Modified for Autogrid flags:                              */
-/*                  -p = Parameter filename;                                  */
-/*                  -l = Log filename;                                        */
-/*                  -o = Use old PDBq format (q in columns 55-61)             */
-/* 04/01/93 GMM     Created for use in makefile.                              */
-/******************************************************************************/
-int ProgramParameters::Parse(int argc, char **argv)
+int ProgramParameters::parse(int argc, char **argv)
 {
     strncpy(programName, argv[0], MAX_CHARS);
 

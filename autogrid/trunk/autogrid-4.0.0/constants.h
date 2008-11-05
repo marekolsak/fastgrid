@@ -126,7 +126,7 @@
 #define Div2Rad(divs) (((Real)((divs) - NTORDIVS_2))/ONE_RAD_IN_DIVS)
 
 #define TORBARMAX    65535    /* Torsion barrier-energy maximum value */
-#define DEFHWDTH     10.      /* Default half-width (deg)for torsion-constraints*/
+#define DEFHWDTH     10      /* Default half-width (deg)for torsion-constraints*/
 
 /*
  * Number of &tor0 entries in TOR_ARG_LIST must equal MAX_TORS...
@@ -135,9 +135,9 @@
 #define TOR_ARG_LIST        &sInit.tor[0], &sInit.tor[1], &sInit.tor[2], &sInit.tor[3], &sInit.tor[4], &sInit.tor[5], &sInit.tor[6], &sInit.tor[7], &sInit.tor[8], &sInit.tor[9], &sInit.tor[10], &sInit.tor[11], &sInit.tor[12], &sInit.tor[13], &sInit.tor[14], &sInit.tor[15], &sInit.tor[16], &sInit.tor[17], &sInit.tor[18], &sInit.tor[19], &sInit.tor[20], &sInit.tor[21], &sInit.tor[22], &sInit.tor[23], &sInit.tor[24], &sInit.tor[25], &sInit.tor[26], &sInit.tor[27], &sInit.tor[28], &sInit.tor[29], &sInit.tor[30], &sInit.tor[31]
 
 
-#define ENERGY_CUTOFF 500.    /* Arbitrary intermolecular cutoff, above
+#define ENERGY_CUTOFF 500    /* Arbitrary intermolecular cutoff, above
                                  which intramolecular energy is not calculated. */
-#define HI_NRG_JUMP_FACTOR 2. /* Scale up the range of random jumps by this when the
+#define HI_NRG_JUMP_FACTOR 2 /* Scale up the range of random jumps by this when the
                                  last energy was higher than ENERGY_CUTOFF. */
 
 #ifdef USE_8A_NBCUTOFF
@@ -251,11 +251,11 @@
 #define Rad(deg)     ((deg) * 0.01745329252)
 #define Deg(rad)     ((rad) * 57.29577951)
 
-#define ModDeg(a)    fmod((double)(a),(double)360.)
+#define ModDeg(a)    fmod((double)(a),(double)360)
 #define ModRad(a)    fmod((double)(a),(double)TWOPI)
 
-#define Wrp(a)       (((a)>180.)? ((a)-360.) :(((a)<-180.)? ((a)+360.) :(a)))
-#define WrpDeg(a)    (((a)>180.)? ((a)-360.) :(((a)<-180.)? ((a)+360.) :(a)))
+#define Wrp(a)       (((a)>180)? ((a)-360) :(((a)<-180)? ((a)+360) :(a)))
+#define WrpDeg(a)    (((a)>180)? ((a)-360) :(((a)<-180)? ((a)+360) :(a)))
 #define WrpRad(a)    (((a)> PI)? ((a)-TWOPI) :(((a)< -PI)?  ((a)+TWOPI) :(a)))
 #define WrpModRad(a) (((a)> PI)? (ModRad(a)-TWOPI) :(((a)< -PI)?  (ModRad(a)+TWOPI) :(a)))
 
@@ -331,7 +331,7 @@
 // This is platform-independent RNG-based.
 //#include "ranlib.h"   // removed until it's used
 #define seed_random(t)      setall((FourByteLong)(t), (FourByteLong)(t)); initgn(-1)
-#define local_random()      genunf(0., 1.)
+#define local_random()      genunf(0, 1)
 #endif
 
 #ifdef sgi
@@ -342,7 +342,7 @@
 #endif /* !sgi */
 
 #define random_sign        ((local_random() < 0.5) ?  (-1.0) : (+1.0))
-#define random_pm1()    (2.*local_random() - 1.) /* ..."pm"="Plus or Minus" */
+#define random_pm1()    (2*local_random() - 1) /* ..."pm"="Plus or Minus" */
 #define Randpm1                random_pm1()
 #define RandpmPI        PI * Randpm1
 #define random_pm(x)    ((x) * Randpm1)    /* ...random num. between +/- x; */
