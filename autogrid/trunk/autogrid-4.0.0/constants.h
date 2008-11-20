@@ -437,7 +437,7 @@
 /*
  * PDBQT
  */
-/* serial, name, altLoc, resName, chainID, resSeq, iCode, x, y, z, occupancy, tempFactor, segID, atom_type, "" */
+/* serial, name, altLoc, resName, chainID, resSeq, iCode, x, y, z, occupancy, tempFactor, segID, atomType, "" */
 #define FORMAT_PDBQT_ATOM       "ATOM  %5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f      %4s%2s%2s"
 
 #endif /* _PDB_FORMATS */

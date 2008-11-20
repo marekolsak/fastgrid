@@ -11,7 +11,7 @@ if x%4 == x goto ERROR
 cd %2
 echo cmd: ../autogrid4.exe" -p %input_file% -l %log_file%
 "../autogrid4.exe" -p %input_file% -l %log_file% 
-tail -n 1 EXAMPLE7.glg
+tail -n 1 %log_file%
 cd ..
 echo cmd: diff -U 0 %1 %2 ^> %3
 diff -U 0 %1 %2 > %3

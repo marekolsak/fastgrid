@@ -126,9 +126,13 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
+				OmitFramePointers="true"
+				EnableFiberSafeOptimizations="true"
 				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				StringPooling="true"
 				RuntimeLibrary="0"
+				BufferSecurityCheck="false"
 				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				BrowseInformation="1"
@@ -153,7 +157,8 @@
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
 				SubSystem="1"
-				StackReserveSize="100000000"
+				StackReserveSize="70000000"
+				StackCommitSize="0"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				OptimizeForWindows98="0"
@@ -286,10 +291,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\grid.h"
-			>
-		</File>
-		<File
 			RelativePath="..\logfile.cpp"
 			>
 		</File>
@@ -299,6 +300,14 @@
 		</File>
 		<File
 			RelativePath="..\main.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\mapobject.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\mapobject.h"
 			>
 		</File>
 		<File

@@ -9,8 +9,6 @@
 #define FORMATTED_MSG_MAX_SIZE (1<<14)
 
 #define FORMAT_MESSAGE(message, format) \
-    do \
-    { \
         message[sizeof(message)-1] = 0; \
         va_list ap; \
         va_start(ap, format); \
@@ -20,8 +18,7 @@
             printError(WARNING, "The following formatted string will be truncated."); \
             message[sizeof(message)-1] = 0; \
         } \
-        va_end(ap); \
-    } while (0);
+        va_end(ap);
 
 LogFile::LogFile(double versionNumber, const char *programName, const char *filename): file(0), invClocksPerSec(1 / float(getClocksPerSec()))
 {

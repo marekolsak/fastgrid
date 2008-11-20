@@ -34,6 +34,7 @@
 #include "parse_param_line.h"
 #include "../autodock-4.0.1/default_parameters.h"
 #include "utils.h"
+#include "exceptions.h"
 
 void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
 {
@@ -50,7 +51,7 @@ void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, cons
     //
     if ((parameter_library_file = openFile(FN_parameter_library, "r")) == 0) {
          fprintf(stderr,"Sorry, I can't find or open %s\n", FN_parameter_library);
-         exit(-1);
+         throw ExitProgram(-1);
     }
 
     while (fgets(parameter_library_line, sizeof(parameter_library_line), parameter_library_file) != 0) {
