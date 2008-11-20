@@ -41,7 +41,7 @@ GridMap::~GridMap()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-GridMapList::GridMapList(LogFile *logFile): gridmaps(0), logFile(logFile)
+GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), gridmaps(0), logFile(logFile)
 {}
 
 GridMapList::~GridMapList()
@@ -50,12 +50,14 @@ GridMapList::~GridMapList()
         delete [] gridmaps;
 }
 
-void GridMapList::SetCount(int count)
+void GridMapList::setNumMaps(int num)
 {
     if (gridmaps)
         delete [] gridmaps;
 
-    gridmaps = new(std::nothrow) GridMap[count];
+    numMaps = num;
+    numAtomMaps = num-2;
+    gridmaps = new(std::nothrow) GridMap[num];
     if (!gridmaps)
     {
         logFile->printError(ERROR, "Could not allocate memory to create the GridMap \"gridmaps\".\n");

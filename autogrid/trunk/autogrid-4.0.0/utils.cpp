@@ -157,11 +157,11 @@ int checkSize(int nelements, char axischar, LogFile &logFile)
 
 int getRecIndex(const char key[])
 {
-    ParameterEntry *found_parm;
+    ParameterEntry *foundParam;
 
-    found_parm = atomParameterManager_find(key);
-    if (found_parm != 0)
-        return found_parm->recIndex;
+    foundParam = atomParameterManager_find(key);
+    if (foundParam != 0)
+        return foundParam->recIndex;
     return -1;
 }
 

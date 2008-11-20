@@ -41,11 +41,16 @@ class GridMapList
 public:
     GridMapList(LogFile *logFile);
     ~GridMapList();
+
     GridMap &operator [](int i)             { return gridmaps[i]; }
     const GridMap &operator [](int i) const { return gridmaps[i]; }
-    void SetCount(int count);
+
+    int getNumMaps() const                  { return numMaps; }
+    int getNumAtomMaps() const              { return numAtomMaps; }
+    void setNumMaps(int num);
 
 private:
+    int numMaps, numAtomMaps;
     GridMap *gridmaps;
     LogFile *logFile;
 };

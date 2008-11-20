@@ -319,6 +319,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\pairwiseinteractionenergies.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\pairwiseinteractionenergies.h"
+			>
+		</File>
+		<File
 			RelativePath="..\parameters.h"
 			>
 		</File>
