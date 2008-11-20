@@ -51,7 +51,111 @@
 // objects
 #include "exceptions.h" // ExitProgram
 #include "logfile.h"    // LogFile
-#include "mapobject.h"  // MapObject
+#include "gridmap.h"    // GridMap
+
+#pragma endregion
+
+#pragma region Calculating pairwise interaction energies
+
+void calcPairwiseInteractionEnergies(const GridMapList &gridmaps, LogFile &logFile, double (&outEnergyLookup)[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS],
+                                     // TODO: unify these arguments somehow
+                                     int numAtomMaps, int numReceptorTypes, char (&receptorTypes)[NUM_RECEPTOR_TYPES][3], int iSmooth, double rSmooth)
+{
+    double energy_smooth[MAX_DIST];
+    double dxA;
+    double dxB;
+    double rA;
+    double rB;
+    double Rij, epsij;
+    double cA, cB, tmpconst;
+    int xA, xB;
+
+    logFile.print("\n\nCalculating Pairwise Interaction Energies\n"
+                  "=========================================\n\n");
+
+    // do the map stuff here:
+    // set up xA, xB, npb_r, npb_eps and hbonder
+    // before this pt
+    for (int ia = 0; ia < numAtomMaps; ia++)
+        if (gridmaps[ia].isCovalent == FALSE)
+        {
+            // i is the index of the receptor atom type, that the ia type ligand probe will interact with. *//* GPF_MAP
+            for (int i = 0; i < numReceptorTypes; i++)
+            {
+                // for each receptor_type
+                xA = gridmaps[ia].xA[i];
+                xB = gridmaps[ia].xB[i];
+                Rij = gridmaps[ia].nbpR[i];
+                epsij = gridmaps[ia].nbpEps[i];
+
+                // for each receptor_type get its parms and fill in tables
+                cA = (tmpconst = epsij / (double)(xA - xB)) * pow(Rij, (double)xA) * (double)xB;
+                cB = tmpconst * pow(Rij, (double)xB) * (double)xA;
+                if (isnan(cA))
+                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
+                if (isnan(cB))
+                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
+                dxA = (double)xA;
+                dxB = (double)xB;
+                if (xA == 0)
+                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
+                if (xB == 0)
+                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
+
+                logFile.printFormatted("\n             %9.1lf       %9.1lf \n"
+                                       "    E    =  -----------  -  -----------\n"
+                                       "     %s, %s         %2d              %2d\n"
+                                       "                r               r \n\n"
+                                       "Calculating energies for %s-%s interactions.\n",
+                                       cA, cB, gridmaps[ia].type, receptorTypes[i], xA, xB, gridmaps[ia].type, receptorTypes[i]);
+
+                // loop over distance index, indx_r, from 0 to MAX_DIST
+                for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                {
+                    double r = angstrom(indx_r);
+                    rA = pow(r, dxA);
+                    rB = pow(r, dxB);
+                    outEnergyLookup[i][indx_r][ia] = min(EINTCLAMP, (cA / rA - cB / rB));
+                }               // for each distance
+                outEnergyLookup[i][0][ia] = EINTCLAMP;
+                outEnergyLookup[i][MAX_DIST-1][ia] = 0;
+
+                // smooth with min function *//* GPF_MAP
+                if (iSmooth > 0)
+                {
+                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                    {
+                        energy_smooth[indx_r] = 100000;
+                        for (int j = max(0, indx_r - iSmooth); j < min(MAX_DIST, indx_r + iSmooth); j++)
+                            energy_smooth[indx_r] = min(energy_smooth[indx_r], outEnergyLookup[i][j][ia]);
+                    }
+                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                        outEnergyLookup[i][indx_r][ia] = energy_smooth[indx_r];
+                }               // endif smoothing
+            }                   // for i in receptor types: build energy table for this map
+
+            // Print out a table, of distance versus energy...
+            // GPF_MAP
+            logFile.printFormatted("\n\nFinding the lowest pairwise interaction energy within %.1f Angstrom (\"smoothing\").\n\n  r ", rSmooth);
+            for (int iat = 0; iat < numReceptorTypes; iat++)
+                logFile.printFormatted("    %s    ", receptorTypes[iat]);
+            logFile.print("\n ___");
+            for (int iat = 0; iat < numReceptorTypes; iat++)
+                logFile.print(" ________");                   // iat
+            logFile.print("\n");
+            for (int j = 0; j <= 500; j += 10)
+            {
+                logFile.printFormatted("%4.1lf", angstrom(j));
+                for (int iat = 0; iat < numReceptorTypes; iat++)
+                    logFile.printFormatted((outEnergyLookup[iat][j][ia] < 100000) ? "%9.2lf" : "%9.2lg", outEnergyLookup[iat][j][ia]);               // iat
+                logFile.print("\n");
+            }                   // j
+            logFile.print("\n");
+        }
+        else
+            // parsing for intnbp not needed for covalent maps
+            logFile.print("\nAny internal non-bonded parameters will be ignored for this map, since this is a covalent map.\n");
+}
 
 #pragma endregion
 
@@ -85,28 +189,31 @@ void appMain(int argc, char **argv)
     SetThreadAffinityMask(GetCurrentThread(), 1);
 #endif
 
-    double versionNumber = 4.00;
-
-    Linear_FE_Model AD4;
-    int outlev = -1;
-
     // Get the time at the start of the run...
     tms tmsJobStart;
     Clock jobStart = times(&tmsJobStart);
 
     // Initialization
+    double versionNumber = 4.00;
     initBoinc(); // Initialize BOINC if needed
     ProgramParameters programParams(argc, argv); // Initialize the ProgramParameters object, which parses the command-line arguments
     LogFile logFile(versionNumber, programParams.getProgramName(), programParams.getLogFilename()); // Initialize the log file
 
     // Read in default parameters
-    setupParameterLibrary(outlev, programParams.getProgramName(), programParams.getDebugLevel(), logFile, AD4);
+    LinearFreeEnergyModel model;
+    setupParameterLibrary(-1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Declarations of variables needed below
 
-    MapObject *gridmaps = 0; // dynamically alocated array gridmaps[numMaps]
+    GridMapList gridmaps(&logFile);
     int numMaps = 0;
+    int numAtomMaps = -1;
+
+    char fldFilenameAVS[MAX_CHARS] = {0};
+    char floatingGridFilename[MAX_CHARS] = {0};
+    char receptorFilename[MAX_CHARS] = {0};
+    char xyzFilename[MAX_CHARS] = {0};
 
     // variables for RECEPTOR:
     // each type is now at most two characters, eg 'NA\0'
@@ -128,10 +235,6 @@ void appMain(int argc, char **argv)
     int n1[XYZ];
     int nelements[XYZ];
 
-    char fldFilenameAVS[MAX_CHARS] = {0};
-    char floatingGridFilename[MAX_CHARS] = {0};
-    char receptorFilename[MAX_CHARS] = {0};
-    char xyzFilename[MAX_CHARS] = {0};
 
     double epsilon[MAX_DIST];
 
@@ -144,7 +247,6 @@ void appMain(int argc, char **argv)
     double covHalfWidth = 1.0;
     double covBarrier = 1000.0;
 
-    int numAtomMaps = -1;
     int dddiel = FALSE, disorderH = FALSE;
     int elecPE = 0;
     int dsolvPE = 0;
@@ -180,7 +282,7 @@ void appMain(int argc, char **argv)
 
     // LINE_LEN
     char line[LINE_LEN];
-    char GPF_line[LINE_LEN];
+    char GPFLine[LINE_LEN];
     int length = LINE_LEN;
 
     char atom_name[6];
@@ -221,28 +323,28 @@ void appMain(int argc, char **argv)
     char FN_parameter_library[MAX_CHARS];   // the AD4 parameters .dat file name
     int parameter_library_found = 0;
 
-    while (fgets(GPF_line, LINE_LEN, GPF) != 0)
+    while (fgets(GPFLine, LINE_LEN, GPF) != 0)
     {
-        GPF_keyword = parseGPFLine(GPF_line);
+        GPF_keyword = parseGPFLine(GPFLine);
 
         // This first "switch" figures out how to echo the current GPF line.
         switch (GPF_keyword)
         {
         case -1:
-            logFile.printFormatted("GPF> %s", GPF_line);
+            logFile.printFormatted("GPF> %s", GPFLine);
             logFile.printError(WARNING, "Unrecognized keyword in grid parameter file.\n");
-            continue;           // while fgets GPF_line...
+            continue;           // while fgets GPFLine...
 
         case GPF_NULL:
         case GPF_COMMENT:
-            logFile.printFormatted("GPF> %s", GPF_line);
+            logFile.printFormatted("GPF> %s", GPFLine);
             break;
 
         default:
-            logFile.printFormatted("GPF> %s", GPF_line);
-            indcom = strIndex(GPF_line, "#");
+            logFile.printFormatted("GPF> %s", GPFLine);
+            indcom = strIndex(GPFLine, "#");
             if (indcom != -1)
-                GPF_line[indcom] = '\0';    // Truncate str. at the comment
+                GPFLine[indcom] = '\0';    // Truncate str. at the comment
             break;
 
         }                       // first switch
@@ -257,7 +359,7 @@ void appMain(int argc, char **argv)
         case GPF_RECEPTOR:
             {
                 // read in the receptor filename
-                sscanf(GPF_line, "%*s %s", receptorFilename);
+                sscanf(GPFLine, "%*s %s", receptorFilename);
                 logFile.printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
 
                 // try to open receptor file
@@ -404,28 +506,34 @@ void appMain(int argc, char **argv)
                     logFile.printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                 }                   // if there are no charges EXIT
 
-                logFile.printFormatted("Atom\tAtom\tNumber of this Type\n");
-                logFile.printFormatted("Type\t ID \t in Receptor\n");
-                logFile.printFormatted("____\t____\t___________________\n");
+                logFile.print("Atom\tAtom\tNumber of this Type\n"
+                              "Type\t ID \t in Receptor\n"
+                              "____\t____\t___________________\n");
+
                 // 2. CHANGE HERE: need to count number of each receptor_type
                 for (int ia = 0; ia < numReceptorTypes; ia++)
                     if (receptor_atom_type_count[ia] != 0)
                         logFile.printFormatted(" %d\t %s\t\t%6d\n", (ia), receptorTypes[ia], receptor_atom_type_count[ia]);
-                logFile.printFormatted("\nTotal number of atoms :\t\t%d atoms \n", numReceptorAtoms);
-                logFile.printFormatted("Total charge :\t\t\t%.2lf e\n", q_tot);
-                logFile.printFormatted("\n\nReceptor coordinates fit within the following volume:\n\n");
-                logFile.printFormatted("                   _______(%.1lf, %.1lf, %.1lf)\n", cmax[X], cmax[Y], cmax[Z]);
-                logFile.printFormatted("                  /|     /|\n");
-                logFile.printFormatted("                 / |    / |\n");
-                logFile.printFormatted("                /______/  |\n");
-                logFile.printFormatted("                |  |___|__| Midpoint = (%.1lf, %.1lf, %.1lf)\n", (cmax[X] + cmin[X]) / 2, (cmax[Y] + cmin[Y]) / 2, (cmax[Z] + cmin[Z]) / 2);
-                logFile.printFormatted("                |  /   |  /\n");
-                logFile.printFormatted("                | /    | /\n");
-                logFile.printFormatted("                |/_____|/\n");
-                logFile.printFormatted("(%.1lf, %.1lf, %.1lf)      \n", cmin[X], cmin[Y], cmin[Z]);
-                logFile.printFormatted("\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n", cmax[X], cmax[Y], cmax[Z]);
-                logFile.printFormatted("Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cmin[X], cmin[Y], cmin[Z]);
-                logFile.printFormatted("\n");
+
+                logFile.printFormatted("\nTotal number of atoms :\t\t%d atoms \n"
+                                       "Total charge :\t\t\t%.2lf e\n"
+                                       "\n\nReceptor coordinates fit within the following volume:\n\n"
+                                       "                   _______(%.1lf, %.1lf, %.1lf)\n"
+                                       "                  /|     /|\n"
+                                       "                 / |    / |\n"
+                                       "                /______/  |\n"
+                                       "                |  |___|__| Midpoint = (%.1lf, %.1lf, %.1lf)\n"
+                                       "                |  /   |  /\n"
+                                       "                | /    | /\n"
+                                       "                |/_____|/\n"
+                                       "(%.1lf, %.1lf, %.1lf)      \n"
+                                       "\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n"
+                                       "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n"
+                                       "\n",
+                                       numReceptorAtoms, q_tot, cmax[X], cmax[Y], cmax[Z],
+                                       (cmax[X] + cmin[X]) / 2, (cmax[Y] + cmin[Y]) / 2, (cmax[Z] + cmin[Z]) / 2,
+                                       cmin[X], cmin[Y], cmin[Z], cmax[X], cmax[Y], cmax[Z], cmin[X], cmin[Y], cmin[Z]);
+
                 cmean[0] = csum[0] / (double)numReceptorAtoms;
                 cmean[1] = csum[1] / (double)numReceptorAtoms;
                 cmean[2] = csum[2] / (double)numReceptorAtoms;
@@ -433,7 +541,7 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_GRIDFLD:
-            sscanf(GPF_line, "%*s %s", fldFilenameAVS);
+            sscanf(GPFLine, "%*s %s", fldFilenameAVS);
             infld = strIndex(fldFilenameAVS, ".fld");
             if (infld == -1)
                 logFile.printError(FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
@@ -456,40 +564,39 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_NPTS:
-            sscanf(GPF_line, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
+            sscanf(GPFLine, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
             for (int i = 0; i < XYZ; i++)
             {
                 nelements[i] = checkSize(nelements[i], xyz[i], logFile);
                 ne[i] = nelements[i] / 2;
                 n1[i] = nelements[i] + 1;
             }
-            logFile.printFormatted("\n");
-            logFile.printFormatted("Number of grid points in x-direction:\t%d\n", n1[X]);
-            logFile.printFormatted("Number of grid points in y-direction:\t%d\n", n1[Y]);
-            logFile.printFormatted("Number of grid points in z-direction:\t%d\n", n1[Z]);
-            logFile.printFormatted("\n");
+            logFile.printFormatted("\nNumber of grid points in x-direction:\t%d\n"
+                                   "Number of grid points in y-direction:\t%d\n"
+                                   "Number of grid points in z-direction:\t%d\n\n",
+                                   n1[X], n1[Y], n1[Z]);
+
             numGridPointsPerMap = n1[X] * n1[Y] * n1[Z];
             percentDone = 100 / (double)n1[Z];
             break;
 
         case GPF_SPACING:
-            sscanf(GPF_line, "%*s %lf", &spacing);
-            logFile.printFormatted("Grid Spacing :\t\t\t%.3lf Angstrom\n", spacing);
-            logFile.printFormatted("\n");
+            sscanf(GPFLine, "%*s %lf", &spacing);
+            logFile.printFormatted("Grid Spacing :\t\t\t%.3lf Angstrom\n\n", spacing);
             break;
 
         case GPF_GRIDCENTER:
-            sscanf(GPF_line, "%*s %s", token);
+            sscanf(GPFLine, "%*s %s", token);
             if (equal(token, "auto", 4))
             {
                 for (int i = 0; i < XYZ; i++)
                     center[i] = cmean[i];
-                logFile.printFormatted("Grid maps will be centered on the center of mass.\n");
-                logFile.printFormatted("Coordinates of center of mass : (%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
+                logFile.printFormatted("Grid maps will be centered on the center of mass.\n"
+                                       "Coordinates of center of mass : (%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
             }
             else
             {
-                sscanf(GPF_line, "%*s %lf %lf %lf", &center[X], &center[Y], &center[Z]);
+                sscanf(GPFLine, "%*s %lf %lf %lf", &center[X], &center[Y], &center[Z]);
                 logFile.printFormatted("\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
             }
             // centering stuff...
@@ -502,20 +609,24 @@ void appMain(int argc, char **argv)
                 cgridmax[i] = center[i] + cext[i];
                 cgridmin[i] = center[i] - cext[i];
             }
-            logFile.printFormatted("\nGrid maps will cover the following volume:\n\n");
-            logFile.printFormatted("                   _______(%.1lf, %.1lf, %.1lf)\n", cgridmax[X], cgridmax[Y], cgridmax[Z]);
-            logFile.printFormatted("                  /|     /|\n");
-            logFile.printFormatted("                 / |    / |\n");
-            logFile.printFormatted("                /______/  |\n");
-            logFile.printFormatted("                |  |___|__| Midpoint = (%.1lf, %.1lf, %.1lf)\n", center[X], center[Y], center[Z]);
-            logFile.printFormatted("                |  /   |  /\n");
-            logFile.printFormatted("                | /    | /\n");
-            logFile.printFormatted("                |/_____|/\n");
-            logFile.printFormatted("(%.1lf, %.1lf, %.1lf)      \n\n", cgridmin[X], cgridmin[Y], cgridmin[Z]);
+
+            logFile.printFormatted("\nGrid maps will cover the following volume:\n\n"
+                                   "                   _______(%.1lf, %.1lf, %.1lf)\n"
+                                   "                  /|     /|\n"
+                                   "                 / |    / |\n"
+                                   "                /______/  |\n"
+                                   "                |  |___|__| Midpoint = (%.1lf, %.1lf, %.1lf)\n"
+                                   "                |  /   |  /\n"
+                                   "                | /    | /\n"
+                                   "                |/_____|/\n"
+                                   "(%.1lf, %.1lf, %.1lf)      \n\n", cgridmax[X], cgridmax[Y], cgridmax[Z],
+                                   center[X], center[Y], center[Z], cgridmin[X], cgridmin[Y], cgridmin[Z]);
+
             for (int i = 0; i < XYZ; i++)
                 logFile.printFormatted("Grid map %c-dimension :\t\t%.1lf Angstroms\n", xyz[i], 2 * cext[i]);
-            logFile.printFormatted("\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n", cgridmax[X], cgridmax[Y], cgridmax[Z]);
-            logFile.printFormatted("Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cgridmin[X], cgridmin[Y], cgridmin[Z]);
+
+            logFile.printFormatted("\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n"
+                                   "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cgridmax[X], cgridmax[Y], cgridmax[Z], cgridmin[X], cgridmin[Y], cgridmin[Z]);
             for (int i = 0; i < XYZ; i++)
                 fprintf(xyz_fileptr, "%.3lf %.3lf\n", cgridmin[i], cgridmax[i]);
             fclose(xyz_fileptr);
@@ -524,12 +635,12 @@ void appMain(int argc, char **argv)
         case GPF_LIGAND_TYPES:
             {
                 // Read in the list of atom types in the ligand.
-                // GPF_line e.g.: "ligandTypes N O A C HH NH"
+                // GPFLine e.g.: "ligandTypes N O A C HH NH"
 
                 // array of ptrs used to parse input line
                 char *ligand_atom_types[MAX_MAPS];
 
-                numAtomMaps = parseTypes(GPF_line, ligand_atom_types, MAX_ATOM_TYPES);
+                numAtomMaps = parseTypes(GPFLine, ligand_atom_types, MAX_ATOM_TYPES);
                 for (int i = 0; i < numAtomMaps; i++)
                     strcpy(ligandTypes[i], ligand_atom_types[i]);
                 for (int i = 0; i < numAtomMaps; i++)
@@ -553,12 +664,7 @@ void appMain(int argc, char **argv)
                 numMaps = numAtomMaps + 2;
 
                 // Check to see if there is enough memory to store these map objects
-                gridmaps = new(std::nothrow) MapObject[numMaps];
-                if (!gridmaps)
-                {
-                    logFile.printError(ERROR, "Could not allocate memory to create the MapObject \"gridmaps\".\n");
-                    logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-                }
+                gridmaps.SetCount(numAtomMaps+2);
 
                 // Check to see if the number of grid points requested will be feasible; give warning if not enough memory.
                 if (numGridPointsPerMap != INIT_NUM_GRID_PTS)
@@ -634,6 +740,7 @@ void appMain(int argc, char **argv)
                         }
                     }              // initialize energy parms for each possible receptor type
                 }                   // for each map
+
                 logFile.printFormatted("\nAtom type names for ligand atom types 1-%d used for ligand-atom affinity grid maps:\n\n", numAtomMaps);
                 for (int i = 0; i < numAtomMaps; i++)
                 {
@@ -643,14 +750,14 @@ void appMain(int argc, char **argv)
                     /* if (gridmaps[i].atomType == COVALENTTYPE) { gridmaps[i].isCovalent = TRUE;  logFile.printFormatted("\nAtom type number %d will be used to calculate a covalent affinity
                        grid map\n\n", i + 1); } */
                 }
-                logFile.printFormatted("\n\n");
+                logFile.print("\n\n");
             }
             break;
 
         case GPF_RECEPTOR_TYPES:
             {
                 // Read in the list of atom types in the receptor.
-                // GPF_line e.g.: "receptorTypes N O A C HH NH"
+                // GPFLine e.g.: "receptorTypes N O A C HH NH"
                 //
                 // NOTE: This line is not guaranteed to match the actual
                 // atom types present in the receptor PDBQT file
@@ -659,7 +766,7 @@ void appMain(int argc, char **argv)
                 // array of ptrs used to parse input line
                 char *receptor_atom_types[NUM_RECEPTOR_TYPES];
 
-                numReceptorTypes = parseTypes(GPF_line, receptor_atom_types, MAX_ATOM_TYPES);
+                numReceptorTypes = parseTypes(GPFLine, receptor_atom_types, MAX_ATOM_TYPES);
                 receptor_types_gpf_ct = numReceptorTypes;
                 has_receptor_types_in_gpf = 1;
 
@@ -681,7 +788,7 @@ void appMain(int argc, char **argv)
 
         case GPF_SOL_PAR:      // THIS IS OBSOLETE!!!
             // Read volume and solvation parameter for probe:
-            sscanf(GPF_line, "%*s %s %lf %lf", thisparm.autogridType, &temp_vol, &temp_solpar);
+            sscanf(GPFLine, "%*s %s %lf %lf", thisparm.autogridType, &temp_vol, &temp_solpar);
             found_parm = atomParameterManager_find(thisparm.autogridType);
             if (found_parm != 0)
             {
@@ -716,7 +823,7 @@ void appMain(int argc, char **argv)
                 logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             // Read in the filename for this grid map *//* GPF_MAP
-            sscanf(GPF_line, "%*s %s", gridmaps[mapIndex].mapFilename);
+            sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].mapFilename);
             if ((gridmaps[mapIndex].mapFile = openFile(gridmaps[mapIndex].mapFilename, "w")) == 0)
             {
                 logFile.printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].mapFilename);
@@ -726,7 +833,7 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_ELECMAP:
-            sscanf(GPF_line, "%*s %s", gridmaps[elecPE].mapFilename);
+            sscanf(GPFLine, "%*s %s", gridmaps[elecPE].mapFilename);
             if ((gridmaps[elecPE].mapFile = openFile(gridmaps[elecPE].mapFilename, "w")) == 0)
             {
                 logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps[elecPE].mapFilename);
@@ -736,7 +843,7 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_DSOLVMAP:
-            sscanf(GPF_line, "%*s %s", gridmaps[dsolvPE].mapFilename);
+            sscanf(GPFLine, "%*s %s", gridmaps[dsolvPE].mapFilename);
             if ((gridmaps[dsolvPE].mapFile = openFile(gridmaps[dsolvPE].mapFilename, "w")) == 0)
             {
                 logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps[dsolvPE].mapFilename);
@@ -746,23 +853,25 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_COVALENTMAP:
-            sscanf(GPF_line, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covpos[X]), &(covpos[Y]), &(covpos[Z]));
-            logFile.printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n");
-            logFile.printFormatted("\nCovalent well's half-width in Angstroms:         %8.3f\n", covHalfWidth);
-            logFile.printFormatted("\nCovalent barrier energy in kcal/mol:             %8.3f\n", covBarrier);
-            logFile.printFormatted("\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n", covpos[X], covpos[Y], covpos[Z]);
+            sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covpos[X]), &(covpos[Y]), &(covpos[Z]));
+            logFile.printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
+                                   "\nCovalent well's half-width in Angstroms:         %8.3f\n"
+                                   "\nCovalent barrier energy in kcal/mol:             %8.3f\n"
+                                   "\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n",
+                                   covHalfWidth, covBarrier, covpos[X], covpos[Y], covpos[Z]);
+
+            // center covpos in the grid maps frame of reference,
             for (int i = 0; i < XYZ; i++)
-                // center covpos in the grid maps frame of reference,
                 covpos[i] -= center[i];
             break;
 
         case GPF_DISORDER:
             disorderH = TRUE;
-            logFile.printFormatted("\nHydroxyls will be disordered \n\n");
+            logFile.print("\nHydroxyls will be disordered \n\n");
             break;
 
         case GPF_SMOOTH:
-            sscanf(GPF_line, "%*s %lf", &rSmooth);
+            sscanf(GPFLine, "%*s %lf", &rSmooth);
             logFile.printFormatted("\nPotentials will be smoothed by: %.3lf Angstrom\n\n", rSmooth);
             // Angstrom is divided by A_DIVISOR in look-up table.
             // Typical value of rSmooth is 0.5 Angstroms
@@ -771,29 +880,29 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_QASP:
-            sscanf(GPF_line, "%*s %lf", &solparQ);
+            sscanf(GPFLine, "%*s %lf", &solparQ);
             logFile.printFormatted("\nCharge component of the atomic solvation parameter: %.3lf\n\n", solparQ);
             // Typical value of solparQ is 0.001118
             break;
 
         case GPF_DIEL:
-            sscanf(GPF_line, "%*s %lf", &diel);
+            sscanf(GPFLine, "%*s %lf", &diel);
             if (diel < 0)
             {
                 // negative...
                 dddiel = TRUE;
                 // calculate ddd of Mehler & Solmajer
-                logFile.printFormatted("\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n");
                 epsilon[0] = 1.0;
                 for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
                     epsilon[indx_r] = calculateDDDMehlerSolmajer(angstrom(indx_r), APPROX_ZERO);
-                logFile.printFormatted("  d   Dielectric\n ___  __________\n");
+                logFile.print("\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n"
+                              "  d   Dielectric\n ___  __________\n");
                 for (int i = 0; i <= 500; i += 10)
                 {
                     ri = angstrom(i);
                     logFile.printFormatted("%4.1lf%9.2lf\n", ri, epsilon[i]);
                 }
-                logFile.printFormatted("\n");
+                logFile.print("\n");
                 // convert epsilon to 1 / epsilon
                 for (int i = 1; i < MAX_DIST; i++)
                     epsilon[i] = factor / epsilon[i];
@@ -810,25 +919,24 @@ void appMain(int argc, char **argv)
             break;
 
         case GPF_FMAP:
-            sscanf(GPF_line, "%*s %s", floatingGridFilename);
+            sscanf(GPFLine, "%*s %s", floatingGridFilename);
             logFile.printFormatted("\nFloating Grid file name = %s\n", floatingGridFilename);
             ++numMaps;
             break;
 
         case GPF_PARAM_FILE:
             // open and read the AD4 parameters .dat file
-            parameter_library_found = sscanf(GPF_line, "%*s %s ", FN_parameter_library);
-            readParameterLibrary(FN_parameter_library, outlev, programParams.getProgramName(), programParams.getDebugLevel(), logFile, AD4);
+            parameter_library_found = sscanf(GPFLine, "%*s %s ", FN_parameter_library);
+            readParameterLibrary(FN_parameter_library, -1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model);
             break;
         }                       // second switch
     }                           // while
 
-    logFile.printFormatted("\n>>> Closing the grid parameter file (GPF)... <<<\n\n");
-    logFile.printFormatted(UnderLine);
+    logFile.print("\n>>> Closing the grid parameter file (GPF)... <<<\n\n" UnderLine);
     fclose(GPF);
 
     if (!floatingGridFilename[0])
-        logFile.printFormatted("\n\nNo Floating Grid was requested.\n");
+        logFile.print("\n\nNo Floating Grid was requested.\n");
 }
 #pragma endregion
 
@@ -884,107 +992,9 @@ void appMain(int argc, char **argv)
 
     // MAX_DIST is not NBCUTOFF times 100 as it should be, it's a power of two for a little faster memory access
     // values beyond this threshold are unused
-    double energy_lookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
-    double r;   // temporary??
+    double energyLookup[NUM_RECEPTOR_TYPES][MAX_DIST][MAX_MAPS];
 
-#pragma region Calculating pairwise interaction energies
-{
-    double energy_smooth[MAX_DIST];
-    double dxA;
-    double dxB;
-    double rA;
-    double rB;
-    double Rij, epsij;
-    double cA, cB, tmpconst;
-    int xA, xB;
-
-    logFile.printFormatted("\n\nCalculating Pairwise Interaction Energies\n");
-    logFile.printFormatted("=========================================\n\n");
-
-    // do the map stuff here:
-    // set up xA, xB, npb_r, npb_eps and hbonder
-    // before this pt
-    for (int ia = 0; ia < numAtomMaps; ia++)
-        if (gridmaps[ia].isCovalent == FALSE)
-        {
-            // i is the index of the receptor atom type, that the ia type ligand probe will interact with. *//* GPF_MAP
-            for (int i = 0; i < numReceptorTypes; i++)
-            {
-                // for each receptor_type
-                xA = gridmaps[ia].xA[i];
-                xB = gridmaps[ia].xB[i];
-                Rij = gridmaps[ia].nbpR[i];
-                epsij = gridmaps[ia].nbpEps[i];
-
-                // for each receptor_type get its parms and fill in tables
-                cA = (tmpconst = epsij / (double)(xA - xB)) * pow(Rij, (double)xA) * (double)xB;
-                cB = tmpconst * pow(Rij, (double)xB) * (double)xA;
-                if (isnan(cA))
-                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
-                if (isnan(cB))
-                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
-                dxA = (double)xA;
-                dxB = (double)xB;
-                if (xA == 0)
-                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
-                if (xB == 0)
-                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
-                logFile.printFormatted("\n             %9.1lf       %9.1lf \n", cA, cB);
-                logFile.printFormatted("    E    =  -----------  -  -----------\n");
-                logFile.printFormatted("     %s, %s         %2d              %2d\n", gridmaps[ia].type, receptorTypes[i], xA, xB);
-                logFile.printFormatted("                r               r \n\n");
-                // loop over distance index, indx_r, from 0 to MAX_DIST *//* GPF_MAP
-                logFile.printFormatted("Calculating energies for %s-%s interactions.\n", gridmaps[ia].type, receptorTypes[i]);
-
-                for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
-                {
-                    r = angstrom(indx_r);
-                    rA = pow(r, dxA);
-                    rB = pow(r, dxB);
-                    energy_lookup[i][indx_r][ia] = min(EINTCLAMP, (cA / rA - cB / rB));
-                }               // for each distance
-                energy_lookup[i][0][ia] = EINTCLAMP;
-                energy_lookup[i][MAX_DIST-1][ia] = 0;
-
-                // smooth with min function *//* GPF_MAP
-                if (iSmooth > 0)
-                {
-                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
-                    {
-                        energy_smooth[indx_r] = 100000;
-                        for (int j = max(0, indx_r - iSmooth); j < min(MAX_DIST, indx_r + iSmooth); j++)
-                            energy_smooth[indx_r] = min(energy_smooth[indx_r], energy_lookup[i][j][ia]);
-                    }
-                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
-                        energy_lookup[i][indx_r][ia] = energy_smooth[indx_r];
-                }               // endif smoothing
-            }                   // for i in receptor types: build energy table for this map
-
-            // Print out a table, of distance versus energy...
-            // GPF_MAP
-            logFile.printFormatted("\n\nFinding the lowest pairwise interaction energy within %.1f Angstrom (\"smoothing\").\n\n  r ", rSmooth);
-            for (int iat = 0; iat < numReceptorTypes; iat++)
-                logFile.printFormatted("    %s    ", receptorTypes[iat]);
-            logFile.printFormatted("\n ___");
-            for (int iat = 0; iat < numReceptorTypes; iat++)
-                logFile.printFormatted(" ________");                   // iat
-            logFile.printFormatted("\n");
-            for (int j = 0; j <= 500; j += 10)
-            {
-                logFile.printFormatted("%4.1lf", angstrom(j));
-                for (int iat = 0; iat < numReceptorTypes; iat++)
-                    logFile.printFormatted((energy_lookup[iat][j][ia] < 100000) ? "%9.2lf" : "%9.2lg", energy_lookup[iat][j][ia]);               // iat
-                logFile.printFormatted("\n");
-            }                   // j
-            logFile.printFormatted("\n");
-        }
-        else
-        {
-            // parsing for intnbp not needed for covalent maps
-            logFile.printFormatted("\nAny internal non-bonded parameters will be ignored for this map, since this is a covalent map.\n");
-        }                       // end of else parsing intnbp
-}
-#pragma endregion
+    calcPairwiseInteractionEnergies(gridmaps, logFile, energyLookup, numAtomMaps, numReceptorTypes, receptorTypes, iSmooth, rSmooth);
 
     double sol_fn[MAX_DIST];
 
@@ -999,10 +1009,10 @@ void appMain(int argc, char **argv)
     minus_inv_two_sigma_sqd = -1 / (2 * sigma * sigma);
     for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
     {
-        r = angstrom(indx_r);
+        double r = angstrom(indx_r);
         // sol_fn[indx_r] = exp(-sq(r)/(2*sigma*sigma));
         sol_fn[indx_r] = exp(sq(r) * minus_inv_two_sigma_sqd);
-        sol_fn[indx_r] *= AD4.coeff_desolv;
+        sol_fn[indx_r] *= model.coeff_desolv;
     }
 }
 #pragma endregion
@@ -1452,20 +1462,20 @@ void appMain(int argc, char **argv)
         fprintf(gridmaps[k].mapFile, "NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
         fprintf(gridmaps[k].mapFile, "CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
     }
-    FILE *floating_grid_fileptr = 0;
+    FILE *floatingGridFile = 0;
     if (floatingGridFilename[0])
     {
-        if ((floating_grid_fileptr = openFile(floatingGridFilename, "w")) == 0)
+        if ((floatingGridFile = openFile(floatingGridFilename, "w")) == 0)
         {
             logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", floatingGridFilename);
             logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
         }
-        fprintf(floating_grid_fileptr, "GRID_PARAMETER_FILE %s\n", programParams.getGridParameterFilename());
-        fprintf(floating_grid_fileptr, "GRID_DATA_FILE %s\n", fldFilenameAVS);
-        fprintf(floating_grid_fileptr, "MACROMOLECULE %s\n", receptorFilename);
-        fprintf(floating_grid_fileptr, "SPACING %.3lf\n", spacing);
-        fprintf(floating_grid_fileptr, "NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
-        fprintf(floating_grid_fileptr, "CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
+        fprintf(floatingGridFile, "GRID_PARAMETER_FILE %s\n", programParams.getGridParameterFilename());
+        fprintf(floatingGridFile, "GRID_DATA_FILE %s\n", fldFilenameAVS);
+        fprintf(floatingGridFile, "MACROMOLECULE %s\n", receptorFilename);
+        fprintf(floatingGridFile, "SPACING %.3lf\n", spacing);
+        fprintf(floatingGridFile, "NELEMENTS %d %d %d\n", nelements[X], nelements[Y], nelements[Z]);
+        fprintf(floatingGridFile, "CENTER %.3lf %.3lf %.3lf\n", center[X], center[Y], center[Z]);
     }
 #pragma endregion
 
@@ -1495,12 +1505,13 @@ void appMain(int argc, char **argv)
     tms tms_grd_start;
     tms tms_grd_end;
 
-    logFile.printFormatted("Beginning grid calculations.\n");
-    logFile.printFormatted("\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n", numMaps, numGridPointsPerMap, numReceptorAtoms);
-    logFile.printFormatted("                    Percent   Estimated Time  Time/this plane\n");
-    logFile.printFormatted("XY-plane  Z-coord   Done      Remaining       Real, User, System\n");
-    logFile.printFormatted("            /Ang              /sec            /sec\n");
-    logFile.printFormatted("________  ________  ________  ______________  __________________________\n\n");
+    logFile.printFormatted("Beginning grid calculations.\n"
+                           "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
+                           "                    Percent   Estimated Time  Time/this plane\n"
+                           "XY-plane  Z-coord   Done      Remaining       Real, User, System\n"
+                           "            /Ang              /sec            /sec\n"
+                           "________  ________  ________  ______________  __________________________\n\n",
+                           numMaps, numGridPointsPerMap, numReceptorAtoms);
 
     // Iterate over all grid points, Z(Y (X)) (X is fastest)...
     for (icoord[Z] = -ne[Z]; icoord[Z] <= ne[Z]; icoord[Z]++)
@@ -1551,7 +1562,7 @@ void appMain(int argc, char **argv)
                     {           // DS or D1
                         for (int i = 0; i < XYZ; i++)
                             d[i] = coord[ia][i] - c[i];
-                        r = hypotenuse(d[X], d[Y], d[Z]);
+                        double r = hypotenuse(d[X], d[Y], d[Z]);
                         if (r < rmin)
                         {
                             rmin = r;
@@ -1566,7 +1577,7 @@ void appMain(int argc, char **argv)
                     //  Get distance, r, from current grid point, c, to this receptor atom, coord,
                     for (int i = 0; i < XYZ; i++)
                         d[i] = coord[ia][i] - c[i];
-                    r = hypotenuse(d[X], d[Y], d[Z]);
+                    double r = hypotenuse(d[X], d[Y], d[Z]);
                     if (r < APPROX_ZERO)
                         r = APPROX_ZERO;
                     inv_r = 1 / r;
@@ -1586,11 +1597,11 @@ void appMain(int argc, char **argv)
                         // Distance-dependent dielectric...
                         // gridmaps[elecPE].energy += charge[ia] * inv_r * epsilon[indx_r];
                         // apply the estat forcefield coefficient/weight here
-                        gridmaps[elecPE].energy += charge[ia] * inv_rmax * epsilon[indx_r] * AD4.coeff_estat;
+                        gridmaps[elecPE].energy += charge[ia] * inv_rmax * epsilon[indx_r] * model.coeff_estat;
                     else
                         // Constant dielectric...
                         // gridmaps[elecPE].energy += charge[ia] * inv_r * invDielCal;
-                        gridmaps[elecPE].energy += charge[ia] * inv_rmax * invDielCal * AD4.coeff_estat;
+                        gridmaps[elecPE].energy += charge[ia] * inv_rmax * invDielCal * model.coeff_estat;
 
                     // If distance from grid point to atom ia is too large,
                     // or if atom is a disordered hydrogen,
@@ -1802,7 +1813,7 @@ void appMain(int argc, char **argv)
                                 // PROBE forms H-bonds...
 
                                 // rsph ramps in angular dependence for distances with negative energy
-                                rsph = energy_lookup[atomType[ia]][indx_r][mapIndex] / 100;
+                                rsph = energyLookup[atomType[ia]][indx_r][mapIndex] / 100;
                                 rsph = max(rsph, 0);
                                 rsph = min(rsph, 1);
                                 if ((gridmaps[mapIndex].hbond == 3 || gridmaps[mapIndex].hbond == 5)    // AS or A2
@@ -1810,32 +1821,32 @@ void appMain(int argc, char **argv)
                                 {   // DS or D1
                                     // PROBE can be an H-BOND ACCEPTOR,
                                     if (disorder[ia] == FALSE)
-                                        gridmaps[mapIndex].energy += energy_lookup[atomType[ia]][indx_r][mapIndex] * Hramp * (racc + (1 - racc) * rsph);
+                                        gridmaps[mapIndex].energy += energyLookup[atomType[ia]][indx_r][mapIndex] * Hramp * (racc + (1 - racc) * rsph);
                                     else
-                                        gridmaps[mapIndex].energy += energy_lookup[hydrogen][max(0, indx_r - 110)][mapIndex] * Hramp * (racc + (1 - racc) * rsph);
+                                        gridmaps[mapIndex].energy += energyLookup[hydrogen][max(0, indx_r - 110)][mapIndex] * Hramp * (racc + (1 - racc) * rsph);
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 4)    // A1
                                          && (hbond[ia] == 1 || hbond[ia] == 2))
                                 {   // DS,D1
-                                    hbondmin[mapIndex] = min(hbondmin[mapIndex], energy_lookup[atomType[ia]][indx_r][mapIndex] * (racc + (1 - racc) * rsph));
-                                    hbondmax[mapIndex] = max(hbondmax[mapIndex], energy_lookup[atomType[ia]][indx_r][mapIndex] * (racc + (1 - racc) * rsph));
+                                    hbondmin[mapIndex] = min(hbondmin[mapIndex], energyLookup[atomType[ia]][indx_r][mapIndex] * (racc + (1 - racc) * rsph));
+                                    hbondmax[mapIndex] = max(hbondmax[mapIndex], energyLookup[atomType[ia]][indx_r][mapIndex] * (racc + (1 - racc) * rsph));
                                     hbondflag[mapIndex] = TRUE;
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 1 || gridmaps[mapIndex].hbond == 2) && (hbond[ia] > 2))
                                 {   // DS,D1 vs AS,A1,A2
                                     // PROBE is H-BOND DONOR,
-                                    temp_hbond_enrg = energy_lookup[atomType[ia]][indx_r][mapIndex] * (rdon + (1 - rdon) * rsph);
+                                    temp_hbond_enrg = energyLookup[atomType[ia]][indx_r][mapIndex] * (rdon + (1 - rdon) * rsph);
                                     hbondmin[mapIndex] = min(hbondmin[mapIndex], temp_hbond_enrg);
                                     hbondmax[mapIndex] = max(hbondmax[mapIndex], temp_hbond_enrg);
                                     hbondflag[mapIndex] = TRUE;
                                 }
                                 else
                                     // hbonder PROBE-ia cannot form a H-bond...,
-                                    gridmaps[mapIndex].energy += energy_lookup[atomType[ia]][indx_r][mapIndex];
+                                    gridmaps[mapIndex].energy += energyLookup[atomType[ia]][indx_r][mapIndex];
                             }
                             else
                                 // PROBE does not form H-bonds...,
-                                gridmaps[mapIndex].energy += energy_lookup[atomType[ia]][indx_r][mapIndex];
+                                gridmaps[mapIndex].energy += energyLookup[atomType[ia]][indx_r][mapIndex];
 
                             // add desolvation energy
                             // forcefield desolv coefficient/weight in sol_fn
@@ -1870,8 +1881,8 @@ void appMain(int argc, char **argv)
                     gridmaps[k].energyMax = max(gridmaps[k].energyMax, gridmaps[k].energy);
                     gridmaps[k].energyMin = min(gridmaps[k].energyMin, gridmaps[k].energy);
                 }
-                if (floating_grid_fileptr)
-                    if ((!problem_wrt) && (fprintf(floating_grid_fileptr, "%.3f\n", (float)round3dp(r_min)) < 0))
+                if (floatingGridFile)
+                    if ((!problem_wrt) && (fprintf(floatingGridFile, "%.3f\n", (float)round3dp(r_min)) < 0))
                         problem_wrt = TRUE;
                 ctr++;
             }                   // icoord[X] loop
@@ -1883,14 +1894,14 @@ void appMain(int argc, char **argv)
         ++nDone;
         logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", icoord[Z], cgridmin[Z] + c[Z], percentDone * (double)++ic);
         logFile.printTimeInHMS((grd_end - grd_start) * (n1[Z] - nDone));
-        logFile.printFormatted("  ");
+        logFile.print("  ");
         logFile.printExecutionTimes(grd_start, grd_end, &tms_grd_start, &tms_grd_end);
     }                           // icoord[Z] loop
 }
 #pragma endregion
 
     if (floatingGridFilename[0])
-        fclose(floating_grid_fileptr);
+        fclose(floatingGridFile);
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
@@ -1899,25 +1910,21 @@ void appMain(int argc, char **argv)
 #pragma region Writing out summary
     // Print a summary of extrema-values from the atomic-affinity and
     // electrostatics grid-maps,
-    logFile.printFormatted("\nGrid\tAtom\tMinimum   \tMaximum\n");
-    logFile.printFormatted("Map \tType\tEnergy    \tEnergy \n");
-    logFile.printFormatted("\t\t(kcal/mol)\t(kcal/mol)\n");
-    logFile.printFormatted("____\t____\t_____________\t_____________\n");
+    logFile.print("\nGrid\tAtom\tMinimum   \tMaximum\n"
+                  "Map \tType\tEnergy    \tEnergy \n"
+                  "\t\t(kcal/mol)\t(kcal/mol)\n"
+                  "____\t____\t_____________\t_____________\n");
 
     for (int i = 0; i < numAtomMaps; i++)
         logFile.printFormatted(" %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmaps[i].type, gridmaps[i].energyMin, gridmaps[i].energyMax);
-    logFile.printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n", numAtomMaps + 1, 'e', gridmaps[elecPE].energyMin, gridmaps[numAtomMaps].energyMax);
-    logFile.printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n", numAtomMaps + 2, 'd', gridmaps[dsolvPE].energyMin, gridmaps[numAtomMaps+1].energyMax);
-    logFile.printFormatted("\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n\n", EINTCLAMP);
+
+    logFile.printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n"
+                           " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n"
+                           "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n\n",
+                           numAtomMaps + 1, 'e', gridmaps[elecPE].energyMin, gridmaps[numAtomMaps].energyMax,
+                           numAtomMaps + 2, 'd', gridmaps[dsolvPE].energyMin, gridmaps[numAtomMaps+1].energyMax,
+                           EINTCLAMP);
 #pragma endregion
-
-#pragma region Closing all files
-    // Close all files
-    for (int i = 0; i < numAtomMaps + 2; i++)
-        fclose(gridmaps[i].mapFile);
-
-    // Free up the memory allocated to the gridmaps objects...
-    delete [] gridmaps;
 
     fprintf(stderr, "\n%s: Successful Completion.\n", programParams.getProgramName());
     logFile.printTitled("Successful Completion.\n");
@@ -1926,14 +1933,12 @@ void appMain(int argc, char **argv)
     Clock jobEnd = times(&tmsJobEnd);
     logFile.printExecutionTimesInHMS(jobStart, jobEnd, &tmsJobStart, &tmsJobEnd);
 
-#pragma endregion
-
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(1);
 #endif
 
 #if defined(BOINC)
-    boinc_finish(0);            // should not return
+    boinc_finish(0); // should not return
 #endif
 }
 

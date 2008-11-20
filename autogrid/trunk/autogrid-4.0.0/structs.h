@@ -52,7 +52,7 @@
 #include "parameters.h"
 /* ______________________________________________________________________________ */
 
-typedef struct linear_FE_model
+struct LinearFreeEnergyModel
 {
     double coeff_vdW;                 // Free energy coefficient for van der Waals term
     double coeff_hbond;               // Free energy coefficient for H-bonding term
@@ -65,4 +65,4 @@ typedef struct linear_FE_model
     double stderr_estat;              // Free energy standard error for electrostatics term
     double stderr_desolv;             // Free energy standard error for desolvation term
     double stderr_tors;               // Free energy standard error for torsional term
-} Linear_FE_Model;
+};

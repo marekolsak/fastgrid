@@ -8,15 +8,21 @@
 
 #define FORMATTED_MSG_MAX_SIZE (1<<14)
 
-#define FORMAT_MESSAGE(message, format) \
+// Formats a message
+// The reason we use a macro instead of a function is that we need an access to the variable number of arguments
+#define FORMAT_MESSAGE(message, messageLength, format) \
+        char message[FORMATTED_MSG_MAX_SIZE]; \
+        int messageLength; \
         message[sizeof(message)-1] = 0; \
         va_list ap; \
         va_start(ap, format); \
         /* if the message buffer is not long enough or hasn't been terminated by zero */ \
-        if (vsnprintf(message, sizeof(message), format, ap) == -1 || message[sizeof(message)-1] != 0) \
+        messageLength = vsnprintf(message, sizeof(message), format, ap); \
+        if (messageLength == -1 || message[sizeof(message)-1] != 0) \
         { \
             printError(WARNING, "The following formatted string will be truncated."); \
             message[sizeof(message)-1] = 0; \
+            messageLength = sizeof(message)-1; \
         } \
         va_end(ap);
 
@@ -56,14 +62,13 @@ LogFile::~LogFile()
 
 void LogFile::print(const char *msg)
 {
-    fprintf(file, "%s", msg);
+    fwrite(msg, strlen(msg), 1, file);
 }
 
 void LogFile::printFormatted(const char *format, ...)
 {
-    char message[FORMATTED_MSG_MAX_SIZE];
-    FORMAT_MESSAGE(message, format);
-    print(message);
+    FORMAT_MESSAGE(message, messageLength, format);
+    fwrite(message, messageLength, 1, file);
 }
 
 void LogFile::printTitled(const char *msg)
@@ -73,8 +78,7 @@ void LogFile::printTitled(const char *msg)
 
 void LogFile::printTitledFormatted(const char *format, ...)
 {
-    char message[FORMATTED_MSG_MAX_SIZE];
-    FORMAT_MESSAGE(message, format);
+    FORMAT_MESSAGE(message, messageLength, format);
     printTitled(message);
 }
 
@@ -90,7 +94,6 @@ void LogFile::printError(ErrorLevel errorLevel, const char *msg)
 
     char outputMessage[LINE_LEN];
     snprintf(outputMessage, LINE_LEN, "\n%s: %s:  %s\n", programName, tags[errorLevel+2], msg);
-
     fprintf(file, "%s\n", outputMessage);
 
     // Only send errors, fatal errors and warnings to standard error.
@@ -104,8 +107,7 @@ void LogFile::printError(ErrorLevel errorLevel, const char *msg)
 
 void LogFile::printErrorFormatted(ErrorLevel errorLevel, const char *format, ...)
 {
-    char message[FORMATTED_MSG_MAX_SIZE];
-    FORMAT_MESSAGE(message, format);
+    FORMAT_MESSAGE(message, messageLength, format);
     printError(errorLevel, message);
 }
 

@@ -291,6 +291,22 @@
 			>
 		</File>
 		<File
+			RelativePath="..\gridmap.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\gridmap.h"
+			>
+		</File>
+		<File
+			RelativePath="..\inputdata.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\inputdata.h"
+			>
+		</File>
+		<File
 			RelativePath="..\logfile.cpp"
 			>
 		</File>
@@ -300,14 +316,6 @@
 		</File>
 		<File
 			RelativePath="..\main.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\mapobject.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\mapobject.h"
 			>
 		</File>
 		<File

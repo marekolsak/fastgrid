@@ -1,9 +1,9 @@
 #pragma once
-#include <cstdio>
 #include "parameters.h"
 #include "autogrid.h"
+#include "logfile.h"
 
-class MapObject
+class GridMap
 {
 public:
     int atomType;          // corresponds to receptor numbers????
@@ -32,5 +32,20 @@ public:
     int xB[NUM_RECEPTOR_TYPES]; // 6 for non-hbonders 10 for h-bonders
     int hbonder[NUM_RECEPTOR_TYPES];
 
-    MapObject();
+    GridMap();
+    ~GridMap();
+};
+
+class GridMapList
+{
+public:
+    GridMapList(LogFile *logFile);
+    ~GridMapList();
+    GridMap &operator [](int i)             { return gridmaps[i]; }
+    const GridMap &operator [](int i) const { return gridmaps[i]; }
+    void SetCount(int count);
+
+private:
+    GridMap *gridmaps;
+    LogFile *logFile;
 };

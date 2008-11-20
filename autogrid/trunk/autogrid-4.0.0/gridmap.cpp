@@ -1,6 +1,7 @@
-#include "mapobject.h"
+#include "gridmap.h"
+#include <new>
 
-MapObject::MapObject()
+GridMap::GridMap()
 {
     atomType = 0;   // corresponds to receptor numbers????
     mapIndex = 0;
@@ -29,5 +30,35 @@ MapObject::MapObject()
         xA[j] = 0;   // generally 12
         xB[j] = 0;   // 6 for non-hbonders 10 for h-bonders
         hbonder[j] = 0;
+    }
+}
+
+GridMap::~GridMap()
+{
+    if (mapFile)
+        fclose(mapFile);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+GridMapList::GridMapList(LogFile *logFile): gridmaps(0), logFile(logFile)
+{}
+
+GridMapList::~GridMapList()
+{
+    if (gridmaps)
+        delete [] gridmaps;
+}
+
+void GridMapList::SetCount(int count)
+{
+    if (gridmaps)
+        delete [] gridmaps;
+
+    gridmaps = new(std::nothrow) GridMap[count];
+    if (!gridmaps)
+    {
+        logFile->printError(ERROR, "Could not allocate memory to create the GridMap \"gridmaps\".\n");
+        logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
     }
 }

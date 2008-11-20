@@ -36,7 +36,7 @@
 #include "utils.h"
 #include "exceptions.h"
 
-void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
+void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outputLevel, const char *programname, int debug, FILE *logFile, LinearFreeEnergyModel &model)
 {
     static ParameterEntry thisParameter;
     FILE *parameter_library_file;
@@ -67,48 +67,48 @@ void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, cons
                 break;
 
             case PAR_VDW:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_vdW);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_vdW);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the van der Waals term = \t%.4lf\n\n", AD4.coeff_vdW);
+                fprintf(logFile, "Free energy coefficient for the van der Waals term = \t%.4lf\n\n", model.coeff_vdW);
                 break;
 
             case PAR_HBOND:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_hbond);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_hbond);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the H-bonding term     = \t%.4lf\n\n", AD4.coeff_hbond);
+                fprintf(logFile, "Free energy coefficient for the H-bonding term     = \t%.4lf\n\n", model.coeff_hbond);
                 break;
 
             case PAR_ESTAT:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_estat);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_estat);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the electrostatic term = \t%.4lf\n\n", AD4.coeff_estat);
+                fprintf(logFile, "Free energy coefficient for the electrostatic term = \t%.4lf\n\n", model.coeff_estat);
                 break;
 
             case PAR_DESOLV:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_desolv);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_desolv);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the desolvation term   = \t%.4lf\n\n", AD4.coeff_desolv);
+                fprintf(logFile, "Free energy coefficient for the desolvation term   = \t%.4lf\n\n", model.coeff_desolv);
                 break;
 
             case PAR_TORS:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_tors);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_tors);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the torsional term     = \t%.4lf\n\n", AD4.coeff_tors);
+                fprintf(logFile, "Free energy coefficient for the torsional term     = \t%.4lf\n\n", model.coeff_tors);
                 break;
 
             case PAR_ATOM_PAR:
@@ -146,13 +146,13 @@ void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, cons
                     thisParameter.hbond = NON;
                 }
 
-                thisParameter.epsij    *= AD4.coeff_vdW;
-                thisParameter.epsijHB *= AD4.coeff_hbond;
+                thisParameter.epsij    *= model.coeff_vdW;
+                thisParameter.epsijHB *= model.coeff_hbond;
 
                 atomParameterManager_enter(thisParameter.autogridType, thisParameter);
                 fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
 
-                if (outlev > 2) {
+                if (outputLevel > 2) {
                     fprintf(logFile, "\tR-eqm = %5.2f Angstrom\n\tweighted epsilon = %5.3f\n\tAtomic fragmental volume = %5.3f\n\tAtomic solvation parameter = %5.3f\n\tH-bonding R-eqm = %5.3f\n\tweighted H-bonding epsilon = %5.3f\n\tH-bonding type = %d,  bond index = %d\n\n",
                             thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
                             thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
@@ -169,7 +169,7 @@ void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outlev, cons
     } // while there is another line of parameters to read in
 }
 
-void setupParameterLibrary(int outlev, const char *programname, int debug, FILE *logFile, Linear_FE_Model &AD4)
+void setupParameterLibrary(int outputLevel, const char *programname, int debug, FILE *logFile, LinearFreeEnergyModel &model)
 {
     static ParameterEntry thisParameter;
     char parameter_library_line[MAX_CHARS];
@@ -201,48 +201,48 @@ void setupParameterLibrary(int outlev, const char *programname, int debug, FILE 
                 break;
 
             case PAR_VDW:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_vdW);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_vdW);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the van der Waals term = \t%.4lf\n\n", AD4.coeff_vdW);
+                fprintf(logFile, "Free energy coefficient for the van der Waals term = \t%.4lf\n\n", model.coeff_vdW);
                 break;
 
             case PAR_HBOND:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_hbond);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_hbond);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the H-bonding term     = \t%.4lf\n\n", AD4.coeff_hbond);
+                fprintf(logFile, "Free energy coefficient for the H-bonding term     = \t%.4lf\n\n", model.coeff_hbond);
                 break;
 
             case PAR_ESTAT:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_estat);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_estat);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the electrostatic term = \t%.4lf\n\n", AD4.coeff_estat);
+                fprintf(logFile, "Free energy coefficient for the electrostatic term = \t%.4lf\n\n", model.coeff_estat);
                 break;
 
             case PAR_DESOLV:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_desolv);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_desolv);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the desolvation term   = \t%.4lf\n\n", AD4.coeff_desolv);
+                fprintf(logFile, "Free energy coefficient for the desolvation term   = \t%.4lf\n\n", model.coeff_desolv);
                 break;
 
             case PAR_TORS:
-                nfields = sscanf(parameter_library_line, "%*s %lf", &AD4.coeff_tors);
+                nfields = sscanf(parameter_library_line, "%*s %lf", &model.coeff_tors);
                 if (nfields < 1) {
                     fprintf(logFile, "%s: WARNING:  Please supply a coefficient as a floating point number.\n\n", programname);
                     continue; // skip any parameter_library_line without enough info
                 }
-                fprintf(logFile, "Free energy coefficient for the torsional term     = \t%.4lf\n\n", AD4.coeff_tors);
+                fprintf(logFile, "Free energy coefficient for the torsional term     = \t%.4lf\n\n", model.coeff_tors);
                 break;
 
             case PAR_ATOM_PAR:
@@ -280,13 +280,13 @@ void setupParameterLibrary(int outlev, const char *programname, int debug, FILE 
                     thisParameter.hbond = NON;
                 }
 
-                thisParameter.epsij    *= AD4.coeff_vdW;
-                thisParameter.epsijHB *= AD4.coeff_hbond;
+                thisParameter.epsij    *= model.coeff_vdW;
+                thisParameter.epsijHB *= model.coeff_hbond;
 
                 atomParameterManager_enter(thisParameter.autogridType, thisParameter);
                 fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
 
-                if (outlev > 2) {
+                if (outputLevel > 2) {
                     fprintf(logFile, "\tR-eqm = %5.2f Angstrom\n\tweighted epsilon = %5.3f\n\tAtomic fragmental volume = %5.3f\n\tAtomic solvation parameter = %5.3f\n\tH-bonding R-eqm = %5.3f\n\tweighted H-bonding epsilon = %5.3f\n\tH-bonding type = %d,  bond index = %d\n\n",
                             thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
                             thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
