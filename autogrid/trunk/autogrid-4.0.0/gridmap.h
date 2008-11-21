@@ -8,9 +8,9 @@ class GridMap
 public:
     int atomType;          // corresponds to receptor numbers????
     int mapIndex;
-    int isCovalent;
+    bool isCovalent;
     int isHBonder;
-    FILE *mapFile;
+    FILE *file;
     char mapFilename[MAX_CHARS];
     char type[3];           // eg HD or OA or NA or N
     double constant;        // this will become obsolete
@@ -42,15 +42,29 @@ public:
     GridMapList(LogFile *logFile);
     ~GridMapList();
 
-    GridMap &operator [](int i)             { return gridmaps[i]; }
-    const GridMap &operator [](int i) const { return gridmaps[i]; }
-
-    int getNumMaps() const                  { return numMaps; }
-    int getNumAtomMaps() const              { return numAtomMaps; }
+    // Allocates gridmaps.
+    // "num" is the number of maps to be created: the number of ligand atom types, plus 1 for the electrostatic map,
+    // plus 1 for the desolvation map.
+    // Keep in mind that AutoDock can only read in MAX_MAPS maps.
     void setNumMaps(int num);
 
+    // Read/write access
+    GridMap &operator [](int i)             { return gridmaps[i]; }
+    GridMap &getElectrostaticMap()          { return gridmaps[elecIndex]; }
+    GridMap &getDesolvationMap()            { return gridmaps[desolvIndex]; }
+
+    // Read-only access
+    const GridMap &operator [](int i) const { return gridmaps[i]; }
+    const GridMap &getElectrostaticMap() const { return gridmaps[elecIndex]; }
+    const GridMap &getDesolvationMap() const { return gridmaps[desolvIndex]; }
+
+    int getNumAtomMaps() const              { return numAtomMaps; }
+    int getNumMaps() const                  { return numMaps; }
+    int getElectrostaticMapIndex() const    { return elecIndex; }
+    int getDesolvationMapIndex() const      { return desolvIndex; }
+
 private:
-    int numMaps, numAtomMaps;
+    int numMaps, numAtomMaps, elecIndex, desolvIndex;
     GridMap *gridmaps;
     LogFile *logFile;
 };

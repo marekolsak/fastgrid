@@ -5,9 +5,9 @@ GridMap::GridMap()
 {
     atomType = 0;   // corresponds to receptor numbers????
     mapIndex = 0;
-    isCovalent = 0;
-    isHBonder = 0;
-    mapFile = 0;
+    isCovalent = false;
+    isHBonder = false;
+    file = 0;
     mapFilename[0] = 0;
     type[0] = 0;    // eg HD or OA or NA or N
     constant = 0; // this will become obsolete
@@ -35,13 +35,13 @@ GridMap::GridMap()
 
 GridMap::~GridMap()
 {
-    if (mapFile)
-        fclose(mapFile);
+    if (file)
+        fclose(file);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), gridmaps(0), logFile(logFile)
+GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), elecIndex(0), desolvIndex(0), gridmaps(0), logFile(logFile)
 {}
 
 GridMapList::~GridMapList()
@@ -55,8 +55,11 @@ void GridMapList::setNumMaps(int num)
     if (gridmaps)
         delete [] gridmaps;
 
+    numAtomMaps = num - 2;
+    elecIndex = num - 2;
+    desolvIndex = num - 1;
     numMaps = num;
-    numAtomMaps = num-2;
+
     gridmaps = new(std::nothrow) GridMap[num];
     if (!gridmaps)
     {

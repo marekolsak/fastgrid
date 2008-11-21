@@ -73,8 +73,7 @@ FILE *openFile(const char *path, const char *mode)
 
 #define MAXKEY (256*256)
 
-typedef ParameterEntry PE;
-static PE *dictionary[MAXKEY];
+static ParameterEntry *dictionary[MAXKEY];
 
 static unsigned int hash(const char key[]) {
     switch (strlen(key)) {
@@ -84,15 +83,15 @@ static unsigned int hash(const char key[]) {
     }
 }
 
-void atomParameterManager_enter(const char key[], PE value) {
+void atomParameterManager_enter(const char key[], ParameterEntry value) {
     if (dictionary[hash(key)] == 0) {
-        dictionary[hash(key)] = (PE *) calloc(1, sizeof(PE));
+        dictionary[hash(key)] = (ParameterEntry *) calloc(1, sizeof(ParameterEntry));
     }
     *(dictionary[hash(key)]) = value;  // this replaces, as well as inserts
     return;
 }
 
-PE * atomParameterManager_find(const char key[]) {
+ParameterEntry *atomParameterManager_find(const char key[]) {
     return dictionary[hash(key)];
 }
 

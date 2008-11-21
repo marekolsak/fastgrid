@@ -157,7 +157,7 @@
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
 				SubSystem="1"
-				StackReserveSize="70000000"
+				StackReserveSize="5000000"
 				StackCommitSize="0"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"

@@ -2,7 +2,7 @@
 #include <cmath>
 
 void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile &logFile,
-                                            int numReceptorTypes, char (&receptorTypes)[NUM_RECEPTOR_TYPES][3], double rSmooth)
+                                            int numReceptorTypes, const char (&receptorTypes)[NUM_RECEPTOR_TYPES][3], double rSmooth)
 {
     double energySmooth[MAX_DIST];
     double dxA;
@@ -25,7 +25,7 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
     // set up xA, xB, npb_r, npb_eps and hbonder
     // before this pt
     for (int ia = 0; ia < gridmaps.getNumAtomMaps(); ia++)
-        if (gridmaps[ia].isCovalent == FALSE)
+        if (!gridmaps[ia].isCovalent)
         {
             // i is the index of the receptor atom type, that the ia type ligand probe will interact with. *//* GPF_MAP
             for (int i = 0; i < numReceptorTypes; i++)

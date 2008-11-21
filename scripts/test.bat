@@ -6,11 +6,13 @@ if x%1 == x goto ERROR
 if x%2 == x goto ERROR
 if x%3 == x goto ERROR
 if x%4 == x goto ERROR
+goto MAIN
 
 :MAIN
 cd %2
 echo cmd: ../autogrid4.exe" -p %input_file% -l %log_file%
-"../autogrid4.exe" -p %input_file% -l %log_file% 
+"../autogrid4.exe" -p %input_file% -l %log_file%
+if NOT ERRORLEVEL 0 goto PROGRAMERROR 
 tail -n 1 %log_file%
 cd ..
 echo cmd: diff -U 0 %1 %2 ^> %3
@@ -22,6 +24,11 @@ goto QUIT
 
 :ERROR
 echo usage: %0 [reference dir] [autogrid dir] [diff output] [test output]
+goto QUIT
+
+:PROGRAMERROR
+echo RUNTIME ERROR! Autogrid terminated in an unusual way.
+goto QUIT
 
 :QUIT
 set input_file=
