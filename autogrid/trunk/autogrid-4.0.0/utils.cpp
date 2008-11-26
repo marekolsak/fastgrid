@@ -69,32 +69,6 @@ FILE *openFile(const char *path, const char *mode)
     return filep;
 }
 
-// Atom Parameter Manager (hash, atomParameterManager_enter, atomParameterManager_find)
-
-#define MAXKEY (256*256)
-
-static ParameterEntry *dictionary[MAXKEY];
-
-static unsigned int hash(const char key[]) {
-    switch (strlen(key)) {
-        case 0: return 0;
-        case 1: return (unsigned int)key[0];
-        default: return (unsigned int)key[0] + 256*(unsigned int)key[1];
-    }
-}
-
-void atomParameterManager_enter(const char key[], ParameterEntry value) {
-    if (dictionary[hash(key)] == 0) {
-        dictionary[hash(key)] = (ParameterEntry *) calloc(1, sizeof(ParameterEntry));
-    }
-    *(dictionary[hash(key)]) = value;  // this replaces, as well as inserts
-    return;
-}
-
-ParameterEntry *atomParameterManager_find(const char key[]) {
-    return dictionary[hash(key)];
-}
-
 double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
     /*____________________________________________________________________________
      * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
@@ -154,16 +128,6 @@ int checkSize(int nelements, char axischar, LogFile &logFile)
     return nelements;
 }
 
-int getRecIndex(const char key[])
-{
-    ParameterEntry *foundParam;
-
-    foundParam = atomParameterManager_find(key);
-    if (foundParam != 0)
-        return foundParam->recIndex;
-    return -1;
-}
-
 /******************************************************************************/
 /*      Name: parseGPFLine                                                       */
 /*  Function: Parse the AutoGrid parameter file line                          */
@@ -183,7 +147,7 @@ int getRecIndex(const char key[])
 
 int parseGPFLine(char line[LINE_LEN])
 {
-    int l, i, token = -1 ;	       /* return -1 if nothing is recognized. */
+    int l, i, token = -1 ;           /* return -1 if nothing is recognized. */
     char c[LINE_LEN];
 
     l = (int)strIndex(line, " ");
@@ -191,7 +155,7 @@ int parseGPFLine(char line[LINE_LEN])
         l = (int)strIndex(line, "\t");
         if (l == -1) {
             l = (int)strlen(line);
-	}
+    }
     }
     for(i=0; i<l; i++) {
         c[i] = (char)tolower((int)line[i]);
@@ -345,11 +309,6 @@ int strIndex(char s[], char t[])
     char *r = strstr(s, t);
     return r? int(r-s) : -1;
 }
-
-#if defined(_WIN32)
-
-
-#endif
 
 static clock_t timers[256];
 static unsigned int indexOfNesting = 0;

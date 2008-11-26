@@ -71,18 +71,18 @@
 #define MAX_DIST     16384   /* Maximum distance in 100ths of an Angstrom.    */
                              /*  = 163.84 Angstroms                           */
 #define AG_MAX_ATOMS    32768   /* Maximum number of atoms in macromolecule.     */
-/*    32768 = 2^15	*/
-/*    int 16-bit two's complement ranges 0-32767, 0 to (2^15 - 1)	*/
+/*    32768 = 2^15    */
+/*    int 16-bit two's complement ranges 0-32767, 0 to (2^15 - 1)    */
 
-#define ORDERED 	0
-#define CYLINDRICAL 	1
-#define SPHERICAL 	2
+#define ORDERED     0
+#define CYLINDRICAL 1
+#define SPHERICAL   2
 
-#define A_DIVISOR    100    /* Angstrom is divided by this in look-up table. */
+#define A_DIVISOR   100    /* Angstrom is divided by this in look-up table. */
 
-#define	NBCUTOFF     8      /* non-bond cutoff = 8 Angstroms.                */
+#define NBCUTOFF    8      /* non-bond cutoff = 8 Angstroms.                */
 
-#define PRECISION 0.0001 /* fabs(Energies) less than this will be written as '0' */
+#define PRECISION   0.0001 /* fabs(Energies) less than this will be written as '0' */
 
 /*----------------------------------------------------------------------------*/
 /* Macros,                                                                    */
@@ -103,7 +103,6 @@
 #define angstrom(i)         (((double) (i)) / A_DIVISOR)
 #define lookup(r)           ((int) ((r) * A_DIVISOR))
 
-#define MAX_NUM_AUTOGRID_TYPES 100
 #define NUM_ALL_TYPES 20   /*??? IS THIS REASONABLE???*/
 #define MAX_LEN_AUTOGRID_TYPE 7
 

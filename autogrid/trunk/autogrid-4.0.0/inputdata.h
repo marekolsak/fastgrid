@@ -49,5 +49,5 @@ public:
 
     // functions
     InputData();
-    void load(const ProgramParameters &programParams, GridMapList &gridmaps, LogFile &logFile);
+    void load(const char *gridParameterFilename, GridMapList &gridmaps, const AtomParameterManager &apm, LogFile &logFile);
 };

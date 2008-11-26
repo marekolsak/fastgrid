@@ -1,6 +1,6 @@
 #pragma once
-#include "parameters.h"
 #include "autogrid.h"
+#include "atomparametermanager.h"
 #include "logfile.h"
 
 class GridMap
@@ -19,12 +19,14 @@ public:
     double energy;
     double volProbe;
     double solparProbe;
+
     // new 6/28
     double Rij;
     double epsij;
     HBondType hbond;       // hbonding character:
     double RijHB;
     double epsijHB;
+
     // per receptor type parameters, ordered as in receptorTypes
     double nbpR[NUM_RECEPTOR_TYPES];   // radius of energy-well minimum
     double nbpEps[NUM_RECEPTOR_TYPES]; // depth of energy-well minimum

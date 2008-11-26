@@ -30,13 +30,13 @@
 #include <cstring>
 #include "autogrid.h"
 #include "constants.h"
-#include "parameters.h"
 #include "parse_param_line.h"
 #include "../autodock-4.0.1/default_parameters.h"
 #include "utils.h"
 #include "exceptions.h"
 
-void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outputLevel, const char *programname, int debug, FILE *logFile, LinearFreeEnergyModel &model)
+void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outputLevel, const char *programname, int debug, FILE *logFile,
+                          LinearFreeEnergyModel &model, AtomParameterManager &apm)
 {
     static ParameterEntry thisParameter;
     FILE *parameter_library_file;
@@ -149,7 +149,7 @@ void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outputLevel,
                 thisParameter.epsij    *= model.coeff_vdW;
                 thisParameter.epsijHB *= model.coeff_hbond;
 
-                atomParameterManager_enter(thisParameter.autogridType, thisParameter);
+                apm.insert(thisParameter.autogridType, thisParameter);
                 fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
 
                 if (outputLevel > 2) {
@@ -169,7 +169,8 @@ void readParameterLibrary(char FN_parameter_library[MAX_CHARS], int outputLevel,
     } // while there is another line of parameters to read in
 }
 
-void setupParameterLibrary(int outputLevel, const char *programname, int debug, FILE *logFile, LinearFreeEnergyModel &model)
+void setupParameterLibrary(int outputLevel, const char *programname, int debug, FILE *logFile,
+                           LinearFreeEnergyModel &model, AtomParameterManager &apm)
 {
     static ParameterEntry thisParameter;
     char parameter_library_line[MAX_CHARS];
@@ -283,7 +284,7 @@ void setupParameterLibrary(int outputLevel, const char *programname, int debug, 
                 thisParameter.epsij    *= model.coeff_vdW;
                 thisParameter.epsijHB *= model.coeff_hbond;
 
-                atomParameterManager_enter(thisParameter.autogridType, thisParameter);
+                apm.insert(thisParameter.autogridType, thisParameter);
                 fprintf(logFile, "Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
 
                 if (outputLevel > 2) {

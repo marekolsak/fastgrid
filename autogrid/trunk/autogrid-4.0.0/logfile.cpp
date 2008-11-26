@@ -94,11 +94,11 @@ void LogFile::printError(ErrorLevel errorLevel, const char *msg)
 
     char outputMessage[LINE_LEN];
     snprintf(outputMessage, LINE_LEN, "\n%s: %s:  %s\n", programName, tags[errorLevel+2], msg);
-    fprintf(file, "%s\n", outputMessage);
+    fwrite(outputMessage, strlen(outputMessage), 1, file);
 
     // Only send errors, fatal errors and warnings to standard error.
     if (errorLevel <= WARNING)
-        fprintf(stderr, "%s\n", outputMessage);
+        fwrite(outputMessage, strlen(outputMessage), 1, stderr);
 
     // If this is a fatal error, exit now.
     if (errorLevel == FATAL_ERROR)
@@ -113,7 +113,7 @@ void LogFile::printErrorFormatted(ErrorLevel errorLevel, const char *format, ...
 
 void LogFile::printExecutionTimes(Clock startTime, Clock endTime, tms *start, tms *end)
 {
-	fprintf(file, "Real= %.2f,  CPU= %.2f,  System= %.2f\n",
+    fprintf(file, "Real= %.2f,  CPU= %.2f,  System= %.2f\n",
         invClocksPerSec * (endTime - startTime),
         invClocksPerSec * (end->tms_utime - start->tms_utime),
         invClocksPerSec * (end->tms_stime - start->tms_stime));

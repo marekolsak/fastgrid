@@ -46,12 +46,6 @@
  * 02/28/95 GMM     This header added                                         *
  ***************************************************************************** */
 
-/* ______________________________________________________________________________
-** Parameter Dictionary */
-
-#include "parameters.h"
-/* ______________________________________________________________________________ */
-
 struct LinearFreeEnergyModel
 {
     double coeff_vdW;                 // Free energy coefficient for van der Waals term

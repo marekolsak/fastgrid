@@ -34,7 +34,7 @@
  *      Name: constants.h                                                     *
  *  Function: Automated Docking of Small Molecule to Macromolecule            *
  *              Header file for Autodock modules.                             *
- * Copyright: (C) 1994-2004, TSRI											  *
+ * Copyright: (C) 1994-2004, TSRI                                             *
  *----------------------------------------------------------------------------*
  *    Author: Garrett Matthew Morris*                                         *
  *                                                                            *
@@ -189,10 +189,10 @@
 
 #define NUM_ATM_MOVED   2     /* Index for the number of atoms moved by a torsion-rotation */
 
-#define TYPE1			2     /* Index for the atom type of first atom - used in nonbondlist  Xcode-gmm */
-#define TYPE2			3     /* Index for the atom type of second atom - used in nonbondlist Xcode-gmm */
-#define NBTYPE			4     /* Index for the type of nonbond */
-#define MAX_NBDATA	    5     /* 5 elements of data for each nonbond: atm1, atm2, type1, type2 & whether 1,4 or other */
+#define TYPE1           2     /* Index for the atom type of first atom - used in nonbondlist  Xcode-gmm */
+#define TYPE2           3     /* Index for the atom type of second atom - used in nonbondlist Xcode-gmm */
+#define NBTYPE          4     /* Index for the type of nonbond */
+#define MAX_NBDATA      5     /* 5 elements of data for each nonbond: atm1, atm2, type1, type2 & whether 1,4 or other */
 
 #define TINYDELTA 0.001       /* To nudge ligand into grid... */
 

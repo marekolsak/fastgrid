@@ -54,6 +54,7 @@
 #include "gridmap.h"    // GridMap, GridMapList
 #include "pairwiseinteractionenergies.h" // PairwiseInteractionEnergies
 #include "inputdata.h"  // InputData
+#include "atomparametermanager.h" // AtomParameterManager
 
 #pragma endregion Includes
 
@@ -110,18 +111,19 @@ void appMain(int argc, char **argv)
 
     // Initialization of free energy coefficients
     LinearFreeEnergyModel model;
+    AtomParameterManager apm;
 
     // Set default values
-    // atomParameterManager is also used inside
-    setupParameterLibrary(-1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model);
+    setupParameterLibrary(-1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model, apm);
 
     // Reading in the grid parameter file
     InputData *input = new InputData();
-    input->load(programParams, gridmaps, logFile);  // TODO: shouldn't we put the gridmaps initialization code out of the load function?
+    input->load(programParams.getGridParameterFilename(), gridmaps, apm, logFile);
+    // TODO: shouldn't we put the gridmaps initialization code out of the load function?
 
     // Load values from the file
     if (input->parameterLibraryFilename[0])
-        readParameterLibrary(input->parameterLibraryFilename, -1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model);
+        readParameterLibrary(input->parameterLibraryFilename, -1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model, apm);
 
 #pragma region Writing to AVS_fld file
 {
@@ -152,7 +154,7 @@ void appMain(int argc, char **argv)
     fprintf(fldFileAVS, "data=float\t\t# data type (byte, integer, float, double)\n");
     fprintf(fldFileAVS, "field=uniform\t\t# field type (uniform, rectilinear, irregular)\n");
     for (int i = 0; i < XYZ; i++)
-        fprintf(fldFileAVS, "input->coord %d file=%s filetype=ascii offset=%d\n", (i + 1), input->xyzFilename, (i * 2));
+        fprintf(fldFileAVS, "coord %d file=%s filetype=ascii offset=%d\n", (i + 1), input->xyzFilename, (i * 2));
     for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
         fprintf(fldFileAVS, "label=%s-affinity\t# component label for variable %d\n", gridmaps[i].type, (i + 1));                           // i
     fprintf(fldFileAVS, "label=Electrostatics\t# component label for variable %d\n", numMaps - 2);
@@ -174,6 +176,7 @@ void appMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
+    // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies *energyLookup = new PairwiseInteractionEnergies();
     energyLookup->calculate(gridmaps, logFile, input->numReceptorTypes, input->receptorTypes, input->rSmooth);
 
@@ -224,15 +227,15 @@ void appMain(int argc, char **argv)
     // calculate bond vectors for directional H-bonds
     // setup the canned atom types here....
     // at this point set up hydrogen, carbon, oxygen and nitrogen
-    hydrogen = getRecIndex("HD");
-    nonHB_hydrogen = getRecIndex("H");
-    carbon = getRecIndex("C");
-    arom_carbon = getRecIndex("A");
-    oxygen = getRecIndex("OA");
-    nitrogen = getRecIndex("NA");
-    nonHB_nitrogen = getRecIndex("N");
-    sulphur = getRecIndex("SA");
-    nonHB_sulphur = getRecIndex("S");
+    hydrogen = apm.getRecIndex("HD");
+    nonHB_hydrogen = apm.getRecIndex("H");
+    carbon = apm.getRecIndex("C");
+    arom_carbon = apm.getRecIndex("A");
+    oxygen = apm.getRecIndex("OA");
+    nitrogen = apm.getRecIndex("NA");
+    nonHB_nitrogen = apm.getRecIndex("N");
+    sulphur = apm.getRecIndex("SA");
+    nonHB_sulphur = apm.getRecIndex("S");
 
     // 7:CHANGE HERE: scan the 'mapIndex' from the input
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
@@ -689,7 +692,7 @@ void appMain(int argc, char **argv)
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
                            "                    Percent   Estimated Time  Time/this plane\n"
-                           "XY-plane  Z-input->coord   Done      Remaining       Real, User, System\n"
+                           "XY-plane  Z-coord   Done      Remaining       Real, User, System\n"
                            "            /Ang              /sec            /sec\n"
                            "________  ________  ________  ______________  __________________________\n\n",
                            gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0), input->numGridPointsPerMap, input->numReceptorAtoms);
@@ -1104,8 +1107,8 @@ void appMain(int argc, char **argv)
     logFile.printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n"
                            " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n"
                            "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n\n",
-                           gridmaps.getNumAtomMaps() + 1, 'e', gridmaps.getElectrostaticMap().energyMin, gridmaps[gridmaps.getNumAtomMaps()].energyMax,
-                           gridmaps.getNumAtomMaps() + 2, 'd', gridmaps.getDesolvationMap().energyMin, gridmaps[gridmaps.getNumAtomMaps()+1].energyMax,
+                           gridmaps.getElectrostaticMapIndex() + 1, 'e', gridmaps.getElectrostaticMap().energyMin, gridmaps.getElectrostaticMap().energyMax,
+                           gridmaps.getDesolvationMapIndex() + 1, 'd', gridmaps.getDesolvationMap().energyMin, gridmaps.getDesolvationMap().energyMax,
                            EINTCLAMP);
 #pragma endregion Writing out summary
 

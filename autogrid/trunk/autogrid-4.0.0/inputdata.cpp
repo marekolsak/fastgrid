@@ -30,7 +30,7 @@ InputData::InputData()
     disorderH = false;
 }
 
-void InputData::load(const ProgramParameters &programParams, GridMapList &gridmaps, LogFile &logFile)
+void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, const AtomParameterManager &apm, LogFile &logFile)
 {
     // LIGAND: maximum is MAX_MAPS
     // each type is now at most two characters plus '\0'
@@ -78,13 +78,13 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
 
     // Initializes the grid parameter file
     FILE *GPF = stdin;
-    if (programParams.getGridParameterFilename()[0])
+    if (gridParameterFilename[0])
     {
-        GPF = openFile(programParams.getGridParameterFilename(), "r");
+        GPF = openFile(gridParameterFilename, "r");
         if (!GPF)
         {
-            fprintf(stderr, "\n%s: Sorry, I can't find or open Grid Parameter File \"%s\"\n", programParams.getProgramName(), programParams.getGridParameterFilename());
-            fprintf(stderr, "\n%s: Unsuccessful Completion.\n\n", programParams.getProgramName());
+            logFile.printErrorFormatted(ERROR, "Sorry, I can't find or open Grid Parameter File \"%s\"", gridParameterFilename);
+            logFile.printErrorFormatted(ERROR, "Unsuccessful Completion.\n");
             throw ExitProgram(911);
         }
     }
@@ -128,7 +128,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
 
         case GPF_RECEPTOR:
             {
-                // read in the receptor programParams.getGridParameterFilename()
+                // read in the receptor gridParameterFilename
                 sscanf(GPFLine, "%*s %s", receptorFilename);
                 logFile.printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
 
@@ -167,9 +167,8 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
 
                         // 1:CHANGE HERE: need to set up vol and solpar
                         sscanf(&line[70], "%lf", &charge[ia]);
-                        // printf("new type is: %s\n", &line[77]);
                         sscanf(&line[77], "%s", thisparm.autogridType);
-                        foundParam = atomParameterManager_find(thisparm.autogridType);
+                        foundParam = apm.find(thisparm.autogridType);
                         if (foundParam != 0)
                         {
                             logFile.printFormatted("DEBUG: foundParam->recIndex = %d", foundParam->recIndex);
@@ -415,7 +414,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
                     strcpy(ligandTypes[i], ligandAtomTypes[i]);
                 for (int i = 0; i < numAtomMaps; i++)
                 {
-                    foundParam = atomParameterManager_find(ligandTypes[i]);
+                    foundParam = apm.find(ligandTypes[i]);
                     if (foundParam)
                         foundParam->mapIndex = i;
                     else
@@ -439,7 +438,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
                 {
                     gridmaps[i].mapIndex = i;
                     strcpy(gridmaps[i].type, ligandTypes[i]);   // eg HD or OA or NA or N
-                    foundParam = atomParameterManager_find(ligandTypes[i]);
+                    foundParam = apm.find(ligandTypes[i]);
                     gridmaps[i].atomType = foundParam->mapIndex;
                     gridmaps[i].solparProbe = foundParam->solpar;
                     gridmaps[i].volProbe = foundParam->vol;
@@ -453,7 +452,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
 
                     for (int j = 0; j < numReceptorTypes; j++)
                     {
-                        foundParam = atomParameterManager_find(receptorTypes[j]);
+                        foundParam = apm.find(receptorTypes[j]);
                         gridmaps[i].nbpR[j] = (gridmaps[i].Rij + foundParam->Rij) / 2;
                         gridmaps[i].nbpEps[j] = sqrt(gridmaps[i].epsij * foundParam->epsij);
                         // apply the vdW forcefield parameter/weight here
@@ -522,7 +521,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
                     strcpy(receptorTypes[i], receptor_atom_types[i]);
                 for (int i = 0; i < numReceptorTypes; i++)
                 {
-                    foundParam = atomParameterManager_find(receptor_atom_types[i]);
+                    foundParam = apm.find(receptor_atom_types[i]);
                     if (foundParam != 0)
                         foundParam->recIndex = i;
                     else
@@ -537,7 +536,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
         case GPF_SOL_PAR:      // THIS IS OBSOLETE!!!
             // Read volume and solvation parameter for probe:
             sscanf(GPFLine, "%*s %s %lf %lf", thisparm.autogridType, &temp_vol, &temp_solpar);
-            foundParam = atomParameterManager_find(thisparm.autogridType);
+            foundParam = apm.find(thisparm.autogridType);
             if (foundParam != 0)
             {
                 foundParam->vol = temp_vol;
@@ -570,7 +569,7 @@ void InputData::load(const ProgramParameters &programParams, GridMapList &gridma
                     mapIndex + 1, gridmaps.getNumAtomMaps());
                 logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
-            // Read in the programParams.getGridParameterFilename() for this grid map *//* GPF_MAP
+            // Read in the gridParameterFilename for this grid map *//* GPF_MAP
             sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].mapFilename);
             if ((gridmaps[mapIndex].file = openFile(gridmaps[mapIndex].mapFilename, "w")) == 0)
             {

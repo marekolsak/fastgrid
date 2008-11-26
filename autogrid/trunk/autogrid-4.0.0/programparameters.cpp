@@ -75,11 +75,11 @@ int ProgramParameters::parse(int argc, char **argv)
             debug++;
             break;
         case 'u':
-	        fprintf(stderr, "usage: %s -p parameter_filename\n"
+            fprintf(stderr, "usage: %s -p parameter_filename\n"
                             "                -l log_filename\n"
                             "                -d (increment debug level)\n"
                             "                -u (display this message)\n\n", argv[0]);
-	        throw ExitProgram(0);
+            throw ExitProgram(0);
             break;
         case 'l':
             strncpy(logFilename, argv[2], MAX_CHARS);
