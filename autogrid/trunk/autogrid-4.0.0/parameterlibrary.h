@@ -66,15 +66,18 @@ public:
     const ParameterEntry *findAtomParameter(const char *key) const;
     int getAtomParameterRecIndex(const char *key) const;
 
-    ParameterLibrary();
+    ParameterLibrary(LogFile *logFile, int debug, int outputLevel = -1);
     ~ParameterLibrary();
-    void readParameterLibrary(const char *filename, int outputLevel, int debug, LogFile &logFile);
-    void setupParameterLibrary(int outputLevel, int debug, LogFile &logFile);
+    void load(const char *filename);
 
 private:
     enum { MAXKEY = 256*256 };
-    ParameterEntry *dictionary[MAXKEY];
 
-    void readLine(const char *line, int outputLevel, int debug, LogFile &logFile);
+    ParameterEntry *dictionary[MAXKEY];
+    LogFile *logFile;
+    int debug, outputLevel;
+
+    void readLine(const char *line);
+    int parseParamLine(const char *line);
     static unsigned int hash(const char *key);
 };

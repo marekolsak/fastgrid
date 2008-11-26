@@ -54,7 +54,7 @@
 #include "gridmap.h"                        // GridMap, GridMapList
 #include "pairwiseinteractionenergies.h"    // PairwiseInteractionEnergies
 #include "inputdata.h"                      // InputData
-#include "linearfreeenergymodel.h"          // ParameterLibrary
+#include "parameterlibrary.h"          // ParameterLibrary
 
 #pragma endregion Includes
 
@@ -106,24 +106,19 @@ void appMain(int argc, char **argv)
     // Declaration of gridmaps
     GridMapList gridmaps(&logFile);
 
-    // TODO: put ParameterLibrary, setupParameterLibrary and readParameterLibrary into a new class
-
     // Initialization of free energy coefficients and atom parameters
-    ParameterLibrary parameterLibrary;
-
-    // Set default values
-    parameterLibrary.setupParameterLibrary(-1, programParams.getDebugLevel(), logFile);
+    ParameterLibrary parameterLibrary(&logFile, programParams.getDebugLevel());
 
     // Reading in the grid parameter file
     InputData *input = new InputData();
     input->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary, logFile);
     // TODO: shouldn't we put these out of the load function? :
     // - gridmaps initialization code
-    // - recIndex/mapIndex initialization in the parameter library
+    // - recIndex/mapIndex initialization of atom parameters
 
-    // Load values from the file
+    // Load the parameter library from the file
     if (input->parameterLibraryFilename[0])
-        parameterLibrary.readParameterLibrary(input->parameterLibraryFilename, -1, programParams.getDebugLevel(), logFile);
+        parameterLibrary.load(input->parameterLibraryFilename);
 
 #pragma region Writing to AVS_fld file
 {

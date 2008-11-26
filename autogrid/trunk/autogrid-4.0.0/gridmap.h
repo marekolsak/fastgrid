@@ -1,6 +1,6 @@
 #pragma once
 #include "autogrid.h"
-#include "linearfreeenergymodel.h"
+#include "parameterlibrary.h"
 
 class GridMap
 {

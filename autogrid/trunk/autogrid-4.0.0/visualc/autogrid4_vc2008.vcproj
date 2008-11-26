@@ -307,14 +307,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\linearfreeenergymodel.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\linearfreeenergymodel.h"
-			>
-		</File>
-		<File
 			RelativePath="..\logfile.cpp"
 			>
 		</File>
@@ -335,11 +327,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\parse_param_line.cpp"
+			RelativePath="..\parameterlibrary.cpp"
 			>
 		</File>
 		<File
-			RelativePath="..\parse_param_line.h"
+			RelativePath="..\parameterlibrary.h"
 			>
 		</File>
 		<File
