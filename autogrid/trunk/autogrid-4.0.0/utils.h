@@ -4,9 +4,7 @@
     #include <unistd.h>
 #endif
 #include "autogrid.h"
-#include "structs.h"
 #include "logfile.h"
-#include "atomparametermanager.h"
 
 // round() is a C99 function and not universally available
 // Required to round %.3f consistently on different platforms
@@ -16,42 +14,34 @@
     #define round3dp(x) ((floor((x)*1000.0 + 0.5)) / 1000.0)
 #endif
 
-// TODO: change these definitions to enums
-// Define tokens for parsing AutoDock atomic parameter files
-#define PAR_            -1
-#define PAR_NULL        0
-#define PAR_VDW         1
-#define PAR_HBOND       2
-#define PAR_ESTAT       3
-#define PAR_DESOLV      4
-#define PAR_TORS        5
-#define PAR_ATOM_PAR    6
-#define PAR_COMMENT     7
-
 // GPF tokens
-#define GPF_NULL            0
-#define GPF_COMMENT         1
-#define GPF_RECEPTOR        2
-#define GPF_GRIDFLD         3
-#define GPF_NPTS            4
-#define GPF_SPACING         5
-#define GPF_GRIDCENTER      7
-#define GPF_LIGAND_TYPES    8
-#define GPF_MAP             9
-#define GPF_NBP_COEFFS      10
-#define GPF_NBP_R_EPS       11
-#define GPF_ELECMAP         12
-#define GPF_DIEL            13
-#define GPF_FMAP            14
-#define GPF_DISORDER        15
-#define GPF_SMOOTH          16
-#define GPF_SOL_PAR         17
-#define GPF_CONSTANT        18
-#define GPF_COVALENTMAP     19
-#define GPF_RECEPTOR_TYPES  20
-#define GPF_PARAM_FILE      21
-#define GPF_DSOLVMAP        22
-#define GPF_QASP            23
+// TODO: move this to the InputData class
+enum GPFTokens
+{
+    GPF_NULL = 0,
+    GPF_COMMENT,
+    GPF_RECEPTOR,
+    GPF_GRIDFLD,
+    GPF_NPTS,
+    GPF_SPACING,
+    GPF_GRIDCENTER,
+    GPF_LIGAND_TYPES,
+    GPF_MAP,
+    GPF_NBP_COEFFS,
+    GPF_NBP_R_EPS,
+    GPF_ELECMAP,
+    GPF_DIEL,
+    GPF_FMAP,
+    GPF_DISORDER,
+    GPF_SMOOTH,
+    GPF_SOL_PAR,
+    GPF_CONSTANT,
+    GPF_COVALENTMAP,
+    GPF_RECEPTOR_TYPES,
+    GPF_PARAM_FILE,
+    GPF_DSOLVMAP,
+    GPF_QASP
+};
 
 // functions
 void initBoinc();

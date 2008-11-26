@@ -1,6 +1,7 @@
 #include "inputdata.h"
 #include "utils.h"
 #include "exceptions.h"
+#include "constants.h"
 #include <cstring>
 #include <cmath>
 
@@ -30,7 +31,7 @@ InputData::InputData()
     disorderH = false;
 }
 
-void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, const AtomParameterManager &apm, LogFile &logFile)
+void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary, LogFile &logFile)
 {
     // LIGAND: maximum is MAX_MAPS
     // each type is now at most two characters plus '\0'
@@ -168,7 +169,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, c
                         // 1:CHANGE HERE: need to set up vol and solpar
                         sscanf(&line[70], "%lf", &charge[ia]);
                         sscanf(&line[77], "%s", thisparm.autogridType);
-                        foundParam = apm.find(thisparm.autogridType);
+                        foundParam = parameterLibrary.findAtomParameter(thisparm.autogridType);
                         if (foundParam != 0)
                         {
                             logFile.printFormatted("DEBUG: foundParam->recIndex = %d", foundParam->recIndex);
@@ -414,7 +415,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, c
                     strcpy(ligandTypes[i], ligandAtomTypes[i]);
                 for (int i = 0; i < numAtomMaps; i++)
                 {
-                    foundParam = apm.find(ligandTypes[i]);
+                    foundParam = parameterLibrary.findAtomParameter(ligandTypes[i]);
                     if (foundParam)
                         foundParam->mapIndex = i;
                     else
@@ -438,7 +439,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, c
                 {
                     gridmaps[i].mapIndex = i;
                     strcpy(gridmaps[i].type, ligandTypes[i]);   // eg HD or OA or NA or N
-                    foundParam = apm.find(ligandTypes[i]);
+                    foundParam = parameterLibrary.findAtomParameter(ligandTypes[i]);
                     gridmaps[i].atomType = foundParam->mapIndex;
                     gridmaps[i].solparProbe = foundParam->solpar;
                     gridmaps[i].volProbe = foundParam->vol;
@@ -452,7 +453,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, c
 
                     for (int j = 0; j < numReceptorTypes; j++)
                     {
-                        foundParam = apm.find(receptorTypes[j]);
+                        foundParam = parameterLibrary.findAtomParameter(receptorTypes[j]);
                         gridmaps[i].nbpR[j] = (gridmaps[i].Rij + foundParam->Rij) / 2;
                         gridmaps[i].nbpEps[j] = sqrt(gridmaps[i].epsij * foundParam->epsij);
                         // apply the vdW forcefield parameter/weight here
@@ -521,7 +522,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, c
                     strcpy(receptorTypes[i], receptor_atom_types[i]);
                 for (int i = 0; i < numReceptorTypes; i++)
                 {
-                    foundParam = apm.find(receptor_atom_types[i]);
+                    foundParam = parameterLibrary.findAtomParameter(receptor_atom_types[i]);
                     if (foundParam != 0)
                         foundParam->recIndex = i;
                     else
@@ -536,7 +537,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, c
         case GPF_SOL_PAR:      // THIS IS OBSOLETE!!!
             // Read volume and solvation parameter for probe:
             sscanf(GPFLine, "%*s %s %lf %lf", thisparm.autogridType, &temp_vol, &temp_solpar);
-            foundParam = apm.find(thisparm.autogridType);
+            foundParam = parameterLibrary.findAtomParameter(thisparm.autogridType);
             if (foundParam != 0)
             {
                 foundParam->vol = temp_vol;

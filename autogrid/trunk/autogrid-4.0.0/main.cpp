@@ -43,18 +43,18 @@
     #include "filesys.h"    // boinc_fopen(), etc...
 #endif
 
+#include "constants.h"
 #include "autogrid.h"
 #include "utils.h"
-#include "programparameters.h"
-#include "read_parameter_library.h"
 
 // classes
-#include "exceptions.h" // ExitProgram
-#include "logfile.h"    // LogFile
-#include "gridmap.h"    // GridMap, GridMapList
-#include "pairwiseinteractionenergies.h" // PairwiseInteractionEnergies
-#include "inputdata.h"  // InputData
-#include "atomparametermanager.h" // AtomParameterManager
+#include "programparameters.h"              // ProgramParameters
+#include "exceptions.h"                     // ExitProgram
+#include "logfile.h"                        // LogFile
+#include "gridmap.h"                        // GridMap, GridMapList
+#include "pairwiseinteractionenergies.h"    // PairwiseInteractionEnergies
+#include "inputdata.h"                      // InputData
+#include "linearfreeenergymodel.h"          // ParameterLibrary
 
 #pragma endregion Includes
 
@@ -106,24 +106,24 @@ void appMain(int argc, char **argv)
     // Declaration of gridmaps
     GridMapList gridmaps(&logFile);
 
-    // TODO: put atomParameterManager-related functions into a new class
-    // TODO: put LinearFreeEnergyModel, setupParameterLibrary and readParameterLibrary into a new class
+    // TODO: put ParameterLibrary, setupParameterLibrary and readParameterLibrary into a new class
 
-    // Initialization of free energy coefficients
-    LinearFreeEnergyModel model;
-    AtomParameterManager apm;
+    // Initialization of free energy coefficients and atom parameters
+    ParameterLibrary parameterLibrary;
 
     // Set default values
-    setupParameterLibrary(-1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model, apm);
+    parameterLibrary.setupParameterLibrary(-1, programParams.getDebugLevel(), logFile);
 
     // Reading in the grid parameter file
     InputData *input = new InputData();
-    input->load(programParams.getGridParameterFilename(), gridmaps, apm, logFile);
-    // TODO: shouldn't we put the gridmaps initialization code out of the load function?
+    input->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary, logFile);
+    // TODO: shouldn't we put these out of the load function? :
+    // - gridmaps initialization code
+    // - recIndex/mapIndex initialization in the parameter library
 
     // Load values from the file
     if (input->parameterLibraryFilename[0])
-        readParameterLibrary(input->parameterLibraryFilename, -1, programParams.getProgramName(), programParams.getDebugLevel(), logFile, model, apm);
+        parameterLibrary.readParameterLibrary(input->parameterLibraryFilename, -1, programParams.getDebugLevel(), logFile);
 
 #pragma region Writing to AVS_fld file
 {
@@ -196,7 +196,7 @@ void appMain(int argc, char **argv)
         double r = angstrom(indx_r);
         // sol_fn[indx_r] = exp(-sq(r)/(2*sigma*sigma));
         sol_fn[indx_r] = exp(sq(r) * minus_inv_two_sigma_sqd);
-        sol_fn[indx_r] *= model.coeff_desolv;
+        sol_fn[indx_r] *= parameterLibrary.coeff_desolv;
     }
 }
 #pragma endregion Precalculating of the exponential function for receptor and ligand desolvation
@@ -227,15 +227,15 @@ void appMain(int argc, char **argv)
     // calculate bond vectors for directional H-bonds
     // setup the canned atom types here....
     // at this point set up hydrogen, carbon, oxygen and nitrogen
-    hydrogen = apm.getRecIndex("HD");
-    nonHB_hydrogen = apm.getRecIndex("H");
-    carbon = apm.getRecIndex("C");
-    arom_carbon = apm.getRecIndex("A");
-    oxygen = apm.getRecIndex("OA");
-    nitrogen = apm.getRecIndex("NA");
-    nonHB_nitrogen = apm.getRecIndex("N");
-    sulphur = apm.getRecIndex("SA");
-    nonHB_sulphur = apm.getRecIndex("S");
+    hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
+    nonHB_hydrogen = parameterLibrary.getAtomParameterRecIndex("H");
+    carbon = parameterLibrary.getAtomParameterRecIndex("C");
+    arom_carbon = parameterLibrary.getAtomParameterRecIndex("A");
+    oxygen = parameterLibrary.getAtomParameterRecIndex("OA");
+    nitrogen = parameterLibrary.getAtomParameterRecIndex("NA");
+    nonHB_nitrogen = parameterLibrary.getAtomParameterRecIndex("N");
+    sulphur = parameterLibrary.getAtomParameterRecIndex("SA");
+    nonHB_sulphur = parameterLibrary.getAtomParameterRecIndex("S");
 
     // 7:CHANGE HERE: scan the 'mapIndex' from the input
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
@@ -781,11 +781,11 @@ void appMain(int argc, char **argv)
                         // Distance-dependent dielectric...
                         // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->epsilon[indx_r];
                         // apply the estat forcefield coefficient/weight here
-                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->epsilon[indx_r] * model.coeff_estat;
+                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->epsilon[indx_r] * parameterLibrary.coeff_estat;
                     else
                         // Constant dielectric...
                         // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->invDielCal;
-                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->invDielCal * model.coeff_estat;
+                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->invDielCal * parameterLibrary.coeff_estat;
 
                     // If distance from grid point to atom ia is too large,
                     // or if atom is a disordered hydrogen,

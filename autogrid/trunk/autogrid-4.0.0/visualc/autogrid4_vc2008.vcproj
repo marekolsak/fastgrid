@@ -279,14 +279,6 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\atomparametermanager.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\atomparametermanager.h"
-			>
-		</File>
-		<File
 			RelativePath="..\autogrid.h"
 			>
 		</File>
@@ -312,6 +304,14 @@
 		</File>
 		<File
 			RelativePath="..\inputdata.h"
+			>
+		</File>
+		<File
+			RelativePath="..\linearfreeenergymodel.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\linearfreeenergymodel.h"
 			>
 		</File>
 		<File
@@ -348,18 +348,6 @@
 		</File>
 		<File
 			RelativePath="..\programparameters.h"
-			>
-		</File>
-		<File
-			RelativePath="..\read_parameter_library.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\read_parameter_library.h"
-			>
-		</File>
-		<File
-			RelativePath="..\structs.h"
 			>
 		</File>
 		<File

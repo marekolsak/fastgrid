@@ -29,6 +29,7 @@
 #define PARSE_PAR_LINE
 
 #include "constants.h"
-int parseParamLine(char line[LINE_LEN], int debug, FILE *logFile);
+// TODO: move this to the ParameterLibrary class
+int parseParamLine(const char *line, int debug, LogFile &logFile);
 
 #endif

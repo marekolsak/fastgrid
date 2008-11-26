@@ -35,6 +35,7 @@
 #include "utils.h"
 #include "parse_param_line.h"
 #include "autogrid.h"
+#include "linearfreeenergymodel.h"
 
 /******************************************************************************/
 /*      Name: parseParamLine                                                */
@@ -52,7 +53,7 @@
 /* Date     Inits   Comments                                                  */
 /* 08/03/05 GMM     Entered code.                                             */
 /******************************************************************************/
-int parseParamLine(char line[LINE_LEN], int debug, FILE *logFile)
+int parseParamLine(const char *line, int debug, LogFile &logFile)
 {
     int j, i, token = PAR_;               /* return -1 if nothing is recognized. */
     char c[LINE_LEN];
@@ -77,11 +78,11 @@ int parseParamLine(char line[LINE_LEN], int debug, FILE *logFile)
         /*  Ignore case */
         c[j] = (char)tolower((int)line[j]);
         if (debug > 0) {
-            fprintf(logFile,"%c",c[j]);
+            logFile.printFormatted("%c",c[j]);
         }
     }
     if (debug > 0) {
-        fprintf(logFile,"\nj = %d\n",j);
+        logFile.printFormatted("\nj = %d\n",j);
     }
 
     /*  Recognize one character tokens  */
@@ -96,7 +97,7 @@ int parseParamLine(char line[LINE_LEN], int debug, FILE *logFile)
 
     for (i=0;  (i < tokentablesize) && (token == PAR_);  i++) {
         if (debug > 0) {
-            fprintf(logFile,"i = %d, tokentable[i].lexeme = %s, tokentable[i].value = %d, c = %s\n",i,tokentable[i].lexeme,tokentable[i].tokenvalue,c);
+            logFile.printFormatted("i = %d, tokentable[i].lexeme = %s, tokentable[i].value = %d, c = %s\n",i,tokentable[i].lexeme,tokentable[i].tokenvalue,c);
         }
         if (strncasecmp(tokentable[i].lexeme, c, j) == 0) {
             token = tokentable[i].tokenvalue;

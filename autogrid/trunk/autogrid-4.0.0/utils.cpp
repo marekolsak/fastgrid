@@ -69,6 +69,7 @@ FILE *openFile(const char *path, const char *mode)
     return filep;
 }
 
+// TODO: move this to the InputData class
 double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
     /*____________________________________________________________________________
      * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
@@ -107,6 +108,7 @@ double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
 /* Date     Inits   Comments                                                  */
 /* 04/01/93 GMM     Created for use in makefile.                              */
 /******************************************************************************/
+// TODO: move this to the InputData class
 int checkSize(int nelements, char axischar, LogFile &logFile)
 {
     // nelements mustn't be negative, shouldn't be zero or larger than MAX_GRID_PTS and should be even
@@ -129,7 +131,7 @@ int checkSize(int nelements, char axischar, LogFile &logFile)
 }
 
 /******************************************************************************/
-/*      Name: parseGPFLine                                                       */
+/*      Name: parseGPFLine                                                    */
 /*  Function: Parse the AutoGrid parameter file line                          */
 /* Copyright: (C) 1995, TSRI                                                  */
 /*----------------------------------------------------------------------------*/
@@ -144,7 +146,7 @@ int checkSize(int nelements, char axischar, LogFile &logFile)
 /* Date     Inits   Comments                                                  */
 /* 02/01/95 GMM     Entered code.                                             */
 /******************************************************************************/
-
+// TODO: move this to the InputData class
 int parseGPFLine(char line[LINE_LEN])
 {
     int l, i, token = -1 ;           /* return -1 if nothing is recognized. */
@@ -254,6 +256,7 @@ int parseGPFLine(char line[LINE_LEN])
 /* Date     Inits   Comments                                                  */
 /* 06/02/03 RH      Entered code.                                             */
 /******************************************************************************/
+// TODO: move this to the InputData class
 int parseTypes(char * line, char *words[], int maxwords)
 /*utility func for parsing types*/
 {

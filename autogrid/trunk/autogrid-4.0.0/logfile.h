@@ -45,9 +45,6 @@ public:
     void printTimeInHMS(float time, bool fixedOutputLength = true);
     void printExecutionTimesInHMS(Clock startTime, Clock endTime, tms *start, tms *end);
 
-    // temporary type fallback
-    operator FILE*() { return file; }
-
 private:
     FILE *file;
     char programName[MAX_CHARS];
