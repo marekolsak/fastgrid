@@ -287,6 +287,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\desolvexpfunc.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\desolvexpfunc.h"
+			>
+		</File>
+		<File
 			RelativePath="..\exceptions.h"
 			>
 		</File>

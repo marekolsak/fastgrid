@@ -666,8 +666,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 distDepDiel = true;
                 // calculate ddd of Mehler & Solmajer
                 epsilon[0] = 1.0;
-                for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
-                    epsilon[indx_r] = calculateDDDMehlerSolmajer(angstrom(indx_r), APPROX_ZERO);
+                for (int indexR = 1; indexR < MAX_DIST; indexR++)
+                    epsilon[indexR] = calculateDDDMehlerSolmajer(angstrom(indexR), APPROX_ZERO);
                 logFile->print("\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n"
                               "  d   Dielectric\n ___  __________\n");
                 for (int i = 0; i <= 500; i += 10)

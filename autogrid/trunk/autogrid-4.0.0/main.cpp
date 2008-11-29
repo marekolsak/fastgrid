@@ -54,7 +54,8 @@
 #include "gridmap.h"                        // GridMap, GridMapList
 #include "pairwiseinteractionenergies.h"    // PairwiseInteractionEnergies
 #include "inputdata.h"                      // InputData
-#include "parameterlibrary.h"          // ParameterLibrary
+#include "parameterlibrary.h"               // ParameterLibrary
+#include "desolvexpfunc.h"                  // DesolvExpFunc
 
 #pragma endregion Includes
 
@@ -82,20 +83,13 @@
 //
 // Inputs: Control file, receptor PDBQT file, parameter file
 // Returns: Atomic affinity, desolvation and electrostatic grid maps.
-void appMain(int argc, char **argv)
+void autogridMain(int argc, char **argv)
 {
-#if defined(_WIN32)
-    SetThreadAffinityMask(GetCurrentThread(), 1);
-#endif
-
     // Get the time at the start of the run...
     tms tmsJobStart;
     Clock jobStart = times(&tmsJobStart);
 
     double versionNumber = 4.00;
-
-    // Initialize BOINC if needed
-    boincInit();
 
     // Initialize the ProgramParameters object, which parses the command-line arguments
     ProgramParameters programParams(argc, argv);
@@ -172,29 +166,11 @@ void appMain(int argc, char **argv)
 #endif
 
     // Calculating the lookup table of the pairwise interaction energies
-    PairwiseInteractionEnergies *energyLookup = new PairwiseInteractionEnergies();
-    energyLookup->calculate(gridmaps, logFile, input->numReceptorTypes, input->receptorTypes, input->rSmooth);
+    PairwiseInteractionEnergies energyLookup;
+    energyLookup.calculate(gridmaps, logFile, input->numReceptorTypes, input->receptorTypes, input->rSmooth);
 
-    double sol_fn[MAX_DIST];
-
-#pragma region Precalculating of the exponential function for receptor and ligand desolvation
-{
-    double minus_inv_two_sigma_sqd;
-    double sigma;
-
-    // exponential function for receptor and ligand desolvation
-    // note: the solvation term will not be smoothed
-    sigma = 3.6;
-    minus_inv_two_sigma_sqd = -1 / (2 * sigma * sigma);
-    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
-    {
-        double r = angstrom(indx_r);
-        // sol_fn[indx_r] = exp(-sq(r)/(2*sigma*sigma));
-        sol_fn[indx_r] = exp(sq(r) * minus_inv_two_sigma_sqd);
-        sol_fn[indx_r] *= parameterLibrary.coeff_desolv;
-    }
-}
-#pragma endregion Precalculating of the exponential function for receptor and ligand desolvation
+    // Precalculating the exponential function for receptor and ligand desolvation
+    DesolvExpFunc desolvExpFunc(parameterLibrary.coeff_desolv);
 
     // canned atom type number
     int hydrogen, carbon, arom_carbon, oxygen, nitrogen;
@@ -765,7 +741,7 @@ void appMain(int argc, char **argv)
                     for (int i = 0; i < XYZ; i++)
                         d[i] *= inv_r;
                     // make sure lookup index is in the table
-                    int indx_r = min(lookup(r), MAX_DIST-1);
+                    int indexR = min(lookup(r), MAX_DIST-1);
 
                     if (input->floatingGridFilename[0])
                         // Calculate the so-called "Floating Grid"...
@@ -774,9 +750,9 @@ void appMain(int argc, char **argv)
                     // elecPE is the next-to-last last grid map, i.e. electrostatics
                     if (input->distDepDiel)
                         // Distance-dependent dielectric...
-                        // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->epsilon[indx_r];
+                        // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->epsilon[indexR];
                         // apply the estat forcefield coefficient/weight here
-                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->epsilon[indx_r] * parameterLibrary.coeff_estat;
+                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->epsilon[indexR] * parameterLibrary.coeff_estat;
                     else
                         // Constant dielectric...
                         // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->invDielCal;
@@ -992,7 +968,7 @@ void appMain(int argc, char **argv)
                                 // PROBE forms H-bonds...
 
                                 // rsph ramps in angular dependence for distances with negative energy
-                                rsph = energyLookup->table()[input->atomType[ia]][indx_r][mapIndex] / 100;
+                                rsph = energyLookup(input->atomType[ia], indexR, mapIndex) / 100;
                                 rsph = max(rsph, 0);
                                 rsph = min(rsph, 1);
                                 if ((gridmaps[mapIndex].hbond == 3 || gridmaps[mapIndex].hbond == 5)    // AS or A2
@@ -1000,40 +976,40 @@ void appMain(int argc, char **argv)
                                 {   // DS or D1
                                     // PROBE can be an H-BOND ACCEPTOR,
                                     if (disorder[ia] == FALSE)
-                                        gridmaps[mapIndex].energy += energyLookup->table()[input->atomType[ia]][indx_r][mapIndex] * Hramp * (racc + (1 - racc) * rsph);
+                                        gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex) * Hramp * (racc + (1 - racc) * rsph);
                                     else
-                                        gridmaps[mapIndex].energy += energyLookup->table()[hydrogen][max(0, indx_r - 110)][mapIndex] * Hramp * (racc + (1 - racc) * rsph);
+                                        gridmaps[mapIndex].energy += energyLookup(hydrogen, max(0, indexR - 110), mapIndex) * Hramp * (racc + (1 - racc) * rsph);
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 4)    // A1
                                          && (input->hbond[ia] == 1 || input->hbond[ia] == 2))
                                 {   // DS,D1
-                                    hbondmin[mapIndex] = min(hbondmin[mapIndex], energyLookup->table()[input->atomType[ia]][indx_r][mapIndex] * (racc + (1 - racc) * rsph));
-                                    hbondmax[mapIndex] = max(hbondmax[mapIndex], energyLookup->table()[input->atomType[ia]][indx_r][mapIndex] * (racc + (1 - racc) * rsph));
+                                    hbondmin[mapIndex] = min(hbondmin[mapIndex], energyLookup(input->atomType[ia], indexR, mapIndex) * (racc + (1 - racc) * rsph));
+                                    hbondmax[mapIndex] = max(hbondmax[mapIndex], energyLookup(input->atomType[ia], indexR, mapIndex) * (racc + (1 - racc) * rsph));
                                     hbondflag[mapIndex] = TRUE;
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 1 || gridmaps[mapIndex].hbond == 2) && (input->hbond[ia] > 2))
                                 {   // DS,D1 vs AS,A1,A2
                                     // PROBE is H-BOND DONOR,
-                                    temp_hbond_enrg = energyLookup->table()[input->atomType[ia]][indx_r][mapIndex] * (rdon + (1 - rdon) * rsph);
+                                    temp_hbond_enrg = energyLookup(input->atomType[ia], indexR, mapIndex) * (rdon + (1 - rdon) * rsph);
                                     hbondmin[mapIndex] = min(hbondmin[mapIndex], temp_hbond_enrg);
                                     hbondmax[mapIndex] = max(hbondmax[mapIndex], temp_hbond_enrg);
                                     hbondflag[mapIndex] = TRUE;
                                 }
                                 else
                                     // hbonder PROBE-ia cannot form a H-bond...,
-                                    gridmaps[mapIndex].energy += energyLookup->table()[input->atomType[ia]][indx_r][mapIndex];
+                                    gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex);
                             }
                             else
                                 // PROBE does not form H-bonds...,
-                                gridmaps[mapIndex].energy += energyLookup->table()[input->atomType[ia]][indx_r][mapIndex];
+                                gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex);
 
                             // add desolvation energy
                             // forcefield desolv coefficient/weight in sol_fn
-                            gridmaps[mapIndex].energy += gridmaps[mapIndex].solparProbe * input->vol[ia] * sol_fn[indx_r] +
-                                (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[mapIndex].volProbe * sol_fn[indx_r];
+                            gridmaps[mapIndex].energy += gridmaps[mapIndex].solparProbe * input->vol[ia] * desolvExpFunc(indexR) +
+                                (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[mapIndex].volProbe * desolvExpFunc(indexR);
                         }       // is not covalent
                     }           // mapIndex
-                    gridmaps.getDesolvationMap().energy += input->solparQ * input->vol[ia] * sol_fn[indx_r];
+                    gridmaps.getDesolvationMap().energy += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
                 }               // ia loop, over all receptor atoms...
                 for (int mapIndex = 0; mapIndex < gridmaps.getNumAtomMaps(); mapIndex++)
                     if (hbondflag[mapIndex])
@@ -1079,8 +1055,6 @@ void appMain(int argc, char **argv)
 }
 #pragma endregion Calculation of gridmaps
 
-    delete energyLookup;
-
     if (input->floatingGridFilename[0])
         fclose(floatingGridFile);
 
@@ -1112,22 +1086,36 @@ void appMain(int argc, char **argv)
     fprintf(stderr, "\n%s: Successful Completion.\n", programParams.getProgramName());
     logFile.printTitled("Successful Completion.\n");
 
+    // Get the time at the end of the run and print the difference
     tms tmsJobEnd;
     Clock jobEnd = times(&tmsJobEnd);
     logFile.printExecutionTimesInHMS(jobStart, jobEnd, &tmsJobStart, &tmsJobEnd);
-
-    boincDone();
 }
+
+#pragma region The main function
 
 int main(int argc, char **argv)
 {
+#if defined(_WIN32)
+    SetThreadAffinityMask(GetCurrentThread(), 1);
+#endif
+
     try
     {
-        appMain(argc, argv);
+        // Initialize BOINC if needed
+        boincInit();
+
+        // AutoGrid's main function
+        autogridMain(argc, argv);
+
+        // This should not return if used
+        boincDone();
         return 0;
     }
-    catch (ExitProgram &e)
+    catch (ExitProgram &e)  // the ExitProgram exception is a replacement for C's exit function.
     {
         return e.getExitCode();
     }
 }
+
+#pragma endregion The main function

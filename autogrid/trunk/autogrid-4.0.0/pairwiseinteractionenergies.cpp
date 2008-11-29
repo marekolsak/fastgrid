@@ -1,6 +1,16 @@
 #include "pairwiseinteractionenergies.h"
 #include <cmath>
 
+PairwiseInteractionEnergies::PairwiseInteractionEnergies()
+{
+    energyLookup = new LookupTable();
+}
+
+PairwiseInteractionEnergies::~PairwiseInteractionEnergies()
+{
+    delete energyLookup;
+}
+
 void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile &logFile,
                                             int numReceptorTypes, const char (&receptorTypes)[NUM_RECEPTOR_TYPES][3], double rSmooth)
 {
@@ -57,28 +67,28 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
                                        "Calculating energies for %s-%s interactions.\n",
                                        cA, cB, gridmaps[ia].type, receptorTypes[i], xA, xB, gridmaps[ia].type, receptorTypes[i]);
 
-                // loop over distance index, indx_r, from 0 to MAX_DIST
-                for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                // loop over distance index, indexR, from 0 to MAX_DIST
+                for (int indexR = 1; indexR < MAX_DIST; indexR++)
                 {
-                    double r = angstrom(indx_r);
+                    double r = angstrom(indexR);
                     rA = pow(r, dxA);
                     rB = pow(r, dxB);
-                    energyLookup[i][indx_r][ia] = min(EINTCLAMP, (cA / rA - cB / rB));
+                    energyLookup->table[i][indexR][ia] = min(EINTCLAMP, (cA / rA - cB / rB));
                 }               // for each distance
-                energyLookup[i][0][ia] = EINTCLAMP;
-                energyLookup[i][MAX_DIST-1][ia] = 0;
+                energyLookup->table[i][0][ia] = EINTCLAMP;
+                energyLookup->table[i][MAX_DIST-1][ia] = 0;
 
                 // smooth with min function *//* GPF_MAP
                 if (iSmooth > 0)
                 {
-                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
+                    for (int indexR = 1; indexR < MAX_DIST; indexR++)
                     {
-                        energySmooth[indx_r] = 100000;
-                        for (int j = max(0, indx_r - iSmooth); j < min(MAX_DIST, indx_r + iSmooth); j++)
-                            energySmooth[indx_r] = min(energySmooth[indx_r], energyLookup[i][j][ia]);
+                        energySmooth[indexR] = 100000;
+                        for (int j = max(0, indexR - iSmooth); j < min(MAX_DIST, indexR + iSmooth); j++)
+                            energySmooth[indexR] = min(energySmooth[indexR], energyLookup->table[i][j][ia]);
                     }
-                    for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
-                        energyLookup[i][indx_r][ia] = energySmooth[indx_r];
+                    for (int indexR = 1; indexR < MAX_DIST; indexR++)
+                        energyLookup->table[i][indexR][ia] = energySmooth[indexR];
                 }               // endif smoothing
             }                   // for i in receptor types: build energy table for this map
 
@@ -95,7 +105,7 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
             {
                 logFile.printFormatted("%4.1lf", angstrom(j));
                 for (int iat = 0; iat < numReceptorTypes; iat++)
-                    logFile.printFormatted((energyLookup[iat][j][ia] < 100000) ? "%9.2lf" : "%9.2lg", energyLookup[iat][j][ia]);               // iat
+                    logFile.printFormatted((energyLookup->table[iat][j][ia] < 100000) ? "%9.2lf" : "%9.2lg", energyLookup->table[iat][j][ia]);               // iat
                 logFile.print("\n");
             }                   // j
             logFile.print("\n");
