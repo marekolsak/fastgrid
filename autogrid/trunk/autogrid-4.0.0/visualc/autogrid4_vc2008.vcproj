@@ -283,10 +283,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\constants.h"
-			>
-		</File>
-		<File
 			RelativePath="..\desolvexpfunc.cpp"
 			>
 		</File>
@@ -356,10 +352,6 @@
 		</File>
 		<File
 			RelativePath="..\times.h"
-			>
-		</File>
-		<File
-			RelativePath="..\typedefs.h"
 			>
 		</File>
 		<File

@@ -1,7 +1,6 @@
 #include "inputdata.h"
 #include "utils.h"
 #include "exceptions.h"
-#include "constants.h"
 #include <cstring>
 #include <cmath>
 #include <cctype>

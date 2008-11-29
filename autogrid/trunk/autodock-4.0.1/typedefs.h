@@ -1,13 +1,13 @@
 /*
 
- $Id: typedefs.h,v 1.4 2007/05/03 20:46:06 garrett Exp $
+ $Id: typedefs.h,v 1.5 2007/04/27 06:01:52 garrett Exp $
 
- AutoGrid
+ AutoDock 
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+ Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
  All Rights Reserved.
 
- AutoGrid is a Trade Mark of The Scripps Research Institute.
+ AutoDock is a Trade Mark of The Scripps Research Institute.
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -25,7 +25,8 @@
 
  */
 
-#pragma once
+#ifndef _TYPEDEFS_H
+#define _TYPEDEFS_H
 
 /******************************************************************************
  *      Name: typedefs.h                                                      *
@@ -55,6 +56,22 @@
 
 #ifdef USE_DOUBLE
     typedef double Real;
+#   define FDFMT "%lf"
 #else
     typedef float Real;
+#   define FDFMT "%f"
 #endif
+#define FDFMT2 FDFMT " " FDFMT
+#define FDFMT3 FDFMT " " FDFMT " " FDFMT
+
+
+#ifdef USE_VELOCITY_ENGINE
+typedef union
+{
+	vector float vec;
+	float		 elements[4];
+} Float4;
+#endif
+
+#endif
+/* EOF */

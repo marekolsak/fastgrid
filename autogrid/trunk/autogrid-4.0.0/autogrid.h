@@ -89,10 +89,19 @@
 /*----------------------------------------------------------------------------*/
 
 #define sq(a)               ((a) * (a))
-/* #define hypotenuse(x,y,z)   (sqrt((x)*(x) + (y)*(y) + (z)*(z))) */
 #define sq_hyp(x,y,z)       ((x)*(x) + (y)*(y) + (z)*(z))
-// we do not want to have a redefinition of the following macro max,min
+#define hypotenuse(x,y,z)   (sqrt(double(sq(x) + sq(y) + sq(z))))
+#define equal(a,b,n)        (strncmp(a, b, size_t(n)) == 0)
 
+// round() is a C99 function and not universally available
+// Required to round %.3f consistently on different platforms
+#if defined(HAVE_ROUND)
+    #define round3dp(x) ((round((x)*1000.0L))/1000.0L)
+#else
+    #define round3dp(x) ((floor((x)*1000.0 + 0.5)) / 1000.0)
+#endif
+
+// we do not want to have a redefinition of the following macro max,min
 #ifdef _WIN32
 #undef min
 #undef max

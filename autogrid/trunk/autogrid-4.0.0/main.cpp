@@ -43,7 +43,6 @@
     #include "filesys.h"    // boinc_fopen(), etc...
 #endif
 
-#include "constants.h"
 #include "autogrid.h"
 #include "utils.h"
 

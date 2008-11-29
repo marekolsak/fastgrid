@@ -19,7 +19,7 @@ public:
     void calculate(const GridMapList &gridmaps, LogFile &logFile,
                    int numReceptorTypes, const char (&receptorTypes)[NUM_RECEPTOR_TYPES][3], double rSmooth);
 
-    // returns the calculated lookup table, read-only access
+    // returns the precalculated value
     double operator ()(int atomType, int indexR, int mapIndex) const
     {
         return energyLookup->table[atomType][indexR][mapIndex];
