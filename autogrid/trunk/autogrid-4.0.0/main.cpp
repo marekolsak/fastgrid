@@ -95,7 +95,7 @@ void appMain(int argc, char **argv)
     double versionNumber = 4.00;
 
     // Initialize BOINC if needed
-    initBoinc();
+    boincInit();
 
     // Initialize the ProgramParameters object, which parses the command-line arguments
     ProgramParameters programParams(argc, argv);
@@ -110,11 +110,11 @@ void appMain(int argc, char **argv)
     ParameterLibrary parameterLibrary(&logFile, programParams.getDebugLevel());
 
     // Reading in the grid parameter file
-    InputData *input = new InputData();
-    input->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary, logFile);
+    InputDataLoader *input = new InputDataLoader(&logFile);
+    input->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary);
     // TODO: shouldn't we put these out of the load function? :
     // - gridmaps initialization code
-    // - recIndex/mapIndex initialization of atom parameters
+    // - initialization of atom parameters recIndex/mapIndex
 
     // Load the parameter library from the file
     if (input->parameterLibraryFilename[0])
@@ -1116,13 +1116,7 @@ void appMain(int argc, char **argv)
     Clock jobEnd = times(&tmsJobEnd);
     logFile.printExecutionTimesInHMS(jobStart, jobEnd, &tmsJobStart, &tmsJobEnd);
 
-#if defined(BOINCCOMPOUND)
-    boinc_fraction_done(1);
-#endif
-
-#if defined(BOINC)
-    boinc_finish(0); // should not return
-#endif
+    boincDone();
 }
 
 int main(int argc, char **argv)

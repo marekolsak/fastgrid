@@ -2,9 +2,8 @@
 #include "gridmap.h"
 #include "programparameters.h"
 
-class InputData
+struct InputData
 {
-public:
     // if the first char is equal to '\0', the filename is not specified
     char fldFilenameAVS[MAX_CHARS];
     char floatingGridFilename[MAX_CHARS];
@@ -46,8 +45,20 @@ public:
     double covBarrier;
 
     bool distDepDiel, disorderH;
+};
 
-    // functions
-    InputData();
-    void load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary, LogFile &logFile);
+class InputDataLoader : public InputData
+{
+public:
+    InputDataLoader(LogFile *logFile);
+    void load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary);
+
+private:
+    LogFile *logFile;
+
+    int checkSize(int nelements, char axischar);
+    static int parseGPFLine(const char *line);
+    static double calculateDDDMehlerSolmajer(double distance, double approx_zero);
+    static int parseTypes(char *line, char **words, int maxwords);
+    static int strIndex(const char *s, const char *t);
 };

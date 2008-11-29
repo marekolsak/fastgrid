@@ -5,6 +5,20 @@
 #include <cstring>
 #include <cctype>
 
+// Define tokens for parsing AutoDock atomic parameter files
+enum ParserTokens
+{
+    PAR_ = -1,
+    PAR_NULL = 0,
+    PAR_VDW,
+    PAR_HBOND,
+    PAR_ESTAT,
+    PAR_DESOLV,
+    PAR_TORS,
+    PAR_ATOM_PAR,
+    PAR_COMMENT
+};
+
 ParameterLibrary::ParameterLibrary(LogFile *logFile, int debug, int outputLevel): logFile(logFile), debug(debug), outputLevel(outputLevel)
 {
     memset(dictionary, 0, sizeof(dictionary));

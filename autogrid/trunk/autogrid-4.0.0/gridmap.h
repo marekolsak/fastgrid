@@ -2,9 +2,8 @@
 #include "autogrid.h"
 #include "parameterlibrary.h"
 
-class GridMap
+struct GridMap
 {
-public:
     int atomType;          // corresponds to receptor numbers????
     int mapIndex;
     bool isCovalent;

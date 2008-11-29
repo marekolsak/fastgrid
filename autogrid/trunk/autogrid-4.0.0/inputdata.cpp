@@ -4,8 +4,37 @@
 #include "constants.h"
 #include <cstring>
 #include <cmath>
+#include <cctype>
 
-InputData::InputData()
+// GPF tokens
+enum GPFTokens
+{
+    GPF_NULL = 0,
+    GPF_COMMENT,
+    GPF_RECEPTOR,
+    GPF_GRIDFLD,
+    GPF_NPTS,
+    GPF_SPACING,
+    GPF_GRIDCENTER,
+    GPF_LIGAND_TYPES,
+    GPF_MAP,
+    GPF_NBP_COEFFS,
+    GPF_NBP_R_EPS,
+    GPF_ELECMAP,
+    GPF_DIEL,
+    GPF_FMAP,
+    GPF_DISORDER,
+    GPF_SMOOTH,
+    GPF_SOL_PAR,
+    GPF_CONSTANT,
+    GPF_COVALENTMAP,
+    GPF_RECEPTOR_TYPES,
+    GPF_PARAM_FILE,
+    GPF_DSOLVMAP,
+    GPF_QASP
+};
+
+InputDataLoader::InputDataLoader(LogFile *logFile): logFile(logFile)
 {
     fldFilenameAVS[0] = 0;
     floatingGridFilename[0] = 0;
@@ -31,7 +60,7 @@ InputData::InputData()
     disorderH = false;
 }
 
-void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary, LogFile &logFile)
+void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary)
 {
     // LIGAND: maximum is MAX_MAPS
     // each type is now at most two characters plus '\0'
@@ -84,8 +113,8 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
         GPF = openFile(gridParameterFilename, "r");
         if (!GPF)
         {
-            logFile.printErrorFormatted(ERROR, "Sorry, I can't find or open Grid Parameter File \"%s\"", gridParameterFilename);
-            logFile.printErrorFormatted(ERROR, "Unsuccessful Completion.\n");
+            logFile->printErrorFormatted(ERROR, "Sorry, I can't find or open Grid Parameter File \"%s\"", gridParameterFilename);
+            logFile->printErrorFormatted(ERROR, "Unsuccessful Completion.\n");
             throw ExitProgram(911);
         }
     }
@@ -102,17 +131,17 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
         switch (GPF_keyword)
         {
         case -1:
-            logFile.printFormatted("GPF> %s", GPFLine);
-            logFile.printError(WARNING, "Unrecognized keyword in grid parameter file.\n");
+            logFile->printFormatted("GPF> %s", GPFLine);
+            logFile->printError(WARNING, "Unrecognized keyword in grid parameter file.\n");
             continue;           // while fgets GPFLine...
 
         case GPF_NULL:
         case GPF_COMMENT:
-            logFile.printFormatted("GPF> %s", GPFLine);
+            logFile->printFormatted("GPF> %s", GPFLine);
             break;
 
         default:
-            logFile.printFormatted("GPF> %s", GPFLine);
+            logFile->printFormatted("GPF> %s", GPFLine);
             indcom = strIndex(GPFLine, "#");
             if (indcom != -1)
                 GPFLine[indcom] = '\0';    // Truncate str. at the comment
@@ -131,13 +160,13 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
             {
                 // read in the receptor gridParameterFilename
                 sscanf(GPFLine, "%*s %s", receptorFilename);
-                logFile.printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
+                logFile->printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
 
                 // try to open receptor file
                 if ((receptor_fileptr = openFile(receptorFilename, "r")) == 0)
                 {
-                    logFile.printErrorFormatted(ERROR, "can't find or open receptor PDBQT file \"%s\".\n", receptorFilename);
-                    logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    logFile->printErrorFormatted(ERROR, "can't find or open receptor PDBQT file \"%s\".\n", receptorFilename);
+                    logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
 
                 // start to read in the lines of the receptor file
@@ -156,7 +185,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         atom_name[4] = '\0';
 
                         // Output the serial number of this atom...
-                        logFile.printFormatted("Atom no. %2d, \"%s\"", ia + 1, atom_name);
+                        logFile->printFormatted("Atom no. %2d, \"%s\"", ia + 1, atom_name);
 
                         // Read in this receptor atom's coordinates,partial charges, and solvation parameters in PDBQS format...
                         sscanf(&line[30], "%lf", &coord[ia][X]);
@@ -164,7 +193,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         sscanf(&line[46], "%lf", &coord[ia][Z]);
 
                         // Output the coordinates of this atom...
-                        logFile.printFormatted(" at (%.3lf, %.3lf, %.3lf), ", coord[ia][X], coord[ia][Y], coord[ia][Z]);
+                        logFile->printFormatted(" at (%.3lf, %.3lf, %.3lf), ", coord[ia][X], coord[ia][Y], coord[ia][Z]);
 
                         // 1:CHANGE HERE: need to set up vol and solpar
                         sscanf(&line[70], "%lf", &charge[ia]);
@@ -172,12 +201,12 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         foundParam = parameterLibrary.findAtomParameter(thisparm.autogridType);
                         if (foundParam != 0)
                         {
-                            logFile.printFormatted("DEBUG: foundParam->recIndex = %d", foundParam->recIndex);
+                            logFile->printFormatted("DEBUG: foundParam->recIndex = %d", foundParam->recIndex);
                             if (foundParam->recIndex < 0)
                             {
                                 strcpy(receptorTypes[numReceptorTypes], foundParam->autogridType);
                                 foundParam->recIndex = numReceptorTypes++;
-                                logFile.printFormatted("DEBUG: foundParam->recIndex => %d", foundParam->recIndex);
+                                logFile->printFormatted("DEBUG: foundParam->recIndex => %d", foundParam->recIndex);
                             }
                             atomType[ia] = foundParam->recIndex;
                             solpar[ia] = foundParam->solpar;
@@ -187,7 +216,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         }
                         else
                         {
-                            logFile.printFormatted("\n\nreceptor file contains unknown type: '%s'\nadd parameters for it to the parameter library first\n", thisparm.autogridType);
+                            logFile->printFormatted("\n\nreceptor file contains unknown type: '%s'\nadd parameters for it to the parameter library first\n", thisparm.autogridType);
                             throw ExitProgram(-1);
                         }
 
@@ -219,7 +248,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         }
 
                         // Tell the user what you thought this atom was...
-                        logFile.printFormatted(" was assigned atom type \"%s\" (recIndex= %d, atomType= %d).\n", foundParam->autogridType, foundParam->recIndex, atomType[ia]);
+                        logFile->printFormatted(" was assigned atom type \"%s\" (recIndex= %d, atomType= %d).\n", foundParam->autogridType, foundParam->recIndex, atomType[ia]);
 
                         // Count the number of each atom type
                         // ++receptor_atom_type_count[ atomType[ia] ];
@@ -240,12 +269,12 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         // Check that there aren't too many atoms...
                         if (ia > AG_MAX_ATOMS)
                         {
-                            logFile.printErrorFormatted(ERROR, "Too many atoms in receptor PDBQT file %s;", receptorFilename);
-                            logFile.printErrorFormatted(ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
-                            logFile.printErrorFormatted(SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
-                            logFile.printError(SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
+                            logFile->printErrorFormatted(ERROR, "Too many atoms in receptor PDBQT file %s;", receptorFilename);
+                            logFile->printErrorFormatted(ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
+                            logFile->printErrorFormatted(SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
+                            logFile->printError(SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
                             // FATAL_ERROR will cause AutoGrid to exit...
-                            logFile.printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                            logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                         }           // endif
                     }               // endif
                 }                   // endwhile
@@ -257,36 +286,36 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                     // in the GPF; if they do not match, exit!
                     if (numReceptorTypes != receptor_types_gpf_ct)
                     {
-                        logFile.printErrorFormatted(ERROR,
+                        logFile->printErrorFormatted(ERROR,
                             "The number of atom types found in the receptor PDBQT (%d) does not match the number specified by the \"receptor_types\" command (%d) in the GPF!\n\n",
                             numReceptorTypes, receptor_types_gpf_ct);
                         // FATAL_ERROR will cause AutoGrid to exit...
-                        logFile.printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                        logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                     }
 
                 // Update the total number of atoms in the receptor
                 numReceptorAtoms = ia;
-                logFile.printFormatted("\nMaximum partial atomic charge found = %+.3lf e\n", q_max);
-                logFile.printFormatted("Minimum partial atomic charge found = %+.3lf e\n\n", q_min);
+                logFile->printFormatted("\nMaximum partial atomic charge found = %+.3lf e\n", q_max);
+                logFile->printFormatted("Minimum partial atomic charge found = %+.3lf e\n\n", q_min);
 
                 // Check there are partial charges...
                 if (q_max == 0 && q_min == 0)
                 {
-                    logFile.printErrorFormatted(ERROR, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptorFilename);
+                    logFile->printErrorFormatted(ERROR, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptorFilename);
                     // FATAL_ERROR will cause AutoGrid to exit...
-                    logFile.printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                    logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
                 }                   // if there are no charges EXIT
 
-                logFile.print("Atom\tAtom\tNumber of this Type\n"
+                logFile->print("Atom\tAtom\tNumber of this Type\n"
                               "Type\t ID \t in Receptor\n"
                               "____\t____\t___________________\n");
 
                 // 2. CHANGE HERE: need to count number of each receptor_type
                 for (int ia = 0; ia < numReceptorTypes; ia++)
                     if (receptor_atom_type_count[ia] != 0)
-                        logFile.printFormatted(" %d\t %s\t\t%6d\n", (ia), receptorTypes[ia], receptor_atom_type_count[ia]);
+                        logFile->printFormatted(" %d\t %s\t\t%6d\n", (ia), receptorTypes[ia], receptor_atom_type_count[ia]);
 
-                logFile.printFormatted("\nTotal number of atoms :\t\t%d atoms \n"
+                logFile->printFormatted("\nTotal number of atoms :\t\t%d atoms \n"
                                        "Total charge :\t\t\t%.2lf e\n"
                                        "\n\nReceptor coordinates fit within the following volume:\n\n"
                                        "                   _______(%.1lf, %.1lf, %.1lf)\n"
@@ -315,7 +344,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
             sscanf(GPFLine, "%*s %s", fldFilenameAVS);
             infld = strIndex(fldFilenameAVS, ".fld");
             if (infld == -1)
-                logFile.printError(FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
+                logFile->printError(FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
             else
             {
                 infld = strIndex(fldFilenameAVS, "fld");
@@ -326,23 +355,23 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
             }
             if ((xyz_fileptr = openFile(xyzFilename, "w")) == 0)
             {
-                logFile.printErrorFormatted(ERROR, "can't create grid extrema data file %s\n", xyzFilename);
-                logFile.printError(ERROR, "SORRY!    unable to create the \".xyz\" file.\n\n");
-                logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                logFile->printErrorFormatted(ERROR, "can't create grid extrema data file %s\n", xyzFilename);
+                logFile->printError(ERROR, "SORRY!    unable to create the \".xyz\" file.\n\n");
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             else
-                logFile.printFormatted("\nCreating (AVS-readable) grid-coordinates extrema file : %s\n\n", xyzFilename);
+                logFile->printFormatted("\nCreating (AVS-readable) grid-coordinates extrema file : %s\n\n", xyzFilename);
             break;
 
         case GPF_NPTS:
             sscanf(GPFLine, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
             for (int i = 0; i < XYZ; i++)
             {
-                nelements[i] = checkSize(nelements[i], xyz[i], logFile);
+                nelements[i] = checkSize(nelements[i], xyz[i]);
                 ne[i] = nelements[i] / 2;
                 n1[i] = nelements[i] + 1;
             }
-            logFile.printFormatted("\nNumber of grid points in x-direction:\t%d\n"
+            logFile->printFormatted("\nNumber of grid points in x-direction:\t%d\n"
                                    "Number of grid points in y-direction:\t%d\n"
                                    "Number of grid points in z-direction:\t%d\n\n",
                                    n1[X], n1[Y], n1[Z]);
@@ -352,7 +381,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
 
         case GPF_SPACING:
             sscanf(GPFLine, "%*s %lf", &spacing);
-            logFile.printFormatted("Grid Spacing :\t\t\t%.3lf Angstrom\n\n", spacing);
+            logFile->printFormatted("Grid Spacing :\t\t\t%.3lf Angstrom\n\n", spacing);
             break;
 
         case GPF_GRIDCENTER:
@@ -361,13 +390,13 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
             {
                 for (int i = 0; i < XYZ; i++)
                     center[i] = cmean[i];
-                logFile.printFormatted("Grid maps will be centered on the center of mass.\n"
+                logFile->printFormatted("Grid maps will be centered on the center of mass.\n"
                                        "Coordinates of center of mass : (%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
             }
             else
             {
                 sscanf(GPFLine, "%*s %lf %lf %lf", &center[X], &center[Y], &center[Z]);
-                logFile.printFormatted("\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
+                logFile->printFormatted("\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
             }
             // centering stuff...
             for (int ia = 0; ia < numReceptorAtoms; ia++)
@@ -380,7 +409,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                 cgridmin[i] = center[i] - cext[i];
             }
 
-            logFile.printFormatted("\nGrid maps will cover the following volume:\n\n"
+            logFile->printFormatted("\nGrid maps will cover the following volume:\n\n"
                                    "                   _______(%.1lf, %.1lf, %.1lf)\n"
                                    "                  /|     /|\n"
                                    "                 / |    / |\n"
@@ -393,9 +422,9 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                                    center[X], center[Y], center[Z], cgridmin[X], cgridmin[Y], cgridmin[Z]);
 
             for (int i = 0; i < XYZ; i++)
-                logFile.printFormatted("Grid map %c-dimension :\t\t%.1lf Angstroms\n", xyz[i], 2 * cext[i]);
+                logFile->printFormatted("Grid map %c-dimension :\t\t%.1lf Angstroms\n", xyz[i], 2 * cext[i]);
 
-            logFile.printFormatted("\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n"
+            logFile->printFormatted("\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n"
                                    "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", cgridmax[X], cgridmax[Y], cgridmax[Z], cgridmin[X], cgridmin[Y], cgridmin[Z]);
             for (int i = 0; i < XYZ; i++)
                 fprintf(xyz_fileptr, "%.3lf %.3lf\n", cgridmin[i], cgridmax[i]);
@@ -421,7 +450,7 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                     else
                     {
                         // return error here
-                        logFile.printFormatted("unknown ligand atom type %s\nadd parameters for it to the parameter library first!\n", ligandAtomTypes[i]);
+                        logFile->printFormatted("unknown ligand atom type %s\nadd parameters for it to the parameter library first!\n", ligandAtomTypes[i]);
                         throw ExitProgram(-1);
                     }
                 }
@@ -431,8 +460,8 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
 
                 if (numGridPointsPerMap == INIT_NUM_GRID_PTS)
                 {
-                    logFile.printError(ERROR, "You need to set the number of grid points using \"npts\" before setting the ligand atom types, using \"ligand_types\".\n");
-                    logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                    logFile->printError(ERROR, "You need to set the number of grid points using \"npts\" before setting the ligand atom types, using \"ligand_types\".\n");
+                    logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
 
                 for (int i = 0; i < numAtomMaps; i++)
@@ -489,16 +518,16 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                     }              // initialize energy parms for each possible receptor type
                 }                   // for each map
 
-                logFile.printFormatted("\nAtom type names for ligand atom types 1-%d used for ligand-atom affinity grid maps:\n\n", numAtomMaps);
+                logFile->printFormatted("\nAtom type names for ligand atom types 1-%d used for ligand-atom affinity grid maps:\n\n", numAtomMaps);
                 for (int i = 0; i < numAtomMaps; i++)
                 {
-                    logFile.printFormatted("\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", gridmaps[i].mapIndex, gridmaps[i].type);
+                    logFile->printFormatted("\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", gridmaps[i].mapIndex, gridmaps[i].type);
 
                     // FIX THIS!!! Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
-                    /* if (gridmaps[i].atomType == COVALENTTYPE) { gridmaps[i].isCovalent = true;  logFile.printFormatted("\nAtom type number %d will be used to calculate a covalent affinity
+                    /* if (gridmaps[i].atomType == COVALENTTYPE) { gridmaps[i].isCovalent = true;  logFile->printFormatted("\nAtom type number %d will be used to calculate a covalent affinity
                        grid map\n\n", i + 1); } */
                 }
-                logFile.print("\n\n");
+                logFile->print("\n\n");
             }
             break;
 
@@ -527,8 +556,8 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                         foundParam->recIndex = i;
                     else
                     {
-                        logFile.printErrorFormatted(ERROR, "Unknown receptor type: \"%s\"\n -- Add parameters for it to the parameter library first!\n", receptor_atom_types[i]);
-                        logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                        logFile->printErrorFormatted(ERROR, "Unknown receptor type: \"%s\"\n -- Add parameters for it to the parameter library first!\n", receptor_atom_types[i]);
+                        logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
                     }
                 }
             }
@@ -549,12 +578,12 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                     // convert cal/molA^3 to kcal/molA^3
                     // gridmaps[i].solparProbe = temp_solpar * 0.001;
                     gridmaps[i].solparProbe = temp_solpar;
-                    logFile.printFormatted("\nProbe %s solvation parameters: \n\n\tatomic fragmental volume: %.2f A^3\n\tatomic solvation parameter: %.4f cal/mol A^3\n\n",
+                    logFile->printFormatted("\nProbe %s solvation parameters: \n\n\tatomic fragmental volume: %.2f A^3\n\tatomic solvation parameter: %.4f cal/mol A^3\n\n",
                                   foundParam->autogridType, foundParam->vol, foundParam->solpar);
                 }
             }
             else
-                logFile.printFormatted("%s key not found\n", thisparm.autogridType);
+                logFile->printFormatted("%s key not found\n", thisparm.autogridType);
             break;              // end solvation parameter
 
         case GPF_MAP:
@@ -565,44 +594,44 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
             ++mapIndex;
             if (mapIndex >= gridmaps.getNumAtomMaps())
             {
-                logFile.printErrorFormatted(ERROR,
+                logFile->printErrorFormatted(ERROR,
                     "Too many \"map\" keywords (%d);  the \"types\" command declares only %d maps.\nRemove a \"map\" keyword from the GPF.\n",
                     mapIndex + 1, gridmaps.getNumAtomMaps());
-                logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             // Read in the gridParameterFilename for this grid map *//* GPF_MAP
             sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].mapFilename);
             if ((gridmaps[mapIndex].file = openFile(gridmaps[mapIndex].mapFilename, "w")) == 0)
             {
-                logFile.printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].mapFilename);
-                logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].mapFilename);
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
-            logFile.printFormatted("\nOutput Grid Map %d:   %s\n\n", (mapIndex + 1), gridmaps[mapIndex].mapFilename);
+            logFile->printFormatted("\nOutput Grid Map %d:   %s\n\n", (mapIndex + 1), gridmaps[mapIndex].mapFilename);
             break;
 
         case GPF_ELECMAP:
             sscanf(GPFLine, "%*s %s", gridmaps.getElectrostaticMap().mapFilename);
             if ((gridmaps.getElectrostaticMap().file = openFile(gridmaps.getElectrostaticMap().mapFilename, "w")) == 0)
             {
-                logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getElectrostaticMap().mapFilename);
-                logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getElectrostaticMap().mapFilename);
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
-            logFile.printFormatted("\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmaps.getElectrostaticMap().mapFilename);
+            logFile->printFormatted("\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmaps.getElectrostaticMap().mapFilename);
             break;
 
         case GPF_DSOLVMAP:
             sscanf(GPFLine, "%*s %s", gridmaps.getDesolvationMap().mapFilename);
             if ((gridmaps.getDesolvationMap().file = openFile(gridmaps.getDesolvationMap().mapFilename, "w")) == 0)
             {
-                logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getDesolvationMap().mapFilename);
-                logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+                logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getDesolvationMap().mapFilename);
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
-            logFile.printFormatted("\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmaps.getDesolvationMap().mapFilename);
+            logFile->printFormatted("\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmaps.getDesolvationMap().mapFilename);
             break;
 
         case GPF_COVALENTMAP:
             sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covpos[X]), &(covpos[Y]), &(covpos[Z]));
-            logFile.printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
+            logFile->printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
                                    "\nCovalent well's half-width in Angstroms:         %8.3f\n"
                                    "\nCovalent barrier energy in kcal/mol:             %8.3f\n"
                                    "\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n",
@@ -615,17 +644,17 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
 
         case GPF_DISORDER:
             disorderH = true;
-            logFile.print("\nHydroxyls will be disordered \n\n");
+            logFile->print("\nHydroxyls will be disordered \n\n");
             break;
 
         case GPF_SMOOTH:
             sscanf(GPFLine, "%*s %lf", &rSmooth);
-            logFile.printFormatted("\nPotentials will be smoothed by: %.3lf Angstrom\n\n", rSmooth);
+            logFile->printFormatted("\nPotentials will be smoothed by: %.3lf Angstrom\n\n", rSmooth);
             break;
 
         case GPF_QASP:
             sscanf(GPFLine, "%*s %lf", &solparQ);
-            logFile.printFormatted("\nCharge component of the atomic solvation parameter: %.3lf\n\n", solparQ);
+            logFile->printFormatted("\nCharge component of the atomic solvation parameter: %.3lf\n\n", solparQ);
             // Typical value of solparQ is 0.001118
             break;
 
@@ -639,14 +668,14 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                 epsilon[0] = 1.0;
                 for (int indx_r = 1; indx_r < MAX_DIST; indx_r++)
                     epsilon[indx_r] = calculateDDDMehlerSolmajer(angstrom(indx_r), APPROX_ZERO);
-                logFile.print("\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n"
+                logFile->print("\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n"
                               "  d   Dielectric\n ___  __________\n");
                 for (int i = 0; i <= 500; i += 10)
                 {
                     ri = angstrom(i);
-                    logFile.printFormatted("%4.1lf%9.2lf\n", ri, epsilon[i]);
+                    logFile->printFormatted("%4.1lf%9.2lf\n", ri, epsilon[i]);
                 }
-                logFile.print("\n");
+                logFile->print("\n");
                 // convert epsilon to 1 / epsilon
                 for (int i = 1; i < MAX_DIST; i++)
                     epsilon[i] = factor / epsilon[i];
@@ -657,14 +686,14 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
                 distDepDiel = false;
                 if (diel <= APPROX_ZERO)
                     diel = 40;
-                logFile.printFormatted("Using a *constant* dielectric of:  %.2f\n", diel);
+                logFile->printFormatted("Using a *constant* dielectric of:  %.2f\n", diel);
                 invDielCal = factor / diel;
             }
             break;
 
         case GPF_FMAP:
             sscanf(GPFLine, "%*s %s", floatingGridFilename);
-            logFile.printFormatted("\nFloating Grid file name = %s\n", floatingGridFilename);
+            logFile->printFormatted("\nFloating Grid file name = %s\n", floatingGridFilename);
             break;
 
         case GPF_PARAM_FILE:
@@ -674,9 +703,176 @@ void InputData::load(const char *gridParameterFilename, GridMapList &gridmaps, P
         }                       // second switch
     }                           // while
 
-    logFile.print("\n>>> Closing the grid parameter file (GPF)... <<<\n\n" UnderLine);
+    logFile->print("\n>>> Closing the grid parameter file (GPF)... <<<\n\n" UnderLine);
     fclose(GPF);
 
     if (!floatingGridFilename[0])
-        logFile.print("\n\nNo Floating Grid was requested.\n");
+        logFile->print("\n\nNo Floating Grid was requested.\n");
+}
+
+int InputDataLoader::parseGPFLine(const char *line)
+{
+    int l, i, token = -1; // return -1 if nothing is recognized
+    char c[LINE_LEN];
+
+    l = strIndex(line, " ");
+    if (l == -1)
+    {
+        l = strIndex(line, "\t");
+        if (l == -1)
+            l = strlen(line);
+    }
+    for(i=0; i<l; i++)
+        c[i] = char(tolower(line[i]));
+
+    if ((c[0]=='\n')||(c[0]=='\0'))
+        token = GPF_NULL;
+    else if (c[0]=='#')
+        token = GPF_COMMENT;
+    else if (equal(c,"receptor_types",14))
+        token = GPF_RECEPTOR_TYPES;
+    else if (equal(c,"receptor",8))
+        token = GPF_RECEPTOR;
+    else if (equal(c,"gridfld",7))
+        token = GPF_GRIDFLD;
+    else if (equal(c,"npts",4))
+        token = GPF_NPTS;
+    else if (equal(c,"spacing",7))
+        token = GPF_SPACING;
+    else if (equal(c,"gridcenter",10))
+        token = GPF_GRIDCENTER;
+    else if (equal(c,"types",5))
+        token = GPF_LIGAND_TYPES;
+    else if (equal(c,"ligand_types",12))
+        token = GPF_LIGAND_TYPES;
+    else if (equal(c,"map",3))
+        token = GPF_MAP;
+    else if (equal(c,"elecmap",7))
+        token = GPF_ELECMAP;
+    else if (equal(c,"dsolvmap",8))
+        token = GPF_DSOLVMAP;
+    else if (equal(c,"covalentmap",11))
+        token = GPF_COVALENTMAP;
+    else if (equal(c,"nbp_coeffs",10))
+        token = GPF_NBP_COEFFS;
+    else if (equal(c,"nbp_r_eps",9))
+        token = GPF_NBP_R_EPS;
+    else if (equal(c,"dielectric",10))
+        token = GPF_DIEL;
+    else if (equal(c,"qasp",4))
+        token = GPF_QASP;
+    else if (equal(c,"fmap",4))
+        token = GPF_FMAP;
+    else if (equal(c,"disorder_h",10))
+        token = GPF_DISORDER;
+    else if (equal(c,"smooth",6))
+        token = GPF_SMOOTH;
+    else if (equal(c,"sol_par",7))
+        token = GPF_SOL_PAR;
+    else if (equal(c,"constant",8))
+        token = GPF_CONSTANT;
+    else if (equal(c,"parameter_file",14))
+        token = GPF_PARAM_FILE;
+
+    return token;
+}
+
+double InputDataLoader::calculateDDDMehlerSolmajer(double distance, double approx_zero)
+{
+    // Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
+    double epsilon = 1.0L;
+    double lambda = 0.003627L;
+    double epsilon0 = 78.4L;
+    double A = -8.5525L;
+    double B;
+    B = epsilon0 - A;
+    double rk= 7.7839L;
+    double lambda_B;
+    lambda_B = -lambda * B;
+
+    epsilon = A + B / (1 + rk*exp(lambda_B * distance));
+
+    if (epsilon < approx_zero)
+        epsilon = 1;
+    return epsilon;
+}
+
+// checks that number of grid elements is valid
+int InputDataLoader::checkSize(int nelements, char axischar)
+{
+    // nelements mustn't be negative, shouldn't be zero or larger than MAX_GRID_PTS and should be even
+    if (nelements < 0)
+        logFile->printErrorFormatted(FATAL_ERROR, "Negative number of %c-grid elements!  Aborting.\n\n", axischar);
+    else if (nelements == 0)
+        logFile->printErrorFormatted(WARNING, "0 %c-grid elements!\n\n", axischar);
+    else if (nelements > MAX_GRID_PTS)
+    {
+        logFile->printErrorFormatted(WARNING, "Maximum number of %c-grid elements allowed is %d. Using this value.\n", axischar, MAX_GRID_PTS);
+        nelements = MAX_GRID_PTS;
+    }
+    else if (nelements % 2 == 1)
+    {
+        logFile->printTitledFormatted("Number of grid elements must be even; %c-elements changed to: %d\n", axischar, nelements);
+        nelements -= 1;
+    }
+
+    return nelements;
+}
+
+// utility func for parsing types
+int InputDataLoader::parseTypes(char *line, char **words, int maxwords)
+{
+    char *char_ptr = line;
+    int num_types = 0;
+    // flag for first word which is always a keyword
+    int found_keyword = 0;
+    int index = 0;
+
+    for (;;)
+    {
+        // skip spaces
+        while (isspace(*char_ptr))
+        {
+            char_ptr++;
+            index++;
+        }
+
+        // done parsing when get eol 'null' character
+        // could get null after a space
+        if (*char_ptr == '\0')
+            return num_types; // return number of 'types' found
+
+        // the first word is the keyword not a type
+        if (!found_keyword)
+            found_keyword++;
+        else
+            words[num_types++] = char_ptr; // words is a list of indicies of beginning of 1 or 2 char types
+
+        // once in a type, skip possible 2nd characters up to a space or null character
+        while (!isspace(*char_ptr) && *char_ptr != '\0')
+        {
+            char_ptr++;
+            index++;
+        }
+
+        // done parsing when get eol 'null' character
+        // could get null after a character
+        if (*char_ptr == '\0')
+            return num_types;
+
+        // make each 'type' a null terminated string
+        *char_ptr++ = '\0';
+        index++;
+
+        //if there are too many types, return
+        if (num_types >= maxwords)
+            return num_types;
+    }
+}
+
+// returns index of t in s, -1 if none.
+int InputDataLoader::strIndex(const char *s, const char *t)
+{
+    const char *r = strstr(s, t);
+    return r? int(r-s) : -1;
 }

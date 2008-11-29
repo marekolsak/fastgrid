@@ -2,16 +2,12 @@
     #include <config.h>
 #endif
 #include "utils.h"
-#include "constants.h"
+#include "autogrid.h"
 #include "exceptions.h"
-#include <cstdlib>
-#include <cmath>
-#include <cerrno>
-#include <cctype>
-#include <cstring>
+#include "times.h"
 
 // initializes BOINC
-void initBoinc()
+void boincInit()
 {
 #if defined(BOINC)
     boinc_init_diagnostics(BOINC_DIAG_DUMPCALLSTACKENABLED | BOINC_DIAG_HEAPCHECKENABLED | BOINC_DIAG_REDIRECTSTDERR | BOINC_DIAG_REDIRECTSTDOUT);
@@ -46,6 +42,16 @@ void initBoinc()
 #endif
 }
 
+void boincDone()
+{
+#if defined(BOINCCOMPOUND)
+    boinc_fraction_done(1);
+#endif
+#if defined(BOINC)
+    boinc_finish(0); // should not return
+#endif
+}
+
 // fopen rewrite to either use BOINC api or normal system call
 FILE *openFile(const char *path, const char *mode)
 {
@@ -67,250 +73,6 @@ FILE *openFile(const char *path, const char *mode)
     filep = fopen(path, mode);
 #endif
     return filep;
-}
-
-// TODO: move this to the InputData class
-double calculateDDDMehlerSolmajer(double distance, double approx_zero) {
-    /*____________________________________________________________________________
-     * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
-     *____________________________________________________________________________*/
-    double epsilon = 1.0L;
-    double lambda = 0.003627L;
-    double epsilon0 = 78.4L;
-    double A = -8.5525L;
-    double B;
-    B = epsilon0 - A;
-    double rk= 7.7839L;
-    double lambda_B;
-    lambda_B = -lambda * B;
-
-    epsilon = A + B / (1 + rk*exp(lambda_B * distance));
-
-    if (epsilon < approx_zero) {
-        epsilon = 1.0L;
-    }
-    return epsilon;
-}
-
-/******************************************************************************/
-/*      Name: checkSize                                                       */
-/*  Function: Checks that number of grid elements is valid.                   */
-/* Copyright: (C) 1994, TSRI                                                  */
-/*----------------------------------------------------------------------------*/
-/*    Author: Garrett Morris, The Scripps Research Institute                  */
-/*      Date: 13/07/92                                                        */
-/*----------------------------------------------------------------------------*/
-/*    Inputs: nelements, axischar                                             */
-/*   Returns: nelements                                                       */
-/*   Globals: MAX_GRID_PTS                                                    */
-/*----------------------------------------------------------------------------*/
-/* Modification Record                                                        */
-/* Date     Inits   Comments                                                  */
-/* 04/01/93 GMM     Created for use in makefile.                              */
-/******************************************************************************/
-// TODO: move this to the InputData class
-int checkSize(int nelements, char axischar, LogFile &logFile)
-{
-    // nelements mustn't be negative, shouldn't be zero or larger than MAX_GRID_PTS and should be even
-    if (nelements < 0)
-        logFile.printErrorFormatted(FATAL_ERROR, "Negative number of %c-grid elements!  Aborting.\n\n", axischar);
-    else if (nelements == 0)
-        logFile.printErrorFormatted(WARNING, "0 %c-grid elements!\n\n", axischar);
-    else if (nelements > MAX_GRID_PTS)
-    {
-        logFile.printErrorFormatted(WARNING, "Maximum number of %c-grid elements allowed is %d. Using this value.\n", axischar, MAX_GRID_PTS);
-        nelements = MAX_GRID_PTS;
-    }
-    else if (nelements % 2 == 1)
-    {
-        logFile.printTitledFormatted("Number of grid elements must be even; %c-elements changed to: %d\n", axischar, nelements);
-        nelements -= 1;
-    }
-
-    return nelements;
-}
-
-/******************************************************************************/
-/*      Name: parseGPFLine                                                    */
-/*  Function: Parse the AutoGrid parameter file line                          */
-/* Copyright: (C) 1995, TSRI                                                  */
-/*----------------------------------------------------------------------------*/
-/*    Author: Garrett Morris, The Scripps Research Institute                  */
-/*      Date: 02/01/95 (1-feb-1995)                                           */
-/*----------------------------------------------------------------------------*/
-/*    Inputs: line                                                            */
-/*   Returns: integer token describing the keyword found.                     */
-/*   Globals: none.                                                           */
-/*----------------------------------------------------------------------------*/
-/* Modification Record                                                        */
-/* Date     Inits   Comments                                                  */
-/* 02/01/95 GMM     Entered code.                                             */
-/******************************************************************************/
-// TODO: move this to the InputData class
-int parseGPFLine(char line[LINE_LEN])
-{
-    int l, i, token = -1 ;           /* return -1 if nothing is recognized. */
-    char c[LINE_LEN];
-
-    l = (int)strIndex(line, " ");
-    if (l == -1) {
-        l = (int)strIndex(line, "\t");
-        if (l == -1) {
-            l = (int)strlen(line);
-    }
-    }
-    for(i=0; i<l; i++) {
-        c[i] = (char)tolower((int)line[i]);
-    }
-
-    if ((c[0]=='\n')||(c[0]=='\0')) {
-        token = GPF_NULL;
-
-    } else if (c[0]=='#') {
-        token = GPF_COMMENT;
-
-    } else if (equal(c,"receptor_types",14)) {
-        token = GPF_RECEPTOR_TYPES;
-
-    } else if (equal(c,"receptor",8)) {
-        token = GPF_RECEPTOR;
-
-    } else if (equal(c,"gridfld",7)) {
-        token = GPF_GRIDFLD;
-
-    } else if (equal(c,"npts",4)) {
-        token = GPF_NPTS;
-
-    } else if (equal(c,"spacing",7)) {
-        token = GPF_SPACING;
-
-    } else if (equal(c,"gridcenter",10)) {
-        token = GPF_GRIDCENTER;
-
-    } else if (equal(c,"types",5)) {
-        token = GPF_LIGAND_TYPES;
-
-    } else if (equal(c,"ligand_types",12)) {
-        token = GPF_LIGAND_TYPES;
-
-
-    } else if (equal(c,"map",3)) {
-        token = GPF_MAP;
-
-    } else if (equal(c,"elecmap",7)) {
-        token = GPF_ELECMAP;
-
-    } else if (equal(c,"dsolvmap",8)) {
-        token = GPF_DSOLVMAP;
-
-    } else if (equal(c,"covalentmap",11)) {
-        token = GPF_COVALENTMAP;
-
-    } else if (equal(c,"nbp_coeffs",10)) {
-        token = GPF_NBP_COEFFS;
-
-    } else if (equal(c,"nbp_r_eps",9)) {
-        token = GPF_NBP_R_EPS;
-
-    } else if (equal(c,"dielectric",10)) {
-        token = GPF_DIEL;
-
-    } else if (equal(c,"qasp",4)) {
-        token = GPF_QASP;
-
-    } else if (equal(c,"fmap",4)) {
-        token = GPF_FMAP;
-
-    } else if (equal(c,"disorder_h",10)) {
-        token = GPF_DISORDER;
-
-    } else if (equal(c,"smooth",6)) {
-        token = GPF_SMOOTH;
-
-    } else if (equal(c,"sol_par",7)) {
-        token = GPF_SOL_PAR;
-
-    } else if (equal(c,"constant",8)) {
-        token = GPF_CONSTANT;
-
-    } else if (equal(c,"parameter_file",14)) {
-        token = GPF_PARAM_FILE;
-
-    }
-    return(token);
-}
-
-/******************************************************************************/
-/*      Name: parseTypes                                                      */
-/*  Function: Parse the AutoGrid types lines                                  */
-/* Copyright: (C) 1995, TSRI                                                  */
-/*----------------------------------------------------------------------------*/
-/*    Author: Garrett Morris, The Scripps Research Institute                  */
-/*      Date: 02/01/95 (1-feb-1995)                                           */
-/*----------------------------------------------------------------------------*/
-/*    Inputs: line, array of pointers, cut-off number of words                */
-/*   Returns: integer, number of types found.                                 */
-/*   Globals: none.                                                           */
-/*----------------------------------------------------------------------------*/
-/* Modification Record                                                        */
-/* Date     Inits   Comments                                                  */
-/* 06/02/03 RH      Entered code.                                             */
-/******************************************************************************/
-// TODO: move this to the InputData class
-int parseTypes(char * line, char *words[], int maxwords)
-/*utility func for parsing types*/
-{
-    char *char_ptr = line;
-    int num_types = 0;
-    /*flag for first word which is always a keyword*/
-    int found_keyword = 0;
-    int index = 0;
-
-    for(;;) {
-        /*skip spaces*/
-        while(isspace(*char_ptr)){
-            char_ptr++;
-            index++;
-        };
-        /*done parsing when get eol 'null' character*/
-        /* could get null after a space*/
-        if (*char_ptr == '\0'){
-            /*return number of 'types' found*/
-            return num_types;
-        };
-        /* the first word is the keyword not a type*/
-        if(found_keyword==0){
-            found_keyword++;
-        } else {
-            /*words is a list of indicies of beginning of 1 or 2 char types*/
-            words[num_types++] = char_ptr;
-        };
-        /*once in a type, skip possible 2nd characters up to a space or null
-         * character*/
-        while(!isspace(*char_ptr) && *char_ptr!='\0'){
-            char_ptr++;
-            index++;
-        };
-        /*done parsing when get eol 'null' character*/
-        /* could get null after a character*/
-        if(*char_ptr=='\0'){
-            return num_types;
-        };
-        /*make each 'type' a null terminated string*/
-        *char_ptr++ = '\0';
-        index++;
-        /*if there are too many types, return*/
-        if(num_types >=maxwords){
-            return num_types;
-        };
-    }
-}
-
-// returns index of t in s, -1 if none.
-int strIndex(char s[], char t[])
-{
-    char *r = strstr(s, t);
-    return r? int(r-s) : -1;
 }
 
 static clock_t timers[256];

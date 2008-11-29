@@ -1,20 +1,6 @@
 #pragma once
 #include "logfile.h"
 
-// Define tokens for parsing AutoDock atomic parameter files
-enum ParserTokens
-{
-    PAR_ = -1,
-    PAR_NULL = 0,
-    PAR_VDW,
-    PAR_HBOND,
-    PAR_ESTAT,
-    PAR_DESOLV,
-    PAR_TORS,
-    PAR_ATOM_PAR,
-    PAR_COMMENT
-};
-
 #define MAX_LEN_AUTOGRID_TYPE 7
 
 // hbonding character:

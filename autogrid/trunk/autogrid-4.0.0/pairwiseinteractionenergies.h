@@ -10,7 +10,6 @@ public:
 
     // calculates the table of pair-wise interaction energies
     void calculate(const GridMapList &gridmaps, LogFile &logFile,
-                   // TODO: unify these arguments
                    int numReceptorTypes, const char (&receptorTypes)[NUM_RECEPTOR_TYPES][3], double rSmooth);
 
     // returns the calculated lookup table, read-only access

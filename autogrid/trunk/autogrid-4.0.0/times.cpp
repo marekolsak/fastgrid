@@ -1,11 +1,24 @@
 #include "times.h"
-#if defined(_WIN32)
-    #define WIN32_LEAN_AND_MEAN
-    #include <windows.h>
-#endif
-#include <cerrno>
 
+int getClocksPerSec()
+{
 #if defined(WIN32)
+    return CLOCKS_PER_SEC;
+#else
+    int clocks = sysconf(_SC_CLK_TCK);
+    if (clocks < 0)
+    {
+        fprintf(stderr, "\"sysconf(_SC_CLK_TCK)\" failed in getClocksPerSec()\n");
+        throw ExitProgram(-1);
+    }
+    return clocks;
+#endif
+}
+
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <cerrno>
 
 // converts WinAPI's FILETIME to clock_t
 static clock_t FileTimeToClockTime(unsigned long long fileTime)
@@ -50,18 +63,3 @@ clock_t times(tms *buffer)
 }
 
 #endif
-
-int getClocksPerSec()
-{
-#if defined(WIN32)
-    return CLOCKS_PER_SEC;
-#else
-    int clocks = sysconf(_SC_CLK_TCK);
-    if (clocks < 0)
-    {
-        fprintf(stderr, "\"sysconf(_SC_CLK_TCK)\" failed in getClocksPerSec()\n");
-        throw ExitProgram(-1);
-    }
-    return clocks;
-#endif
-}
