@@ -1,29 +1,26 @@
 /*
+    AutoGrid
 
- $Id: autogrid.h,v 1.15 2007/05/03 20:46:06 garrett Exp $
+    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+    All Rights Reserved.
+    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
- AutoGrid
+    AutoGrid is a Trade Mark of The Scripps Research Institute.
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
- All Rights Reserved.
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
 
- AutoGrid is a Trade Mark of The Scripps Research Institute.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- as published by the Free Software Foundation; either version 2
- of the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
- */
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
 #pragma once
 
@@ -32,8 +29,6 @@
     // disable the warning: ' function ': was declared deprecated
     #pragma warning (disable: 4996)
 
-    #include <cfloat>
-
     // Some functions in Visual C++ differ from those in the linux/unix environment
     #define isnan _isnan
     #define strncasecmp _strnicmp
@@ -41,6 +36,8 @@
 #endif
 
 #include "../autodock-4.0.1/autocomm.h"
+#include <cmath>
+#include <cfloat>
 
 /******************************************************************************/
 /*      Name: autogrid.h                                                      */

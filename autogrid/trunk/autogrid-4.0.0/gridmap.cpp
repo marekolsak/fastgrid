@@ -1,3 +1,27 @@
+/*
+    AutoGrid
+
+    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+    All Rights Reserved.
+    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+
+    AutoGrid is a Trade Mark of The Scripps Research Institute.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
 #include "gridmap.h"
 #include <new>
 
@@ -66,4 +90,27 @@ void GridMapList::setNumMaps(int num)
         logFile->printError(ERROR, "Could not allocate memory to create the GridMap \"gridmaps\".\n");
         logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
     }
+}
+
+void GridMapList::logSummary()
+{
+    // Print a summary of extrema-values from the atomic-affinity and
+    // electrostatics grid-maps,
+    logFile->print("\nGrid\tAtom\tMinimum   \tMaximum\n"
+                  "Map \tType\tEnergy    \tEnergy \n"
+                  "\t\t(kcal/mol)\t(kcal/mol)\n"
+                  "____\t____\t_____________\t_____________\n");
+
+    for (int i = 0; i < numAtomMaps; i++)
+        logFile->printFormatted(" %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmaps[i].type, gridmaps[i].energyMin, gridmaps[i].energyMax);
+
+    logFile->printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n"
+                           " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n"
+                           "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n\n",
+                           getElectrostaticMapIndex() + 1, 'e', getElectrostaticMap().energyMin, getElectrostaticMap().energyMax,
+                           getDesolvationMapIndex() + 1, 'd', getDesolvationMap().energyMin, getDesolvationMap().energyMax,
+                           EINTCLAMP);
+
+    fprintf(stderr, "\n%s: Successful Completion.\n", logFile->getProgramName());
+    logFile->printTitled("Successful Completion.\n");
 }

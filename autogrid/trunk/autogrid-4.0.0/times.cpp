@@ -1,3 +1,27 @@
+/*
+    AutoGrid
+
+    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+    All Rights Reserved.
+    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+
+    AutoGrid is a Trade Mark of The Scripps Research Institute.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
 #include "times.h"
 
 int getClocksPerSec()
@@ -24,7 +48,7 @@ int getClocksPerSec()
 static clock_t FileTimeToClockTime(unsigned long long fileTime)
 {
     // fileTime contains the time in 100s of nanoseconds
-    return clock_t((fileTime * getClocksPerSec()) / 10000000ull);
+    return clock_t((fileTime * CLOCKS_PER_SEC) / 10000000ull);
 }
 
 // there is no times(..) function on Windows so we have to implement it ourselves
@@ -52,14 +76,28 @@ clock_t times(tms *buffer)
     // Use the high-resolution performance counter.
     // The drawback is that we cannot let this thread switch between
     // individual processors because that would give us incorrect values.
-    // This can be solved by calling SetThreadAffinityMask at the beginning
-    // of main(..) function in case times(..) is invoked from the main thread
-    // only.
+    // This can be solved by calling SetThreadAffinityMask at the start
+    // of the program in case times(..) is invoked from the main thread
+    // only. The InitWinSetup class takes care of that.
     unsigned long long freq, time;
     QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&freq));
     QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&time));
-    clock_t ret = clock_t((time * getClocksPerSec()) / (freq? freq : 1));
+    clock_t ret = clock_t((time * CLOCKS_PER_SEC) / (freq? freq : 1));
     return ret;
 }
+
+class InitWinSetup
+{
+public:
+    InitWinSetup()
+    {
+        // Bound this thread to the first CPU
+        SetThreadAffinityMask(GetCurrentThread(), 1);
+        // Raise the process priority
+        SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+    }
+};
+
+static InitWinSetup winSetup;
 
 #endif

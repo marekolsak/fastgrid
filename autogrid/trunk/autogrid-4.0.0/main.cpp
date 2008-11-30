@@ -1,62 +1,81 @@
 /*
+    AutoGrid
 
-   $Id: main.cpp,v 1.58 2007/05/04 07:54:25 garrett Exp $
+    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+    All Rights Reserved.
+    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
-   AutoGrid
+    AutoGrid is a Trade Mark of The Scripps Research Institute.
 
-   Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, All Rights Reserved.
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
 
-   AutoGrid is a Trade Mark of The Scripps Research Institute.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2
-   of the License, or (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
-   the GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-   MA 02110-1301, USA.
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#pragma region Includes
-
-#include <cmath>
-#include <cassert>
-#include <search.h>
-#include <cstring>
-#include <cstdlib>
-#include <cctype>   // tolower
-#include <cstddef>
-#include <iostream>
-
-#if defined(_WIN32)
-    #define WIN32_LEAN_AND_MEAN
-    #include <windows.h>
-#else
-    #include <sys/param.h>
-#endif
-
-// the BOINC API header file
-#if defined(BOINC)
-    #include "diagnostics.h"
-    #include "boinc_api.h"
-    #include "filesys.h"    // boinc_fopen(), etc...
-#endif
-
-#include "autogrid.h"
 #include "utils.h"
+#include "programparameters.h"
+#include "exceptions.h"
+#include "pairwiseinteractionenergies.h"
+#include "inputdata.h"
+#include "parameterlibrary.h"
+#include "desolvexpfunc.h"
+#include <exception>
 
-// classes
-#include "programparameters.h"              // ProgramParameters
-#include "exceptions.h"                     // ExitProgram
-#include "logfile.h"                        // LogFile
-#include "gridmap.h"                        // GridMap, GridMapList
-#include "pairwiseinteractionenergies.h"    // PairwiseInteractionEnergies
-#include "inputdata.h"                      // InputData
-#include "parameterlibrary.h"               // ParameterLibrary
-#include "desolvexpfunc.h"                  // DesolvExpFunc
+void saveAVSGridmapsFile(GridMapList &gridmaps, InputData *input, ProgramParameters &programParams, LogFile &logFile)
+{
+    int numMaps = gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0);
+    FILE *fldFileAVS;
+    if ((fldFileAVS = openFile(input->fldFilenameAVS, "w")) == 0)
+    {
+        logFile.printErrorFormatted(ERROR, "can't create grid dimensions data file %s\n", input->fldFilenameAVS);
+        logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+    }
+    else
+        logFile.printFormatted("\nCreating (AVS-readable) grid maps file : %s\n", input->fldFilenameAVS);
 
-#pragma endregion Includes
+    fprintf(fldFileAVS, "# AVS field file\n#\n");
+    fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
+    fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
+    fprintf(fldFileAVS, "#SPACING %.3f\n", (float)input->spacing);
+    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
+    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
+    fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
+    fprintf(fldFileAVS, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
+    fprintf(fldFileAVS, "ndim=3\t\t\t# number of dimensions in the field\n");
+    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->n1[X]);
+    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->n1[Y]);
+    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->n1[Z]);
+    fprintf(fldFileAVS, "nspace=3\t\t# number of physical coordinates per point\n");
+    fprintf(fldFileAVS, "veclen=%d\t\t# number of affinity values at each point\n", numMaps);
+    fprintf(fldFileAVS, "data=float\t\t# data type (byte, integer, float, double)\n");
+    fprintf(fldFileAVS, "field=uniform\t\t# field type (uniform, rectilinear, irregular)\n");
+    for (int i = 0; i < XYZ; i++)
+        fprintf(fldFileAVS, "coord %d file=%s filetype=ascii offset=%d\n", (i + 1), input->xyzFilename, (i * 2));
+    for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
+        fprintf(fldFileAVS, "label=%s-affinity\t# component label for variable %d\n", gridmaps[i].type, (i + 1));
+    fprintf(fldFileAVS, "label=Electrostatics\t# component label for variable %d\n", numMaps - 2);
+    fprintf(fldFileAVS, "label=Desolvation\t# component label for variable %d\n", numMaps - 1);
+    if (input->floatingGridFilename[0])
+        fprintf(fldFileAVS, "label=Floating_Grid\t# component label for variable %d\n", numMaps);
+    fprintf(fldFileAVS, "#\n# location of affinity grid files and how to read them\n#\n");
+
+    for (int i = 0; i < gridmaps.getNumMaps(); i++)
+        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmaps[i].mapFilename);
+
+    if (input->floatingGridFilename[0])
+        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", numMaps, input->floatingGridFilename);
+    fclose(fldFileAVS);
+}
 
 // Function: Calculation of interaction energy grids for Autodock.
 // Directional H_bonds from Goodford:
@@ -107,58 +126,14 @@ void autogridMain(int argc, char **argv)
     input->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary);
     // TODO: shouldn't we put these out of the load function? :
     // - gridmaps initialization code
-    // - initialization of atom parameters recIndex/mapIndex
+    // - initialization of atom parameters recIndex/mapIndex (in parameterLibrary)
 
-    // Load the parameter library from the file
+    // Loading the parameter library from the file
     if (input->parameterLibraryFilename[0])
         parameterLibrary.load(input->parameterLibraryFilename);
 
-#pragma region Writing to AVS_fld file
-{
-    int numMaps = gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0);
-    FILE *fldFileAVS;
-    if ((fldFileAVS = openFile(input->fldFilenameAVS, "w")) == 0)
-    {
-        logFile.printErrorFormatted(ERROR, "can't create grid dimensions data file %s\n", input->fldFilenameAVS);
-        logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-    }
-    else
-        logFile.printFormatted("\nCreating (AVS-readable) grid maps file : %s\n", input->fldFilenameAVS);
-
-    fprintf(fldFileAVS, "# AVS field file\n#\n");
-    fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
-    fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
-    fprintf(fldFileAVS, "#SPACING %.3f\n", (float)input->spacing);
-    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
-    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
-    fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
-    fprintf(fldFileAVS, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
-    fprintf(fldFileAVS, "ndim=3\t\t\t# number of dimensions in the field\n");
-    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->n1[X]);
-    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->n1[Y]);
-    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->n1[Z]);
-    fprintf(fldFileAVS, "nspace=3\t\t# number of physical coordinates per point\n");
-    fprintf(fldFileAVS, "veclen=%d\t\t# number of affinity values at each point\n", numMaps);
-    fprintf(fldFileAVS, "data=float\t\t# data type (byte, integer, float, double)\n");
-    fprintf(fldFileAVS, "field=uniform\t\t# field type (uniform, rectilinear, irregular)\n");
-    for (int i = 0; i < XYZ; i++)
-        fprintf(fldFileAVS, "coord %d file=%s filetype=ascii offset=%d\n", (i + 1), input->xyzFilename, (i * 2));
-    for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
-        fprintf(fldFileAVS, "label=%s-affinity\t# component label for variable %d\n", gridmaps[i].type, (i + 1));                           // i
-    fprintf(fldFileAVS, "label=Electrostatics\t# component label for variable %d\n", numMaps - 2);
-    fprintf(fldFileAVS, "label=Desolvation\t# component label for variable %d\n", numMaps - 1);
-    if (input->floatingGridFilename[0])
-        fprintf(fldFileAVS, "label=Floating_Grid\t# component label for variable %d\n", numMaps);
-    fprintf(fldFileAVS, "#\n# location of affinity grid files and how to read them\n#\n");
-
-    for (int i = 0; i < gridmaps.getNumMaps(); i++)
-        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmaps[i].mapFilename);
-
-    if (input->floatingGridFilename[0])
-        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", numMaps, input->floatingGridFilename);
-    fclose(fldFileAVS);
-}
-#pragma endregion Writing to AVS_fld file
+    // Writing to AVS-readable gridmaps file (fld)
+    saveAVSGridmapsFile(gridmaps, input, programParams, logFile);
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.1);
@@ -1054,36 +1029,17 @@ void autogridMain(int argc, char **argv)
 }
 #pragma endregion Calculation of gridmaps
 
-    if (input->floatingGridFilename[0])
+    delete input;
+
+    if (floatingGridFile)
         fclose(floatingGridFile);
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
 #endif
 
-#pragma region Writing out summary
-    // Print a summary of extrema-values from the atomic-affinity and
-    // electrostatics grid-maps,
-    logFile.print("\nGrid\tAtom\tMinimum   \tMaximum\n"
-                  "Map \tType\tEnergy    \tEnergy \n"
-                  "\t\t(kcal/mol)\t(kcal/mol)\n"
-                  "____\t____\t_____________\t_____________\n");
-
-    for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
-        logFile.printFormatted(" %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmaps[i].type, gridmaps[i].energyMin, gridmaps[i].energyMax);
-
-    logFile.printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n"
-                           " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n"
-                           "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n\n",
-                           gridmaps.getElectrostaticMapIndex() + 1, 'e', gridmaps.getElectrostaticMap().energyMin, gridmaps.getElectrostaticMap().energyMax,
-                           gridmaps.getDesolvationMapIndex() + 1, 'd', gridmaps.getDesolvationMap().energyMin, gridmaps.getDesolvationMap().energyMax,
-                           EINTCLAMP);
-#pragma endregion Writing out summary
-
-    delete input;
-
-    fprintf(stderr, "\n%s: Successful Completion.\n", programParams.getProgramName());
-    logFile.printTitled("Successful Completion.\n");
+    // Writing out summary
+    gridmaps.logSummary();
 
     // Get the time at the end of the run and print the difference
     tms tmsJobEnd;
@@ -1091,14 +1047,8 @@ void autogridMain(int argc, char **argv)
     logFile.printExecutionTimesInHMS(jobStart, jobEnd, &tmsJobStart, &tmsJobEnd);
 }
 
-#pragma region The main function
-
 int main(int argc, char **argv)
 {
-#if defined(_WIN32)
-    SetThreadAffinityMask(GetCurrentThread(), 1);
-#endif
-
     try
     {
         // Initialize BOINC if needed
@@ -1115,6 +1065,9 @@ int main(int argc, char **argv)
     {
         return e.getExitCode();
     }
+    catch (std::bad_alloc &)
+    {
+        fprintf(stderr, "\n%s: FATAL ERROR: Not enough memory!\n", *argv);
+        return 666;
+    }
 }
-
-#pragma endregion The main function
