@@ -35,8 +35,8 @@ GridMap::GridMap()
     mapFilename[0] = 0;
     type[0] = 0;    // eg HD or OA or NA or N
     constant = 0; // this will become obsolete
-    energyMax = 0;
-    energyMin = 0;
+    energyMax = -BIG;
+    energyMin = BIG;
     energy = 0;
     volProbe = 0;
     solparProbe = 0;
@@ -72,6 +72,22 @@ GridMapList::~GridMapList()
 {
     if (gridmaps)
         delete [] gridmaps;
+}
+
+void GridMapList::initFileHeader(const InputData *input, const char *gridParameterFilename)
+{
+    snprintf(fileHeader, 1<<14,
+        "GRID_PARAMETER_FILE %s\n"
+        "GRID_DATA_FILE %s\n"
+        "MACROMOLECULE %s\n"
+        "SPACING %.3lf\n"
+        "NELEMENTS %d %d %d\n"
+        "CENTER %.3lf %.3lf %.3lf\n",
+        gridParameterFilename, input->fldFilenameAVS, input->receptorFilename, input->spacing,
+        input->nelements[X], input->nelements[Y], input->nelements[Z],
+        input->center[X], input->center[Y], input->center[Z]);
+
+    fileHeaderLength = strlen(fileHeader);
 }
 
 void GridMapList::setNumMaps(int num)

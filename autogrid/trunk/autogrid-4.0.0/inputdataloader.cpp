@@ -22,7 +22,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "inputdata.h"
+#include "inputdataloader.h"
 #include "utils.h"
 #include "exceptions.h"
 #include <cstring>
@@ -132,7 +132,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     FILE *GPF = stdin;
     if (gridParameterFilename[0])
     {
-        GPF = openFile(gridParameterFilename, "r");
+        GPF = boincOpenFile(gridParameterFilename, "r");
         if (!GPF)
         {
             logFile->printErrorFormatted(ERROR, "Sorry, I can't find or open Grid Parameter File \"%s\"", gridParameterFilename);
@@ -185,7 +185,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 logFile->printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
 
                 // try to open receptor file
-                if ((receptor_fileptr = openFile(receptorFilename, "r")) == 0)
+                if ((receptor_fileptr = boincOpenFile(receptorFilename, "r")) == 0)
                 {
                     logFile->printErrorFormatted(ERROR, "can't find or open receptor PDBQT file \"%s\".\n", receptorFilename);
                     logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
@@ -375,7 +375,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 xyzFilename[infld + 1] = 'y';
                 xyzFilename[infld + 2] = 'z';
             }
-            if ((xyz_fileptr = openFile(xyzFilename, "w")) == 0)
+            if ((xyz_fileptr = boincOpenFile(xyzFilename, "w")) == 0)
             {
                 logFile->printErrorFormatted(ERROR, "can't create grid extrema data file %s\n", xyzFilename);
                 logFile->printError(ERROR, "SORRY!    unable to create the \".xyz\" file.\n\n");
@@ -623,7 +623,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             }
             // Read in the gridParameterFilename for this grid map *//* GPF_MAP
             sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].mapFilename);
-            if ((gridmaps[mapIndex].file = openFile(gridmaps[mapIndex].mapFilename, "w")) == 0)
+            if ((gridmaps[mapIndex].file = boincOpenFile(gridmaps[mapIndex].mapFilename, "w")) == 0)
             {
                 logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].mapFilename);
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
@@ -633,7 +633,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
         case GPF_ELECMAP:
             sscanf(GPFLine, "%*s %s", gridmaps.getElectrostaticMap().mapFilename);
-            if ((gridmaps.getElectrostaticMap().file = openFile(gridmaps.getElectrostaticMap().mapFilename, "w")) == 0)
+            if ((gridmaps.getElectrostaticMap().file = boincOpenFile(gridmaps.getElectrostaticMap().mapFilename, "w")) == 0)
             {
                 logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getElectrostaticMap().mapFilename);
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
@@ -643,7 +643,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
         case GPF_DSOLVMAP:
             sscanf(GPFLine, "%*s %s", gridmaps.getDesolvationMap().mapFilename);
-            if ((gridmaps.getDesolvationMap().file = openFile(gridmaps.getDesolvationMap().mapFilename, "w")) == 0)
+            if ((gridmaps.getDesolvationMap().file = boincOpenFile(gridmaps.getDesolvationMap().mapFilename, "w")) == 0)
             {
                 logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getDesolvationMap().mapFilename);
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");

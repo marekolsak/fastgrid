@@ -26,16 +26,16 @@
 #include "programparameters.h"
 #include "exceptions.h"
 #include "pairwiseinteractionenergies.h"
-#include "inputdata.h"
-#include "parameterlibrary.h"
 #include "desolvexpfunc.h"
+#include "bondvectors.h"
+#include "inputdataloader.h"
 #include <exception>
 
-void saveAVSGridmapsFile(GridMapList &gridmaps, InputData *input, ProgramParameters &programParams, LogFile &logFile)
+void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile)
 {
     int numMaps = gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0);
     FILE *fldFileAVS;
-    if ((fldFileAVS = openFile(input->fldFilenameAVS, "w")) == 0)
+    if ((fldFileAVS = boincOpenFile(input->fldFilenameAVS, "w")) == 0)
     {
         logFile.printErrorFormatted(ERROR, "can't create grid dimensions data file %s\n", input->fldFilenameAVS);
         logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
@@ -77,539 +77,11 @@ void saveAVSGridmapsFile(GridMapList &gridmaps, InputData *input, ProgramParamet
     fclose(fldFileAVS);
 }
 
-// Function: Calculation of interaction energy grids for Autodock.
-// Directional H_bonds from Goodford:
-// Distance dependent dielectric after Mehler and Solmajer.
-// Charge-based desolvation
-// Copyright: (C) 2004, TSRI
-//
-// Authors: Garrett Matthew Morris, Ruth Huey, David S. Goodsell
-//
-// The Scripps Research Institute
-// Department of Molecular Biology, MB5
-// 10550 North Torrey Pines Road
-// La Jolla, CA 92037-1000.
-//
-// e-mail: garrett@scripps.edu
-// rhuey@scripps.edu
-// goodsell@scripps.edu
-//
-// Helpful suggestions and advice:
-// Arthur J. Olson
-// Bruce Duncan, Yng Chen, Michael Pique, Victoria Roberts
-// Lindy Lindstrom
-//
-// Inputs: Control file, receptor PDBQT file, parameter file
-// Returns: Atomic affinity, desolvation and electrostatic grid maps.
-void autogridMain(int argc, char **argv)
+void calculateGrids(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+                    const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
+                    LogFile &logFile, FILE *floatingGridFile)
 {
-    // Get the time at the start of the run...
-    tms tmsJobStart;
-    Clock jobStart = times(&tmsJobStart);
-
-    double versionNumber = 4.00;
-
-    // Initialize the ProgramParameters object, which parses the command-line arguments
-    ProgramParameters programParams(argc, argv);
-
-    // Initialize the log file
-    LogFile logFile(versionNumber, programParams.getProgramName(), programParams.getLogFilename());
-
-    // Declaration of gridmaps
-    GridMapList gridmaps(&logFile);
-
-    // Initialization of free energy coefficients and atom parameters
-    ParameterLibrary parameterLibrary(&logFile, programParams.getDebugLevel());
-
-    // Reading in the grid parameter file
-    InputDataLoader *input = new InputDataLoader(&logFile);
-    input->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary);
-    // TODO: shouldn't we put these out of the load function? :
-    // - gridmaps initialization code
-    // - initialization of atom parameters recIndex/mapIndex (in parameterLibrary)
-
-    // Loading the parameter library from the file
-    if (input->parameterLibraryFilename[0])
-        parameterLibrary.load(input->parameterLibraryFilename);
-
-    // Writing to AVS-readable gridmaps file (fld)
-    saveAVSGridmapsFile(gridmaps, input, programParams, logFile);
-
-#if defined(BOINCCOMPOUND)
-    boinc_fraction_done(0.1);
-#endif
-
-    // Calculating the lookup table of the pairwise interaction energies
-    PairwiseInteractionEnergies energyLookup;
-    energyLookup.calculate(gridmaps, logFile, input->numReceptorTypes, input->receptorTypes, input->rSmooth);
-
-    // Precalculating the exponential function for receptor and ligand desolvation
-    DesolvExpFunc desolvExpFunc(parameterLibrary.coeff_desolv);
-
-    // canned atom type number
-    int hydrogen, carbon, arom_carbon, oxygen, nitrogen;
-    int nonHB_hydrogen, nonHB_nitrogen, sulphur, nonHB_sulphur;
-
-    int disorder[AG_MAX_ATOMS];
-    int rexp[AG_MAX_ATOMS] = {0};
-    double rvector[AG_MAX_ATOMS][XYZ];
-    double rvector2[AG_MAX_ATOMS][XYZ];
-    double d[XYZ];
-
-    char warned = 'F';
-
-    double inv_rd, rd2; // temporary??
-
-#pragma region Calculating bond vectors for directional H-bonds
-{
-    double dc[XYZ];
-    double rdot;
-    int from, to;
-    int nbond;
-    int i1 = 0, i2 = 0, i3 = 0;
-
-    // Loop over all RECEPTOR atoms to
-    // calculate bond vectors for directional H-bonds
-    // setup the canned atom types here....
-    // at this point set up hydrogen, carbon, oxygen and nitrogen
-    hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
-    nonHB_hydrogen = parameterLibrary.getAtomParameterRecIndex("H");
-    carbon = parameterLibrary.getAtomParameterRecIndex("C");
-    arom_carbon = parameterLibrary.getAtomParameterRecIndex("A");
-    oxygen = parameterLibrary.getAtomParameterRecIndex("OA");
-    nitrogen = parameterLibrary.getAtomParameterRecIndex("NA");
-    nonHB_nitrogen = parameterLibrary.getAtomParameterRecIndex("N");
-    sulphur = parameterLibrary.getAtomParameterRecIndex("SA");
-    nonHB_sulphur = parameterLibrary.getAtomParameterRecIndex("S");
-
-    // 7:CHANGE HERE: scan the 'mapIndex' from the input
-    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-    {                                      //** ia = i_receptor_atom_a **
-        disorder[ia] = false;   // initialize disorder flag.
-        warned = 'F';
-
-        // Set scan limits looking for bonded atoms
-        from = max(ia - 20, 0);
-        to = min(ia + 20, input->numReceptorAtoms - 1);
-
-        // If 'ia' is a hydrogen atom, it could be a
-        // RECEPTOR hydrogen-BOND DONOR,
-        // 8:CHANGE HERE: fix the input->atomType vs atom_types problem in following
-        if ((int)input->hbond[ia] == 2) // D1 hydrogen bond donor
-        {
-            for (int ib = from; ib <= to; ib++)
-                if (ib != ia) // ib = i_receptor_atom_b
-                {
-                    // =>  NH-> or OH->
-                    // if ((input->atomType[ib] == nitrogen) || (input->atomType[ib]==nonHB_nitrogen) ||(input->atomType[ib] == oxygen)||(input->atomType[ib] == sulphur)||(input->atomType[ib]==nonHB_sulphur)) {
-
-                    // Calculate the square of the N-H or O-H bond distance, rd2,
-                    //                            ib-ia  ib-ia
-                    for (int i = 0; i < XYZ; i++)
-                        d[i] = input->coord[ia][i] - input->coord[ib][i];
-                    rd2 = sq(d[X]) + sq(d[Y]) + sq(d[Z]);
-                    // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
-                    if (rd2 < 1.90)
-                    {           // INCREASED for H-S bonds
-                        if (rd2 < APPROX_ZERO)
-                        {
-                            if (rd2 == 0)
-                                logFile.printErrorFormatted(WARNING,
-                                    "While calculating an H-O or H-N bond vector...\nAttempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n",
-                                    ia + 1, ib + 1);
-                            rd2 = APPROX_ZERO;
-                        }
-                        inv_rd = 1 / sqrt(rd2);
-
-                        // N-H: Set exponent rexp to 2 for m/m H-atom,
-                        // if (input->atomType[ib] == nitrogen) rexp[ia] = 2;
-                        if ((input->atomType[ib] != oxygen) && (input->atomType[ib] != sulphur))
-                            rexp[ia] = 2;
-
-                        // O-H: Set exponent rexp to 4 for m/m H-atom,
-                        // and flag disordered hydroxyls
-                        if ((input->atomType[ib] == oxygen) || (input->atomType[ib] == sulphur))
-                        {
-                            rexp[ia] = 4;
-                            if (input->disorderH)
-                                disorder[ia] = TRUE;
-                        }
-
-                        // Normalize the vector from ib to ia, N->H or O->H...
-                        for (int i = 0; i < XYZ; i++)
-                            rvector[ia][i] = d[i] * inv_rd;
-
-                        // First O-H/N-H H-bond-donor found; Go on to next atom,
-                        break;
-                    }           // Found covalent bond.
-                    // } Found NH or OH in receptor.
-                }
-            // Finished scanning for the NH or OH in receptor.
-            // If 'ia' is an Oxygen atom, it could be a
-            // RECEPTOR H_BOND ACCEPTOR,
-        }
-        else if (input->hbond[ia] == 5)
-        {                       // A2
-            // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
-            //        to (ia + 5)th m/m-atom
-            // determine number of atoms bonded to the oxygen
-            nbond = 0;
-            int ib = from;
-            for (; ib <= to; ib++)
-                if (ib != ia)
-                {
-                    rd2 = 0;
-
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        dc[i] = input->coord[ia][i] - input->coord[ib][i];
-                        rd2 += sq(dc[i]);
-                    }
-
-                    if (((rd2 < 3.61) && ((input->atomType[ib] != hydrogen) && (input->atomType[ib] != nonHB_hydrogen))) ||
-                        ((rd2 < 1.69) && ((input->atomType[ib] == hydrogen) || (input->atomType[ib] == nonHB_hydrogen))))
-                    {
-                        if (nbond == 2)
-                            logFile.printErrorFormatted(WARNING, "Found an H-bonding atom with three bonded atoms, atom serial number %d\n", ia + 1);
-                        if (nbond == 1)
-                        {
-                            nbond = 2;
-                            i2 = ib;
-                        }
-                        if (nbond == 0)
-                        {
-                            nbond = 1;
-                            i1 = ib;
-                        }
-                    }
-                }               // (ib != ia)
-
-            // if no bonds, something is wrong
-            if (nbond == 0)
-                logFile.printErrorFormatted(WARNING, "Oxygen atom found with no bonded atoms, atom serial number %d, input->atomType %d\n", ia + 1, input->atomType[ia]);
-
-            // one bond: Carbonyl Oxygen O=C-X
-            if (nbond == 1)
-            {
-                // calculate normalized carbonyl bond vector rvector[ia][]
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->coord[ia][i] - input->coord[i1][i];
-                    rd2 += sq(rvector[ia][i]);
-                }
-                if (rd2 < APPROX_ZERO)
-                {
-                    if ((rd2 == 0) && (warned == 'F'))
-                    {
-                        logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, i1 + 1);
-                        warned = 'T';
-                    }
-                    rd2 = APPROX_ZERO;
-                }
-                inv_rd = 1 / sqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
-
-                // find a second atom (i2) bonded to carbonyl carbon (i1)
-                for (int i2 = from; i2 <= to; i2++)
-                    if ((i2 != i1) && (i2 != ia))
-                    {
-                        rd2 = 0;
-                        for (int i = 0; i < XYZ; i++)
-                        {
-                            dc[i] = input->coord[i1][i] - input->coord[i2][i];
-                            /*NEW*/ rd2 += sq(dc[i]);
-                        }
-                        if (((rd2 < 2.89) && (input->atomType[i2] != hydrogen)) || ((rd2 < 1.69) && (input->atomType[i2] == hydrogen)))
-                        {
-
-                            // found one
-                            // d[i] vector from carbon to second atom
-                            rd2 = 0;
-                            for (int i = 0; i < XYZ; i++)
-                            {
-                                d[i] = input->coord[i2][i] - input->coord[i1][i];
-                                rd2 += sq(d[i]);
-                            }
-                            if (rd2 < APPROX_ZERO)
-                            {
-                                if ((rd2 == 0) && (warned == 'F'))
-                                {
-                                    logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
-                                    warned = 'T';
-                                }
-                                rd2 = APPROX_ZERO;
-                            }
-                            inv_rd = 1 / sqrt(rd2);
-                            for (int i = 0; i < XYZ; i++)
-                                d[i] *= inv_rd;
-
-                            // C=O cross C-X gives the lone pair plane normal
-                            rvector2[ia][0] = rvector[ia][1] * d[2] - rvector[ia][2] * d[1];
-                            rvector2[ia][1] = rvector[ia][2] * d[0] - rvector[ia][0] * d[2];
-                            rvector2[ia][2] = rvector[ia][0] * d[1] - rvector[ia][1] * d[0];
-                            rd2 = 0;
-                            for (int i = 0; i < XYZ; i++)
-                                rd2 += sq(rvector2[ia][i]);
-                            if (rd2 < APPROX_ZERO)
-                            {
-                                if ((rd2 == 0) && (warned == 'F'))
-                                {
-                                    logFile.printError(WARNING, "Attempt to divide by zero was just prevented.\n\n");
-                                    warned = 'T';
-                                }
-                                rd2 = APPROX_ZERO;
-                            }
-                            inv_rd = 1 / sqrt(rd2);
-                            for (int i = 0; i < XYZ; i++)
-                                rvector2[ia][i] *= inv_rd;
-                        }
-                    }
-            }                   // endif nbond==1
-
-            // two bonds: Hydroxyl or Ether Oxygen X1-O-X2
-            if (nbond == 2)
-                // disordered hydroxyl
-                if ((input->atomType[i1] == hydrogen || input->atomType[i2] == hydrogen) && input->atomType[i1] != input->atomType[i2] && input->disorderH)
-                {
-                    if ((input->atomType[i1] == carbon) || (input->atomType[i1] == arom_carbon))
-                        ib = i1;
-                    if ((input->atomType[i2] == carbon) || (input->atomType[i1] == arom_carbon))
-                        ib = i2;
-                    disorder[ia] = TRUE;
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        rvector[ia][i] = input->coord[ia][i] - input->coord[ib][i];
-                        rd2 += sq(rvector[ia][i]);
-                    }
-                    if (rd2 < APPROX_ZERO)
-                    {
-                        if ((rd2 == 0) && (warned == 'F'))
-                        {
-                            logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia + 1, ib + 1);
-                            warned = 'T';
-                        }
-                        rd2 = APPROX_ZERO;
-                    }
-                    inv_rd = 1 / sqrt(rd2);
-                    for (int i = 0; i < XYZ; i++)
-                        rvector[ia][i] *= inv_rd;
-                }
-                else
-                {
-                    // not a disordered hydroxyl
-                    // normalized X1 to X2 vector, defines lone pair plane
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        rvector2[ia][i] = input->coord[i2][i] - input->coord[i1][i];
-                        rd2 += sq(rvector2[ia][i]);
-                    }
-                    if (rd2 < APPROX_ZERO)
-                    {
-                        if ((rd2 == 0) && (warned == 'F'))
-                        {
-                            logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", i1 + 1, i2 + 1);
-                            warned = 'T';
-                        }
-                        rd2 = APPROX_ZERO;
-                    }
-                    inv_rd = 1 / sqrt(rd2);
-                    for (int i = 0; i < XYZ; i++)
-                        rvector2[ia][i] *= inv_rd;
-
-                    // vector pointing between the lone pairs:
-                    // front of the vector is the oxygen atom,
-                    // X1->O vector dotted with normalized X1->X2 vector plus
-                    // coords of X1 gives the point on the X1-X2 line for the
-                    // back of the vector.
-                    rdot = 0;
-                    for (int i = 0; i < XYZ; i++)
-                        rdot += (input->coord[ia][i] - input->coord[i1][i]) * rvector2[ia][i];
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        rvector[ia][i] = input->coord[ia][i] - ((rdot * rvector2[ia][i]) + input->coord[i1][i]);
-                        rd2 += sq(rvector[ia][i]);
-                    }
-                    if (rd2 < APPROX_ZERO)
-                    {
-                        if ((rd2 == 0) && (warned == 'F'))
-                        {
-                            logFile.printError(WARNING, "Attempt to divide by zero was just prevented.\n\n");
-                            warned = 'T';
-                        }
-                        rd2 = APPROX_ZERO;
-                    }
-                    inv_rd = 1 / sqrt(rd2);
-                    for (int i = 0; i < XYZ; i++)
-                        rvector[ia][i] *= inv_rd;
-                }               // end disordered hydroxyl
-        }
-        else if (input->hbond[ia] == 4)
-        {                       // A1
-            // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
-            //        to (ia+5)th m/m-atom
-            // determine number of atoms bonded to the oxygen
-            nbond = 0;
-            int ib = from;
-            for (; ib <= to; ib++)
-                if (ib != ia)
-                {
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        dc[i] = input->coord[ia][i] - input->coord[ib][i];
-                        rd2 += sq(dc[i]);
-                    }
-
-                    if (((rd2 < 2.89) && ((input->atomType[ib] != hydrogen) && (input->atomType[ib] != nonHB_hydrogen))) ||
-                        ((rd2 < 1.69) && ((input->atomType[ib] == hydrogen) || (input->atomType[ib] == nonHB_hydrogen))))
-                    {
-                        if (nbond == 2)
-                        {
-                            nbond = 3;
-                            i3 = ib;
-                        }
-                        if (nbond == 1)
-                        {
-                            nbond = 2;
-                            i2 = ib;
-                        }
-                        if (nbond == 0)
-                        {
-                            nbond = 1;
-                            i1 = ib;
-                        }
-                    }
-                }               // (ib != ia)
-
-            // if no bonds, something is wrong
-            if (nbond == 0)
-                logFile.printErrorFormatted(WARNING, "Nitrogen atom found with no bonded atoms, atom serial number %d\n", ia);
-
-            // one bond: Azide Nitrogen :N=C-X
-            if (nbond == 1)
-            {
-                // calculate normalized N=C bond vector rvector[ia][]
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->coord[ia][i] - input->coord[i1][i];
-                    rd2 += sq(rvector[ia][i]);
-                }
-                if (rd2 < APPROX_ZERO)
-                {
-                    if ((rd2 == 0) && (warned == 'F'))
-                    {
-                        logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
-                        warned = 'T';
-                    }
-                    rd2 = APPROX_ZERO;
-                }
-                inv_rd = 1 / sqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
-            }                   // endif nbond==1
-
-            // two bonds: X1-N=X2
-            if (nbond == 2)
-            {
-                // normalized vector from Nitrogen to midpoint between X1 and X2
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->coord[ia][i] - (input->coord[i2][i] + input->coord[i1][i]) / 2;
-                    rd2 += sq(rvector[ia][i]);
-                }
-                if (rd2 < APPROX_ZERO)
-                {
-                    if ((rd2 == 0) && (warned == 'F'))
-                    {
-                        logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
-                        warned = 'T';
-                    }
-                    rd2 = APPROX_ZERO;
-                }
-                inv_rd = 1 / sqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
-            }                   // end two bonds for nitrogen
-
-            // three bonds: X1,X2,X3
-            if (nbond == 3)
-            {
-                // normalized vector from Nitrogen to midpoint between X1, X2, and X3
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->coord[ia][i] - (input->coord[i1][i] + input->coord[i2][i] + input->coord[i3][i]) / 3;
-                    rd2 += sq(rvector[ia][i]);
-                }
-                if (rd2 < APPROX_ZERO)
-                {
-                    if ((rd2 == 0) && (warned == 'F'))
-                    {
-                        logFile.printErrorFormatted(WARNING, "Attempt to divide by zero was just prevented.\nAre the coordinates of atoms %d and %d the same?\n\n", ia, ib);
-                        warned = 'T';
-                    }
-                    rd2 = APPROX_ZERO;
-                }
-                inv_rd = 1 / sqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
-
-            }                   // end three bonds for Nitrogen
-            // endNEW directional N Acceptor
-        }                       // end test for atom type
-    }                           // Do Next receptor atom...
-}
-#pragma endregion Calculating bond vectors for directional H-bonds
-
-    // End bond vector loop
-    for (int k = 0; k < gridmaps.getNumAtomMaps() + 1; k++)
-    {
-        gridmaps[k].energyMax = (double)-BIG;
-        gridmaps[k].energyMin = (double)BIG;
-    }
-
-#pragma region Writing out the correct grid filenames and other parameters
-    // Write out the  correct grid_data '.fld' file_name at the  head of each map
-    // file, to avoid centering errors in subsequent dockings...
-    // AutoDock can then  check to see  if the  input->center of each  map  matches that
-    // specified in its parameter file...
-
-    // change numAtomMaps +1 to numAtomMaps + 2 for new dsolvPE map
-    for (int k = 0; k < gridmaps.getNumMaps(); k++)
-    {
-        fprintf(gridmaps[k].file, "GRID_PARAMETER_FILE %s\n", programParams.getGridParameterFilename());
-        fprintf(gridmaps[k].file, "GRID_DATA_FILE %s\n", input->fldFilenameAVS);
-        fprintf(gridmaps[k].file, "MACROMOLECULE %s\n", input->receptorFilename);
-        fprintf(gridmaps[k].file, "SPACING %.3lf\n", input->spacing);
-        fprintf(gridmaps[k].file, "NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
-        fprintf(gridmaps[k].file, "CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
-    }
-    FILE *floatingGridFile = 0;
-    if (input->floatingGridFilename[0])
-    {
-        if ((floatingGridFile = openFile(input->floatingGridFilename, "w")) == 0)
-        {
-            logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
-            logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-        }
-        fprintf(floatingGridFile, "GRID_PARAMETER_FILE %s\n", programParams.getGridParameterFilename());
-        fprintf(floatingGridFile, "GRID_DATA_FILE %s\n", input->fldFilenameAVS);
-        fprintf(floatingGridFile, "MACROMOLECULE %s\n", input->receptorFilename);
-        fprintf(floatingGridFile, "SPACING %.3lf\n", input->spacing);
-        fprintf(floatingGridFile, "NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
-        fprintf(floatingGridFile, "CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
-    }
-#pragma endregion Writing out the correct grid filenames and other parameters
-
-#pragma region Calculation of gridmaps
-{
+    int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
     char *maptypeptr;           // ptr for current map->type
     double cross[XYZ];
     double c[XYZ];
@@ -625,7 +97,7 @@ void autogridMain(int argc, char **argv)
     int fprintf_retval = 0;
     int nDone = 0;
     bool problemWithWriting = false;
-    int hbondflag[MAX_MAPS];
+    bool hbondflag[MAX_MAPS];
     int ii = 0;
     int ic = 0;
     int closestH = 0;
@@ -633,6 +105,7 @@ void autogridMain(int argc, char **argv)
     Clock grd_end;
     tms tms_grd_start;
     tms tms_grd_end;
+    bool warned = false;
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
@@ -661,6 +134,7 @@ void autogridMain(int argc, char **argv)
                     if (gridmaps[j].isCovalent)
                     {
                         // Calculate the distance from the current grid point, c, to the covalent attachment point, input->covpos
+                        double d[XYZ];
                         for (ii = 0; ii < XYZ; ii++)
                             d[ii] = input->covpos[ii] - c[ii];
                         rcov = hypotenuse(d[X], d[Y], d[Z]);
@@ -680,7 +154,7 @@ void autogridMain(int argc, char **argv)
                 {
                     hbondmin[mapIndex] = 999999;
                     hbondmax[mapIndex] = -999999;
-                    hbondflag[mapIndex] = FALSE;
+                    hbondflag[mapIndex] = false;
                 }
 
                 // NEW2: Find Closest Hbond
@@ -688,7 +162,9 @@ void autogridMain(int argc, char **argv)
                 closestH = 0;
                 for (int ia = 0; ia < input->numReceptorAtoms; ia++)
                     if ((input->hbond[ia] == 1) || (input->hbond[ia] == 2))
-                    {           // DS or D1
+                    {
+                        // DS or D1
+                        double d[XYZ];
                         for (int i = 0; i < XYZ; i++)
                             d[i] = input->coord[ia][i] - c[i];
                         double r = hypotenuse(d[X], d[Y], d[Z]);
@@ -704,6 +180,7 @@ void autogridMain(int argc, char **argv)
                 for (int ia = 0; ia < input->numReceptorAtoms; ia++)
                 {
                     //  Get distance, r, from current grid point, c, to this receptor atom, input->coord,
+                    double d[XYZ];
                     for (int i = 0; i < XYZ; i++)
                         d[i] = input->coord[ia][i] - c[i];
                     double r = hypotenuse(d[X], d[Y], d[Z]);
@@ -738,7 +215,7 @@ void autogridMain(int argc, char **argv)
                     //   just continue to next atom...
                     if (r > NBCUTOFF)
                         continue;   // onto the next atom...
-                    if ((input->atomType[ia] == hydrogen) && (disorder[ia] == TRUE))
+                    if (input->atomType[ia] == hydrogen && bondVectors->disorder[ia])
                         continue;   // onto the next atom...
 
                     // racc = rdon = 1;
@@ -755,9 +232,9 @@ void autogridMain(int argc, char **argv)
                         //  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
                         cos_theta = 0;
                         //  d[] = Unit vector from current grid pt to ia_th m/m atom.
-                        //  cos_theta = d dot rvector == cos(angle) subtended.
+                        //  cos_theta = d dot bondVectors->rvector == cos(angle) subtended.
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * rvector[ia][i];
+                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
 
                         if (cos_theta <= 0)
                             //  H->current-grid-pt vector >= 90 degrees from
@@ -767,7 +244,7 @@ void autogridMain(int argc, char **argv)
                         {
                             //  racc = [cos(theta)]^2.0 for N-H
                             //  racc = [cos(theta)]^4.0 for O-H,
-                            switch (rexp[ia])
+                            switch (bondVectors->rexp[ia])
                             {
                             case 1:
                             default:
@@ -781,7 +258,7 @@ void autogridMain(int argc, char **argv)
                                 racc = tmp * tmp;
                                 break;
                             }
-                            // racc = pow(cos_theta, (double)rexp[ia]);
+                            // racc = pow(cos_theta, (double)bondVectors->rexp[ia]);
 
                             // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
                             if (ia == closestH)
@@ -790,7 +267,7 @@ void autogridMain(int argc, char **argv)
                             {
                                 cos_theta = 0;
                                 for (int i = 0; i < XYZ; i++)
-                                    cos_theta += rvector[closestH][i] * rvector[ia][i];
+                                    cos_theta += bondVectors->rvector[closestH][i] * bondVectors->rvector[ia][i];
                                 cos_theta = min(cos_theta, 1.0);
                                 cos_theta = max(cos_theta, -1.0);
                                 theta = acos(cos_theta);
@@ -807,9 +284,9 @@ void autogridMain(int argc, char **argv)
                         //  calculate rdon for H-bond Donor PROBES at this grid pt.
                         cos_theta = 0;
                         //  d[] = Unit vector from current grid pt to ia_th m/m atom.
-                        //  cos_theta = d dot rvector == cos(angle) subtended.
+                        //  cos_theta = d dot bondVectors->rvector == cos(angle) subtended.
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * rvector[ia][i];
+                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
 
                         if (cos_theta <= 0)
                             //  H->current-grid-pt vector >= 90 degrees from
@@ -822,7 +299,7 @@ void autogridMain(int argc, char **argv)
                         // end NEW Directional N acceptor
 
                     }
-                    else if ((input->hbond[ia] == 5) && (disorder[ia] == FALSE))
+                    else if (input->hbond[ia] == 5 && !bondVectors->disorder[ia])
                     {           // A2
                         //  ia-th receptor atom = Oxygen
                         //  => receptor H-bond acceptor, oxygen.
@@ -831,13 +308,13 @@ void autogridMain(int argc, char **argv)
                         // check to see that probe is in front of oxygen, not behind
                         cos_theta = 0;
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * rvector[ia][i];
+                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
                         // t0 is the angle out of the lone pair plane, calculated
                         // as 90 deg - acos (vector to grid point DOT lone pair
                         // plane normal)
                         t0 = 0;
                         for (int i = 0; i < XYZ; i++)
-                            t0 += d[i] * rvector2[ia][i];
+                            t0 += d[i] * bondVectors->rvector2[ia][i];
                         if (t0 > 1)
                         {
                             logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", t0);
@@ -854,23 +331,23 @@ void autogridMain(int argc, char **argv)
                         // vector between the lone pairs,
                         // calculated as (grid vector CROSS lone pair plane normal)
                         // DOT C=O vector - 90 deg
-                        cross[0] = d[1] * rvector2[ia][2] - d[2] * rvector2[ia][1];
-                        cross[1] = d[2] * rvector2[ia][0] - d[0] * rvector2[ia][2];
-                        cross[2] = d[0] * rvector2[ia][1] - d[1] * rvector2[ia][0];
-                        rd2 = sq(cross[0]) + sq(cross[1]) + sq(cross[2]);
+                        cross[0] = d[1] * bondVectors->rvector2[ia][2] - d[2] * bondVectors->rvector2[ia][1];
+                        cross[1] = d[2] * bondVectors->rvector2[ia][0] - d[0] * bondVectors->rvector2[ia][2];
+                        cross[2] = d[0] * bondVectors->rvector2[ia][1] - d[1] * bondVectors->rvector2[ia][0];
+                        double rd2 = sq(cross[0]) + sq(cross[1]) + sq(cross[2]);
                         if (rd2 < APPROX_ZERO)
                         {
-                            if ((rd2 == 0) && (warned == 'F'))
+                            if ((rd2 == 0) && !warned)
                             {
                                 logFile.printError(WARNING, "Attempt to divide by zero was just prevented.\n\n");
-                                warned = 'T';
+                                warned = true;
                             }
                             rd2 = APPROX_ZERO;
                         }
-                        inv_rd = 1 / sqrt(rd2);
+                        double inv_rd = 1 / sqrt(rd2);
                         ti = 0;
                         for (int i = 0; i < XYZ; i++)
-                            ti += cross[i] * inv_rd * rvector[ia][i];
+                            ti += cross[i] * inv_rd * bondVectors->rvector[ia][i];
 
                         // rdon expressions from Goodford
                         rdon = 0;
@@ -898,13 +375,13 @@ void autogridMain(int argc, char **argv)
 
                         // endif input->atomType == oxygen, not disordered
                     }
-                    else if ((input->hbond[ia] == 5) && (disorder[ia] == TRUE))
-                    {           // A2
-
+                    else if (input->hbond[ia] == 5 && bondVectors->disorder[ia])
+                    {
+                        // A2
                         // cylindrically disordered hydroxyl
                         cos_theta = 0;
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * rvector[ia][i];
+                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
                         if (cos_theta > 1)
                         {
                             logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", cos_theta);
@@ -949,7 +426,7 @@ void autogridMain(int argc, char **argv)
                                     && (input->hbond[ia] == 1 || input->hbond[ia] == 2))
                                 {   // DS or D1
                                     // PROBE can be an H-BOND ACCEPTOR,
-                                    if (disorder[ia] == FALSE)
+                                    if (!bondVectors->disorder[ia])
                                         gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex) * Hramp * (racc + (1 - racc) * rsph);
                                     else
                                         gridmaps[mapIndex].energy += energyLookup(hydrogen, max(0, indexR - 110), mapIndex) * Hramp * (racc + (1 - racc) * rsph);
@@ -959,7 +436,7 @@ void autogridMain(int argc, char **argv)
                                 {   // DS,D1
                                     hbondmin[mapIndex] = min(hbondmin[mapIndex], energyLookup(input->atomType[ia], indexR, mapIndex) * (racc + (1 - racc) * rsph));
                                     hbondmax[mapIndex] = max(hbondmax[mapIndex], energyLookup(input->atomType[ia], indexR, mapIndex) * (racc + (1 - racc) * rsph));
-                                    hbondflag[mapIndex] = TRUE;
+                                    hbondflag[mapIndex] = true;
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 1 || gridmaps[mapIndex].hbond == 2) && (input->hbond[ia] > 2))
                                 {   // DS,D1 vs AS,A1,A2
@@ -967,7 +444,7 @@ void autogridMain(int argc, char **argv)
                                     temp_hbond_enrg = energyLookup(input->atomType[ia], indexR, mapIndex) * (rdon + (1 - rdon) * rsph);
                                     hbondmin[mapIndex] = min(hbondmin[mapIndex], temp_hbond_enrg);
                                     hbondmax[mapIndex] = max(hbondmax[mapIndex], temp_hbond_enrg);
-                                    hbondflag[mapIndex] = TRUE;
+                                    hbondflag[mapIndex] = true;
                                 }
                                 else
                                     // hbonder PROBE-ia cannot form a H-bond...,
@@ -1004,7 +481,7 @@ void autogridMain(int argc, char **argv)
                         else
                             fprintf_retval = fprintf(gridmaps[k].file, "%.3f\n", (float)round3dp(gridmaps[k].energy));
                         if (fprintf_retval < 0)
-                            problemWithWriting = TRUE;
+                            problemWithWriting = true;
                     }
 
                     gridmaps[k].energyMax = max(gridmaps[k].energyMax, gridmaps[k].energy);
@@ -1012,7 +489,7 @@ void autogridMain(int argc, char **argv)
                 }
                 if (floatingGridFile)
                     if ((!problemWithWriting) && (fprintf(floatingGridFile, "%.3f\n", (float)round3dp(r_min)) < 0))
-                        problemWithWriting = TRUE;
+                        problemWithWriting = true;
                 ctr++;
             }                   // icoord[X] loop
         }                       // icoord[Y] loop
@@ -1027,9 +504,111 @@ void autogridMain(int argc, char **argv)
         logFile.printExecutionTimes(grd_start, grd_end, &tms_grd_start, &tms_grd_end);
     }                           // icoord[Z] loop
 }
-#pragma endregion Calculation of gridmaps
 
-    delete input;
+// Function: Calculation of interaction energy grids for Autodock.
+// Directional H_bonds from Goodford:
+// Distance dependent dielectric after Mehler and Solmajer.
+// Charge-based desolvation
+// Copyright: (C) 2004, TSRI
+//
+// Authors: Garrett Matthew Morris, Ruth Huey, David S. Goodsell
+//
+// The Scripps Research Institute
+// Department of Molecular Biology, MB5
+// 10550 North Torrey Pines Road
+// La Jolla, CA 92037-1000.
+//
+// e-mail: garrett@scripps.edu
+// rhuey@scripps.edu
+// goodsell@scripps.edu
+//
+// Helpful suggestions and advice:
+// Arthur J. Olson
+// Bruce Duncan, Yng Chen, Michael Pique, Victoria Roberts
+// Lindy Lindstrom
+//
+// Inputs: Control file, receptor PDBQT file, parameter file
+// Returns: Atomic affinity, desolvation and electrostatic grid maps.
+void autogridMain(int argc, char **argv)
+{
+    // Get the time at the start of the run...
+    tms tmsJobStart;
+    Clock jobStart = times(&tmsJobStart);
+
+    double versionNumber = 4.00;
+
+    // Initialize the ProgramParameters object, which parses the command-line arguments
+    ProgramParameters programParams(argc, argv);
+
+    // Initialize the log file
+    LogFile logFile(versionNumber, programParams.getProgramName(), programParams.getLogFilename());
+
+    // Declaration of gridmaps, InputDataLoader::load takes care of their initialization
+    GridMapList gridmaps(&logFile);
+
+    // Initialization of free energy coefficients and atom parameters
+    ParameterLibrary parameterLibrary(&logFile, programParams.getDebugLevel());
+
+    // Reading in the grid parameter file
+    InputDataLoader *inputDataLoader = new InputDataLoader(&logFile);
+    inputDataLoader->load(programParams.getGridParameterFilename(), gridmaps, parameterLibrary);
+    // TODO: shouldn't we put these out of the load function? :
+    // - gridmaps initialization code
+    // - initialization of atom parameters recIndex/mapIndex (in parameterLibrary)
+
+    // Now we want to make the input data read-only
+    const InputData *input = inputDataLoader;
+
+    // Initialize the header of the map files
+    gridmaps.initFileHeader(input, programParams.getGridParameterFilename());
+
+    // Write out the  correct grid_data '.fld' file_name at the head of each map
+    // file, to avoid centering errors in subsequent dockings...
+    // AutoDock can then check to see if the center of each map matches that
+    // specified in its parameter file...
+
+    for (int k = 0; k < gridmaps.getNumMaps(); k++)
+        fwrite(gridmaps.getFileHeader(), gridmaps.getFileHeaderLength(), 1, gridmaps[k].file);
+
+    // TODO: consider adding a new gridmap describing the floating grid
+    FILE *floatingGridFile = 0;
+    if (input->floatingGridFilename[0])
+    {
+        if ((floatingGridFile = boincOpenFile(input->floatingGridFilename, "w")) == 0)
+        {
+            logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
+            logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+        }
+        fwrite(gridmaps.getFileHeader(), gridmaps.getFileHeaderLength(), 1, floatingGridFile);
+    }
+
+    // Loading the parameter library from the file
+    if (input->parameterLibraryFilename[0])
+        parameterLibrary.load(input->parameterLibraryFilename);
+
+    // Writing to AVS-readable gridmaps file (fld)
+    saveAVSGridmapsFile(gridmaps, input, programParams, logFile);
+
+#if defined(BOINCCOMPOUND)
+    boinc_fraction_done(0.1);
+#endif
+
+    // Calculating the lookup table of the pairwise interaction energies
+    PairwiseInteractionEnergies energyLookup;
+    energyLookup.calculate(gridmaps, logFile, input->numReceptorTypes, input->receptorTypes, input->rSmooth);
+
+    // Precalculating the exponential function for receptor and ligand desolvation
+    DesolvExpFunc desolvExpFunc(parameterLibrary.coeff_desolv);
+
+    // Calculating bond vectors for directional H-bonds
+    BondVectors *bondVectors = new BondVectors(&logFile);
+    bondVectors->calculate(input, parameterLibrary);
+
+    // Calculation of gridmaps
+    calculateGrids(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors, logFile, floatingGridFile);
+
+    delete bondVectors;
+    delete inputDataLoader;
 
     if (floatingGridFile)
         fclose(floatingGridFile);
@@ -1068,6 +647,6 @@ int main(int argc, char **argv)
     catch (std::bad_alloc &)
     {
         fprintf(stderr, "\n%s: FATAL ERROR: Not enough memory!\n", *argv);
-        return 666;
+        return 0xBADA110C; // BADALLOC
     }
 }

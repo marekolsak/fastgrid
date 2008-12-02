@@ -85,7 +85,7 @@ void boincDone()
 }
 
 // fopen rewrite to either use BOINC api or normal system call
-FILE *openFile(const char *path, const char *mode)
+FILE *boincOpenFile(const char *path, const char *mode)
 {
     FILE *filep;
 

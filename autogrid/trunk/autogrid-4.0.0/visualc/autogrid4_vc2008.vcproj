@@ -65,10 +65,10 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\Rune\LibWin"
+				AdditionalLibraryDirectories=""
 				GenerateDebugInformation="true"
 				SubSystem="1"
-				StackReserveSize="100000000"
+				StackReserveSize="4000000"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				TargetMachine="1"
@@ -153,11 +153,11 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="..\..\Rune\bin"
+				AdditionalLibraryDirectories=""
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
 				SubSystem="1"
-				StackReserveSize="5000000"
+				StackReserveSize="4000000"
 				StackCommitSize="0"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -239,11 +239,11 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="..\..\Rune\bin"
+				AdditionalLibraryDirectories=""
 				GenerateManifest="false"
 				GenerateDebugInformation="true"
 				SubSystem="1"
-				StackReserveSize="100000000"
+				StackReserveSize="4000000"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				OptimizeForWindows98="1"
@@ -286,6 +286,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\bondvectors.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\bondvectors.h"
+				>
+			</File>
+			<File
 				RelativePath="..\desolvexpfunc.cpp"
 				>
 			</File>
@@ -306,11 +314,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\inputdata.cpp"
+				RelativePath="..\inputdata.h"
 				>
 			</File>
 			<File
-				RelativePath="..\inputdata.h"
+				RelativePath="..\inputdataloader.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\inputdataloader.h"
 				>
 			</File>
 			<File

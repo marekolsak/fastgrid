@@ -23,7 +23,7 @@
 */
 
 #pragma once
-#include "gridmap.h"
+#include "parameterlibrary.h"
 
 struct InputData
 {
@@ -68,20 +68,4 @@ struct InputData
     double covBarrier;
 
     bool distDepDiel, disorderH;
-};
-
-class InputDataLoader : public InputData
-{
-public:
-    InputDataLoader(LogFile *logFile);
-    void load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary);
-
-private:
-    LogFile *logFile;
-
-    int checkSize(int nelements, char axischar);
-    static int parseGPFLine(const char *line);
-    static double calculateDDDMehlerSolmajer(double distance, double approx_zero);
-    static int parseTypes(char *line, char **words, int maxwords);
-    static int strIndex(const char *s, const char *t);
 };

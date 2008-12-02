@@ -107,7 +107,7 @@ void ParameterLibrary::load(const char *filename)
 
     // Open and read the parameter library
     FILE *parameterLibraryFile;
-    if ((parameterLibraryFile = openFile(filename, "r")) == 0)
+    if ((parameterLibraryFile = boincOpenFile(filename, "r")) == 0)
     {
          fprintf(stderr,"Sorry, I can't find or open %s\n", filename);
          throw ExitProgram(-1);

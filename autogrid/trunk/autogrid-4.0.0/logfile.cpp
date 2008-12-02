@@ -59,7 +59,7 @@ LogFile::LogFile(double versionNumber, const char *programName, const char *file
         file = stdout;
     else
     {
-        file = openFile(filename, "w");
+        file = boincOpenFile(filename, "w");
         if (!file)
         {
             fprintf(stderr, "\n%s: Sorry, I can't create the log file \"%s\"\n", programName, filename);

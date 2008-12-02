@@ -23,13 +23,20 @@
 */
 
 #pragma once
-#include <cstdio>
+#include "gridmap.h"
 
-// BOINC
-void boincInit();
-void boincDone();
-FILE *boincOpenFile(const char *path, const char *mode);
+class InputDataLoader : public InputData
+{
+public:
+    InputDataLoader(LogFile *logFile);
+    void load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary);
 
-// Timer
-void beginTimer(const char *description);
-void endTimer();
+private:
+    LogFile *logFile;
+
+    int checkSize(int nelements, char axischar);
+    static int parseGPFLine(const char *line);
+    static double calculateDDDMehlerSolmajer(double distance, double approx_zero);
+    static int parseTypes(char *line, char **words, int maxwords);
+    static int strIndex(const char *s, const char *t);
+};

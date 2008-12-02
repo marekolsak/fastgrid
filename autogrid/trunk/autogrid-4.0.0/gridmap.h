@@ -23,8 +23,7 @@
 */
 
 #pragma once
-#include "autogrid.h"
-#include "parameterlibrary.h"
+#include "inputdata.h"
 
 struct GridMap
 {
@@ -66,6 +65,10 @@ public:
     GridMapList(LogFile *logFile);
     ~GridMapList();
 
+    void initFileHeader(const InputData *input, const char *gridParameterFilename);
+    const char *getFileHeader() const       { return fileHeader; }
+    int getFileHeaderLength() const         { return fileHeaderLength; }
+
     // Allocates gridmaps.
     // "num" is the number of maps to be created: the number of ligand atom types, plus 1 for the electrostatic map,
     // plus 1 for the desolvation map.
@@ -82,8 +85,8 @@ public:
 
     // Read-only access
     const GridMap &operator [](int i) const { return gridmaps[i]; }
-    const GridMap &getElectrostaticMap() const { return gridmaps[elecIndex]; }
-    const GridMap &getDesolvationMap() const { return gridmaps[desolvIndex]; }
+    const GridMap &getElectrostaticMap()const{ return gridmaps[elecIndex]; }
+    const GridMap &getDesolvationMap() const{ return gridmaps[desolvIndex]; }
 
     int getNumAtomMaps() const              { return numAtomMaps; }
     int getNumMaps() const                  { return numMaps; }
@@ -94,4 +97,6 @@ private:
     int numMaps, numAtomMaps, elecIndex, desolvIndex;
     GridMap *gridmaps;
     LogFile *logFile;
+    char fileHeader[1<<14];
+    int fileHeaderLength;
 };
