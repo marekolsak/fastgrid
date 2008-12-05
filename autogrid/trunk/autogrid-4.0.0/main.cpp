@@ -42,7 +42,7 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     else
         logFile.printFormatted("\nCreating (AVS-readable) grid maps file : %s\n", input->fldFilenameAVS);
 
-    int numMaps = gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0);
+    int numMaps = gridmaps.getNumMapsInclFloatingGrid();
     fprintf(fldFileAVS, "# AVS field file\n#\n");
     fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
     fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
@@ -65,14 +65,14 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
         fprintf(fldFileAVS, "label=%s-affinity\t# component label for variable %d\n", gridmaps[i].type, (i + 1));
     fprintf(fldFileAVS, "label=Electrostatics\t# component label for variable %d\n", numMaps - 2);
     fprintf(fldFileAVS, "label=Desolvation\t# component label for variable %d\n", numMaps - 1);
-    if (input->floatingGridFilename[0])
+    if (gridmaps.containsFloatingGrid())
         fprintf(fldFileAVS, "label=Floating_Grid\t# component label for variable %d\n", numMaps);
     fprintf(fldFileAVS, "#\n# location of affinity grid files and how to read them\n#\n");
 
     for (int i = 0; i < gridmaps.getNumMaps(); i++)
         fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmaps[i].filename);
 
-    if (input->floatingGridFilename[0])
+    if (gridmaps.containsFloatingGrid())
         fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", numMaps, input->floatingGridFilename);
     fclose(fldFileAVS);
 }
@@ -86,7 +86,7 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
     double cross[XYZ];
     double c[XYZ];
     int icoord[XYZ] = {0};
-    int ctr = 0;
+    int outputIndex = 0;
     double PI_halved = PI / 2;
     double rcov = 0.0;          // Distance from current grid point to the covalent attachment point
     double racc, cos_theta, r_min = 0, tmp, rdon, inv_r, inv_rmax, rsph, theta;
@@ -111,7 +111,7 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                            "XY-plane  Z-coord   Done      Remaining       Real, User, System\n"
                            "            /Ang              /sec            /sec\n"
                            "________  ________  ________  ______________  __________________________\n\n",
-                           gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0), input->numGridPointsPerMap, input->numReceptorAtoms);
+                           gridmaps.getNumMapsInclFloatingGrid(), input->numGridPointsPerMap, input->numReceptorAtoms);
 
     // Iterate over all grid points, Z(Y (X)) (X is fastest)...
     for (icoord[Z] = -input->ne[Z]; icoord[Z] <= input->ne[Z]; icoord[Z]++)
@@ -144,7 +144,7 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                     else // is not covalent
                         gridmaps[j].energy = 0; // used to initialize to 'constant'for this gridmaps
 
-                if (input->floatingGridFilename[0])
+                if (gridmaps.containsFloatingGrid())
                     r_min = BIG;
 
                 // Initialize Min Hbond variables for each new point
@@ -192,7 +192,7 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                     // make sure lookup index is in the table
                     int indexR = min(lookup(r), MAX_DIST-1);
 
-                    if (input->floatingGridFilename[0])
+                    if (gridmaps.containsFloatingGrid())
                         // Calculate the so-called "Floating Grid"...
                         r_min = min(r, r_min);
 
@@ -314,15 +314,9 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                         for (int i = 0; i < XYZ; i++)
                             t0 += d[i] * bondVectors->rvector2[ia][i];
                         if (t0 > 1)
-                        {
-                            logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", t0);
                             t0 = 1;
-                        }
                         else if (t0 < -1)
-                        {
-                            logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", t0);
                             t0 = -1;
-                        }
                         t0 = PI_halved - acos(t0);
 
                         // ti is the angle in the lone pair plane, away from the
@@ -336,10 +330,7 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                         if (rd2 < APPROX_ZERO)
                         {
                             if ((rd2 == 0) && !warned)
-                            {
-                                logFile.printError(WARNING, "Attempt to divide by zero was just prevented.\n\n");
                                 warned = true;
-                            }
                             rd2 = APPROX_ZERO;
                         }
                         double inv_rd = 1 / sqrt(rd2);
@@ -352,15 +343,9 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                         if (cos_theta >= 0)
                         {
                             if (ti > 1)
-                            {
-                                logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", ti);
                                 ti = 1;
-                            }
                             else if (ti < -1)
-                            {
-                                logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", ti);
                                 ti = -1;
-                            }
                             ti = acos(ti) - PI_halved;
                             if (ti < 0)
                                 ti = -ti;
@@ -381,15 +366,9 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                         for (int i = 0; i < XYZ; i++)
                             cos_theta -= d[i] * bondVectors->rvector[ia][i];
                         if (cos_theta > 1)
-                        {
-                            logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value greater than 1.\n", cos_theta);
                             cos_theta = 1;
-                        }
                         else if (cos_theta < -1)
-                        {
-                            logFile.printErrorFormatted(WARNING, "I just prevented an attempt to take the arccosine of %f, a value less than -1.\n", cos_theta);
                             cos_theta = -1;
-                        }
                         theta = acos(cos_theta);
                         racc = 0;
                         rdon = 0;
@@ -469,19 +448,19 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
 
                 // O U T P U T . . .
                 // Now output this grid point's energies to the maps:
-                // 2 includes new dsolvPE
                 for (int k = 0; k < gridmaps.getNumMaps(); k++)
                 {
                     gridmaps[k].energyMax = max(gridmaps[k].energyMax, gridmaps[k].energy);
                     gridmaps[k].energyMin = min(gridmaps[k].energyMin, gridmaps[k].energy);
-
-                    float f = float(round3dp(gridmaps[k].energy));
-                    fprintf(gridmaps[k].file, "%.3f\n", f);
-
+                    if (fabs(gridmaps[k].energy) < PRECISION)
+                        gridmaps[k].energies[outputIndex] = 0;
+                    else
+                        gridmaps[k].energies[outputIndex] = float(round3dp(gridmaps[k].energy));
                 }
-                if (gridmaps.getFloatingGridFile())
-                    fprintf(gridmaps.getFloatingGridFile(), "%.3f\n", float(round3dp(r_min)));
-                ctr++;
+                if (gridmaps.containsFloatingGrid())
+                    gridmaps.getFloatingGridMins()[outputIndex] = float(round3dp(r_min));
+
+                outputIndex++;
             }                   // icoord[X] loop
         }                       // icoord[Y] loop
 
@@ -548,14 +527,14 @@ void autogridMain(int argc, char **argv)
     // Now we want to make the input data read-only
     const InputData *input = inputDataLoader;
 
-    // TODO: consider adding floating grid file handling into the GridMapList class
-    gridmaps.setFloatingGridFilename(input->floatingGridFilename);
+    if (input->floatingGridFilename[0])
+        gridmaps.enableFloatingGrid();
 
-    // Preparing the files
-    gridmaps.prepareFiles(input, programParams.getGridParameterFilename());
+    // Inititializing arrays of output energies
+    gridmaps.prepareGridmaps(input->ne);
 
     // TODO: add a smarter mechanism of checking for the available disk space, we need to know it as soon as possible.
-    // the formerly implemented checks in the middle of calculations were too late
+    // the formerly implemented checks in the middle of calculations were done too late
 
     // Loading the parameter library from the file
     if (input->parameterLibraryFilename[0])
@@ -583,11 +562,15 @@ void autogridMain(int argc, char **argv)
     calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors, logFile);
 
     delete bondVectors;
-    delete inputDataLoader;
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
 #endif
+
+    // Save all gridmaps
+    gridmaps.saveToFiles(input, programParams.getGridParameterFilename());
+
+    delete inputDataLoader;
 
     // Writing out summary
     gridmaps.logSummary();

@@ -43,7 +43,7 @@ struct GridMap
     // new 6/28
     double Rij;
     double epsij;
-    HBondType hbond;       // hbonding character:
+    HBondType hbond;       // hbonding character
     double RijHB;
     double epsijHB;
 
@@ -54,13 +54,9 @@ struct GridMap
     int xB[NUM_RECEPTOR_TYPES]; // 6 for non-hbonders 10 for h-bonders
     int hbonder[NUM_RECEPTOR_TYPES];
 
-    // TODO: once we move handling of all output files (gridmaps and floating grid) into the GridMapList class, remove this member:
-    FILE *file;
+    float *energies;  // output energies, this array will be saved to file
 
     GridMap();
-
-private:
-    friend class GridMapList;
 };
 
 class GridMapList
@@ -71,12 +67,22 @@ public:
 
     // Allocates gridmaps.
     // "num" is the number of maps to be created: the number of ligand atom types, plus 1 for the electrostatic map,
-    // plus 1 for the desolvation map.
+    // plus 1 for the desolvation map. (the floating grid should not be included here, see enableFloatingGrid)
     // Keep in mind that AutoDock can only read in MAX_MAPS maps.
     void setNumMaps(int num);
 
-    // Sets the floating grid filename (optional)
-    void setFloatingGridFilename(const char *filename);
+    // Enables the floating grid. By default, the floating grid is disabled.
+    void enableFloatingGrid();
+
+    // Allocates memory for output energies.
+    // The final number of gridmaps must be set by now. The energy map will contain a 3D array in the range
+    // (-icoord[axis], +icoord[axis]).
+    void prepareGridmaps(const int (&range)[XYZ]);
+
+    // TODO: unify functions: setNumMaps, enableFloatingGrid, prepareGridmaps
+
+    // Saves all energies and possibly the floating grid to files
+    void saveToFiles(const InputData *input, const char *gridParameterFilename);
 
     // Writes out summary
     void logSummary();
@@ -85,6 +91,7 @@ public:
     GridMap &operator [](int i)             { return gridmaps[i]; }
     GridMap &getElectrostaticMap()          { return gridmaps[elecIndex]; }
     GridMap &getDesolvationMap()            { return gridmaps[desolvIndex]; }
+    float *getFloatingGridMins()            { return floatingGridMins; }
 
     // Read-only access to maps
     const GridMap &operator [](int i) const { return gridmaps[i]; }
@@ -93,12 +100,10 @@ public:
 
     int getNumAtomMaps() const              { return numAtomMaps; }
     int getNumMaps() const                  { return numMaps; }
+    int getNumMapsInclFloatingGrid() const;
     int getElectrostaticMapIndex() const    { return elecIndex; }
     int getDesolvationMapIndex() const      { return desolvIndex; }
-
-    // TODO: once we move handling of all output files (gridmaps and floating grid) into this class, remove these functions
-    void prepareFiles(const InputData *input, const char *gridParameterFilename);
-    FILE *getFloatingGridFile()             { return floatingGridFile; }
+    bool containsFloatingGrid() const       { return useFloatingGrid; }
 
 private:
     LogFile *logFile;
@@ -106,8 +111,7 @@ private:
     int numMaps, numAtomMaps, elecIndex, desolvIndex;
     GridMap *gridmaps;
 
-    char floatingGridFilename[MAX_CHARS];
-
-    // TODO: once we move handling of all output files (gridmaps and floating grid) into this class, remove these members:
-    FILE *floatingGridFile;
+    bool useFloatingGrid;
+    float *floatingGridMins;
+    int numFloats;
 };

@@ -37,67 +37,21 @@ GridMap::GridMap()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), elecIndex(0), desolvIndex(0), gridmaps(0), logFile(logFile), floatingGridFile(0)
-{
-    floatingGridFilename[0] = 0;
-}
+GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), elecIndex(0), desolvIndex(0), gridmaps(0),
+    logFile(logFile), floatingGridMins(0), useFloatingGrid(false)
+{}
 
 GridMapList::~GridMapList()
 {
     for (int i = 0; i < numMaps; i++)
-        if (gridmaps[i].file)
-            fclose(gridmaps[i].file);
+        if (gridmaps[i].filename[0])
+            delete [] gridmaps[i].energies;
 
-    if (floatingGridFile)
-        fclose(floatingGridFile);
+    if (useFloatingGrid)
+        delete [] floatingGridMins;
 
     if (gridmaps)
         delete [] gridmaps;
-}
-
-void GridMapList::prepareFiles(const InputData *input, const char *gridParameterFilename)
-{
-    // Write out the  correct grid_data '.fld' file_name at the head of each map
-    // file, to avoid centering errors in subsequent dockings...
-    // AutoDock can then check to see if the center of each map matches that
-    // specified in its parameter file...
-
-    char fileHeader[1<<14];
-    snprintf(fileHeader, 1<<14,
-        "GRID_PARAMETER_FILE %s\n"
-        "GRID_DATA_FILE %s\n"
-        "MACROMOLECULE %s\n"
-        "SPACING %.3lf\n"
-        "NELEMENTS %d %d %d\n"
-        "CENTER %.3lf %.3lf %.3lf\n",
-        gridParameterFilename, input->fldFilenameAVS, input->receptorFilename, input->spacing,
-        input->nelements[X], input->nelements[Y], input->nelements[Z],
-        input->center[X], input->center[Y], input->center[Z]);
-
-    int fileHeaderLength = strlen(fileHeader);
-
-    // Open files
-    for (int i = 0; i < numMaps; i++)
-        if (gridmaps[i].filename[0])
-        {
-            if ((gridmaps[i].file = boincOpenFile(gridmaps[i].filename, "w")) == 0)
-            {
-                logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[i].filename);
-                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
-
-            fwrite(fileHeader, fileHeaderLength, 1, gridmaps[i].file);
-        }
-
-    if (input->floatingGridFilename[0])
-    {
-        if ((floatingGridFile = boincOpenFile(input->floatingGridFilename, "w")) == 0)
-        {
-            logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
-            logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-        }
-        fwrite(fileHeader, fileHeaderLength, 1, floatingGridFile);
-    }
 }
 
 void GridMapList::setNumMaps(int num)
@@ -141,7 +95,89 @@ void GridMapList::logSummary()
     logFile->printTitled("Successful Completion.\n");
 }
 
-void GridMapList::setFloatingGridFilename(const char *filename)
+void GridMapList::enableFloatingGrid()
 {
-    strncpy(floatingGridFilename, filename, MAX_CHARS);
+    useFloatingGrid = true;
+}
+
+int GridMapList::getNumMapsInclFloatingGrid() const
+{
+    return numMaps + (useFloatingGrid ? 1 : 0);
+}
+
+void GridMapList::prepareGridmaps(const int (&range)[XYZ])
+{
+    numFloats = (range[X]*2+1) * (range[Y]*2+1) * (range[Z]*2+1);
+
+    for (int i = 0; i < numMaps; i++)
+        if (gridmaps[i].filename[0])
+            gridmaps[i].energies = new float[numFloats];
+    if (useFloatingGrid)
+        floatingGridMins = new float[numFloats];
+}
+
+void GridMapList::saveToFiles(const InputData *input, const char *gridParameterFilename)
+{
+    // Write out the correct grid data '.fld' filename at the head of each map file,
+    // to avoid centering errors in subsequent dockings...
+    // AutoDock can then check to see if the center of each map matches that
+    // specified in its parameter file...
+
+    // The header of all files
+    char fileHeader[1<<14];
+    int fileHeaderLength = snprintf(fileHeader, 1<<14,
+        "GRID_PARAMETER_FILE %s\n"
+        "GRID_DATA_FILE %s\n"
+        "MACROMOLECULE %s\n"
+        "SPACING %.3lf\n"
+        "NELEMENTS %d %d %d\n"
+        "CENTER %.3lf %.3lf %.3lf\n",
+        gridParameterFilename, input->fldFilenameAVS, input->receptorFilename, input->spacing,
+        input->nelements[X], input->nelements[Y], input->nelements[Z],
+        input->center[X], input->center[Y], input->center[Z]);
+
+    // Gridmaps
+    for (int i = 0; i < numMaps; i++)
+        if (gridmaps[i].filename[0])
+        {
+            // Open the file
+            FILE *file;
+            if ((file = boincOpenFile(gridmaps[i].filename, "w")) == 0)
+            {
+                logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[i].filename);
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+            }
+            fwrite(fileHeader, fileHeaderLength, 1, file);
+
+            // Save energies
+            for (int j = 0; j < numFloats; j++)
+            {
+                float f = gridmaps[i].energies[j];
+                if (f == 0)
+                    fwrite("0.\n", 3, 1, file);
+                else
+                    fprintf(file, "%.3f\n", gridmaps[i].energies[j]);
+            }
+
+            fclose(file);
+        }
+
+    // Floating grid
+    if (useFloatingGrid)
+    {
+        // Open the file
+        FILE *file = 0;
+        if ((file = boincOpenFile(input->floatingGridFilename, "w")) == 0)
+        {
+            logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
+            logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+        }
+        fwrite(fileHeader, fileHeaderLength, 1, file);
+
+        // Save the floating grid
+        for (int j = 0; j < numFloats; j++)
+            fprintf(file, "%.3f\n", floatingGridMins[j]);
+
+        fclose(file);
+    }
 }
