@@ -356,9 +356,9 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                                        (cmax[X] + cmin[X]) / 2, (cmax[Y] + cmin[Y]) / 2, (cmax[Z] + cmin[Z]) / 2,
                                        cmin[X], cmin[Y], cmin[Z], cmax[X], cmax[Y], cmax[Z], cmin[X], cmin[Y], cmin[Z]);
 
-                cmean[0] = csum[0] / (double)numReceptorAtoms;
-                cmean[1] = csum[1] / (double)numReceptorAtoms;
-                cmean[2] = csum[2] / (double)numReceptorAtoms;
+                cmean[0] = csum[0] / numReceptorAtoms;
+                cmean[1] = csum[1] / numReceptorAtoms;
+                cmean[2] = csum[2] / numReceptorAtoms;
             }
             break;
 
@@ -426,7 +426,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                     coord[ia][i] -= center[i];  // transform to center of gridmaps
             for (int i = 0; i < XYZ; i++)
             {
-                cext[i] = spacing * (double)ne[i];
+                cext[i] = spacing * ne[i];
                 cgridmax[i] = center[i] + cext[i];
                 cgridmin[i] = center[i] - cext[i];
             }
@@ -621,34 +621,19 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                     mapIndex + 1, gridmaps.getNumAtomMaps());
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
-            // Read in the gridParameterFilename for this grid map *//* GPF_MAP
-            sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].mapFilename);
-            if ((gridmaps[mapIndex].file = boincOpenFile(gridmaps[mapIndex].mapFilename, "w")) == 0)
-            {
-                logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[mapIndex].mapFilename);
-                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
-            logFile->printFormatted("\nOutput Grid Map %d:   %s\n\n", (mapIndex + 1), gridmaps[mapIndex].mapFilename);
+            // Read in the gridParameterFilename for this grid map
+            sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].filename);
+            logFile->printFormatted("\nOutput Grid Map %d:   %s\n\n", (mapIndex + 1), gridmaps[mapIndex].filename);
             break;
 
         case GPF_ELECMAP:
-            sscanf(GPFLine, "%*s %s", gridmaps.getElectrostaticMap().mapFilename);
-            if ((gridmaps.getElectrostaticMap().file = boincOpenFile(gridmaps.getElectrostaticMap().mapFilename, "w")) == 0)
-            {
-                logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getElectrostaticMap().mapFilename);
-                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
-            logFile->printFormatted("\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmaps.getElectrostaticMap().mapFilename);
+            sscanf(GPFLine, "%*s %s", gridmaps.getElectrostaticMap().filename);
+            logFile->printFormatted("\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmaps.getElectrostaticMap().filename);
             break;
 
         case GPF_DSOLVMAP:
-            sscanf(GPFLine, "%*s %s", gridmaps.getDesolvationMap().mapFilename);
-            if ((gridmaps.getDesolvationMap().file = boincOpenFile(gridmaps.getDesolvationMap().mapFilename, "w")) == 0)
-            {
-                logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", gridmaps.getDesolvationMap().mapFilename);
-                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
-            logFile->printFormatted("\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmaps.getDesolvationMap().mapFilename);
+            sscanf(GPFLine, "%*s %s", gridmaps.getDesolvationMap().filename);
+            logFile->printFormatted("\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmaps.getDesolvationMap().filename);
             break;
 
         case GPF_COVALENTMAP:

@@ -106,8 +106,8 @@
 
 #define max(x,y)            (((x) > (y)) ? (x) : (y))
 #define min(x,y)            (((x) < (y)) ? (x) : (y))
-#define angstrom(i)         (((double) (i)) / A_DIVISOR)
-#define lookup(r)           ((int) ((r) * A_DIVISOR))
+#define angstrom(i)         ((double(i)) / A_DIVISOR)
+#define lookup(r)           (int((r) * A_DIVISOR))
 
 #define NUM_ALL_TYPES 20   /*??? IS THIS REASONABLE???*/
 #define MAX_LEN_AUTOGRID_TYPE 7

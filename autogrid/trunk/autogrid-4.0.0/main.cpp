@@ -33,7 +33,6 @@
 
 void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile)
 {
-    int numMaps = gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0);
     FILE *fldFileAVS;
     if ((fldFileAVS = boincOpenFile(input->fldFilenameAVS, "w")) == 0)
     {
@@ -43,10 +42,11 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     else
         logFile.printFormatted("\nCreating (AVS-readable) grid maps file : %s\n", input->fldFilenameAVS);
 
+    int numMaps = gridmaps.getNumMaps() + (input->floatingGridFilename[0] != 0);
     fprintf(fldFileAVS, "# AVS field file\n#\n");
     fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
     fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
-    fprintf(fldFileAVS, "#SPACING %.3f\n", (float)input->spacing);
+    fprintf(fldFileAVS, "#SPACING %.3f\n", float(input->spacing));
     fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
     fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
     fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
@@ -70,16 +70,16 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     fprintf(fldFileAVS, "#\n# location of affinity grid files and how to read them\n#\n");
 
     for (int i = 0; i < gridmaps.getNumMaps(); i++)
-        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmaps[i].mapFilename);
+        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmaps[i].filename);
 
     if (input->floatingGridFilename[0])
         fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", numMaps, input->floatingGridFilename);
     fclose(fldFileAVS);
 }
 
-void calculateGrids(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
-                    const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
-                    LogFile &logFile, FILE *floatingGridFile)
+void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+                       const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
+                       LogFile &logFile)
 {
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
     char *maptypeptr;           // ptr for current map->type
@@ -94,9 +94,7 @@ void calculateGrids(const InputData *input, GridMapList &gridmaps, const Paramet
     double ln_half = log(0.5);
     double temp_hbond_enrg, hbondmin[MAX_MAPS], hbondmax[MAX_MAPS];
     double rmin, Hramp;
-    int fprintf_retval = 0;
     int nDone = 0;
-    bool problemWithWriting = false;
     bool hbondflag[MAX_MAPS];
     int ii = 0;
     int ic = 0;
@@ -119,16 +117,16 @@ void calculateGrids(const InputData *input, GridMapList &gridmaps, const Paramet
     for (icoord[Z] = -input->ne[Z]; icoord[Z] <= input->ne[Z]; icoord[Z]++)
     {
         //  c[0:2] contains the current grid point.
-        c[Z] = ((double)icoord[Z]) * input->spacing;
+        c[Z] = icoord[Z] * input->spacing;
         grd_start = times(&tms_grd_start);
 
         for (icoord[Y] = -input->ne[Y]; icoord[Y] <= input->ne[Y]; icoord[Y]++)
         {
-            c[Y] = ((double)icoord[Y]) * input->spacing;
+            c[Y] = icoord[Y] * input->spacing;
 
             for (icoord[X] = -input->ne[X]; icoord[X] <= input->ne[X]; icoord[X]++)
             {
-                c[X] = ((double)icoord[X]) * input->spacing;
+                c[X] = icoord[X] * input->spacing;
 
                 for (int j = 0; j < gridmaps.getNumMaps(); j++)
                     if (gridmaps[j].isCovalent)
@@ -258,7 +256,7 @@ void calculateGrids(const InputData *input, GridMapList &gridmaps, const Paramet
                                 racc = tmp * tmp;
                                 break;
                             }
-                            // racc = pow(cos_theta, (double)bondVectors->rexp[ia]);
+                            // racc = pow(cos_theta, bondVectors->rexp[ia]);
 
                             // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
                             if (ia == closestH)
@@ -455,7 +453,7 @@ void calculateGrids(const InputData *input, GridMapList &gridmaps, const Paramet
                                 gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex);
 
                             // add desolvation energy
-                            // forcefield desolv coefficient/weight in sol_fn
+                            // forcefield desolv coefficient/weight in desolvExpFunc
                             gridmaps[mapIndex].energy += gridmaps[mapIndex].solparProbe * input->vol[ia] * desolvExpFunc(indexR) +
                                 (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[mapIndex].volProbe * desolvExpFunc(indexR);
                         }       // is not covalent
@@ -474,31 +472,22 @@ void calculateGrids(const InputData *input, GridMapList &gridmaps, const Paramet
                 // 2 includes new dsolvPE
                 for (int k = 0; k < gridmaps.getNumMaps(); k++)
                 {
-                    if (!problemWithWriting)
-                    {
-                        if (fabs(gridmaps[k].energy) < PRECISION)
-                            fprintf_retval = fprintf(gridmaps[k].file, "0.\n");
-                        else
-                            fprintf_retval = fprintf(gridmaps[k].file, "%.3f\n", (float)round3dp(gridmaps[k].energy));
-                        if (fprintf_retval < 0)
-                            problemWithWriting = true;
-                    }
-
                     gridmaps[k].energyMax = max(gridmaps[k].energyMax, gridmaps[k].energy);
                     gridmaps[k].energyMin = min(gridmaps[k].energyMin, gridmaps[k].energy);
+
+                    float f = float(round3dp(gridmaps[k].energy));
+                    fprintf(gridmaps[k].file, "%.3f\n", f);
+
                 }
-                if (floatingGridFile)
-                    if ((!problemWithWriting) && (fprintf(floatingGridFile, "%.3f\n", (float)round3dp(r_min)) < 0))
-                        problemWithWriting = true;
+                if (gridmaps.getFloatingGridFile())
+                    fprintf(gridmaps.getFloatingGridFile(), "%.3f\n", float(round3dp(r_min)));
                 ctr++;
             }                   // icoord[X] loop
         }                       // icoord[Y] loop
 
-        if (problemWithWriting)
-            logFile.printError(WARNING, "Problems writing grid maps - there may not be enough disk space.\n");
         grd_end = times(&tms_grd_end);
         ++nDone;
-        logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", icoord[Z], input->cgridmin[Z] + c[Z], (100 / double(input->n1[Z])) * (double)++ic);
+        logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", icoord[Z], input->cgridmin[Z] + c[Z], (100 / double(input->n1[Z])) * double(++ic));
         logFile.printTimeInHMS((grd_end - grd_start) * (input->n1[Z] - nDone));
         logFile.print("  ");
         logFile.printExecutionTimes(grd_start, grd_end, &tms_grd_start, &tms_grd_end);
@@ -559,28 +548,14 @@ void autogridMain(int argc, char **argv)
     // Now we want to make the input data read-only
     const InputData *input = inputDataLoader;
 
-    // Initialize the header of the map files
-    gridmaps.initFileHeader(input, programParams.getGridParameterFilename());
+    // TODO: consider adding floating grid file handling into the GridMapList class
+    gridmaps.setFloatingGridFilename(input->floatingGridFilename);
 
-    // Write out the  correct grid_data '.fld' file_name at the head of each map
-    // file, to avoid centering errors in subsequent dockings...
-    // AutoDock can then check to see if the center of each map matches that
-    // specified in its parameter file...
+    // Preparing the files
+    gridmaps.prepareFiles(input, programParams.getGridParameterFilename());
 
-    for (int k = 0; k < gridmaps.getNumMaps(); k++)
-        fwrite(gridmaps.getFileHeader(), gridmaps.getFileHeaderLength(), 1, gridmaps[k].file);
-
-    // TODO: consider adding a new gridmap describing the floating grid
-    FILE *floatingGridFile = 0;
-    if (input->floatingGridFilename[0])
-    {
-        if ((floatingGridFile = boincOpenFile(input->floatingGridFilename, "w")) == 0)
-        {
-            logFile.printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
-            logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-        }
-        fwrite(gridmaps.getFileHeader(), gridmaps.getFileHeaderLength(), 1, floatingGridFile);
-    }
+    // TODO: add a smarter mechanism of checking for the available disk space, we need to know it as soon as possible.
+    // the formerly implemented checks in the middle of calculations were too late
 
     // Loading the parameter library from the file
     if (input->parameterLibraryFilename[0])
@@ -605,13 +580,10 @@ void autogridMain(int argc, char **argv)
     bondVectors->calculate(input, parameterLibrary);
 
     // Calculation of gridmaps
-    calculateGrids(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors, logFile, floatingGridFile);
+    calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors, logFile);
 
     delete bondVectors;
     delete inputDataLoader;
-
-    if (floatingGridFile)
-        fclose(floatingGridFile);
 
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);

@@ -23,59 +23,46 @@
 */
 
 #include "gridmap.h"
+#include "utils.h"
 #include <new>
+#include <cstring>
 
 GridMap::GridMap()
 {
-    atomType = 0;   // corresponds to receptor numbers????
-    mapIndex = 0;
-    isCovalent = false;
-    isHBonder = false;
-    file = 0;
-    mapFilename[0] = 0;
-    type[0] = 0;    // eg HD or OA or NA or N
-    constant = 0; // this will become obsolete
+    memset(this, 0, sizeof(*this));
     energyMax = -BIG;
     energyMin = BIG;
-    energy = 0;
-    volProbe = 0;
-    solparProbe = 0;
-    Rij = 0;
-    epsij = 0;
-    hbond = NON; // hbonding character:
-    RijHB = 0;
-    epsijHB = 0;
-
-    // per gridmaps[i].receptor type parameters, ordered as in receptorTypes
-    for (int j = 0; j < NUM_RECEPTOR_TYPES; j++)
-    {
-        nbpR[j] = 0; // radius of energy-well minimum
-        nbpEps[j] = 0;   // depth of energy-well minimum
-        xA[j] = 0;   // generally 12
-        xB[j] = 0;   // 6 for non-hbonders 10 for h-bonders
-        hbonder[j] = 0;
-    }
-}
-
-GridMap::~GridMap()
-{
-    if (file)
-        fclose(file);
+    hbond = NON;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), elecIndex(0), desolvIndex(0), gridmaps(0), logFile(logFile)
-{}
+GridMapList::GridMapList(LogFile *logFile): numMaps(0), numAtomMaps(0), elecIndex(0), desolvIndex(0), gridmaps(0), logFile(logFile), floatingGridFile(0)
+{
+    floatingGridFilename[0] = 0;
+}
 
 GridMapList::~GridMapList()
 {
+    for (int i = 0; i < numMaps; i++)
+        if (gridmaps[i].file)
+            fclose(gridmaps[i].file);
+
+    if (floatingGridFile)
+        fclose(floatingGridFile);
+
     if (gridmaps)
         delete [] gridmaps;
 }
 
-void GridMapList::initFileHeader(const InputData *input, const char *gridParameterFilename)
+void GridMapList::prepareFiles(const InputData *input, const char *gridParameterFilename)
 {
+    // Write out the  correct grid_data '.fld' file_name at the head of each map
+    // file, to avoid centering errors in subsequent dockings...
+    // AutoDock can then check to see if the center of each map matches that
+    // specified in its parameter file...
+
+    char fileHeader[1<<14];
     snprintf(fileHeader, 1<<14,
         "GRID_PARAMETER_FILE %s\n"
         "GRID_DATA_FILE %s\n"
@@ -87,7 +74,30 @@ void GridMapList::initFileHeader(const InputData *input, const char *gridParamet
         input->nelements[X], input->nelements[Y], input->nelements[Z],
         input->center[X], input->center[Y], input->center[Z]);
 
-    fileHeaderLength = strlen(fileHeader);
+    int fileHeaderLength = strlen(fileHeader);
+
+    // Open files
+    for (int i = 0; i < numMaps; i++)
+        if (gridmaps[i].filename[0])
+        {
+            if ((gridmaps[i].file = boincOpenFile(gridmaps[i].filename, "w")) == 0)
+            {
+                logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[i].filename);
+                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+            }
+
+            fwrite(fileHeader, fileHeaderLength, 1, gridmaps[i].file);
+        }
+
+    if (input->floatingGridFilename[0])
+    {
+        if ((floatingGridFile = boincOpenFile(input->floatingGridFilename, "w")) == 0)
+        {
+            logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
+            logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+        }
+        fwrite(fileHeader, fileHeaderLength, 1, floatingGridFile);
+    }
 }
 
 void GridMapList::setNumMaps(int num)
@@ -129,4 +139,9 @@ void GridMapList::logSummary()
 
     fprintf(stderr, "\n%s: Successful Completion.\n", logFile->getProgramName());
     logFile->printTitled("Successful Completion.\n");
+}
+
+void GridMapList::setFloatingGridFilename(const char *filename)
+{
+    strncpy(floatingGridFilename, filename, MAX_CHARS);
 }

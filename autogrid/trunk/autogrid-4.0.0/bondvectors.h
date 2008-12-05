@@ -11,7 +11,7 @@ public:
     double rvector2[AG_MAX_ATOMS][XYZ];
 
     BondVectors(LogFile *logFile);
-    void calculate(const InputData *input, ParameterLibrary &parameterLibrary);
+    void calculate(const InputData *input, const ParameterLibrary &parameterLibrary);
 
 private:
     LogFile *logFile;

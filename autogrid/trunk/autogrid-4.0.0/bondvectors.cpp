@@ -6,7 +6,7 @@ BondVectors::BondVectors(LogFile *logFile): logFile(logFile)
     memset(rexp, 0, sizeof(rexp));
 }
 
-void BondVectors::calculate(const InputData *input, ParameterLibrary &parameterLibrary)
+void BondVectors::calculate(const InputData *input, const ParameterLibrary &parameterLibrary)
 {
     double d[XYZ];
     double dc[XYZ];

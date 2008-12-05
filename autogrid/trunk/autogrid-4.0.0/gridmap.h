@@ -31,8 +31,7 @@ struct GridMap
     int mapIndex;
     bool isCovalent;
     int isHBonder;
-    FILE *file;
-    char mapFilename[MAX_CHARS];
+    char filename[MAX_CHARS];
     char type[3];           // eg HD or OA or NA or N
     double constant;        // this will become obsolete
     double energyMax;
@@ -55,8 +54,13 @@ struct GridMap
     int xB[NUM_RECEPTOR_TYPES]; // 6 for non-hbonders 10 for h-bonders
     int hbonder[NUM_RECEPTOR_TYPES];
 
+    // TODO: once we move handling of all output files (gridmaps and floating grid) into the GridMapList class, remove this member:
+    FILE *file;
+
     GridMap();
-    ~GridMap();
+
+private:
+    friend class GridMapList;
 };
 
 class GridMapList
@@ -65,25 +69,24 @@ public:
     GridMapList(LogFile *logFile);
     ~GridMapList();
 
-    void initFileHeader(const InputData *input, const char *gridParameterFilename);
-    const char *getFileHeader() const       { return fileHeader; }
-    int getFileHeaderLength() const         { return fileHeaderLength; }
-
     // Allocates gridmaps.
     // "num" is the number of maps to be created: the number of ligand atom types, plus 1 for the electrostatic map,
     // plus 1 for the desolvation map.
     // Keep in mind that AutoDock can only read in MAX_MAPS maps.
     void setNumMaps(int num);
 
+    // Sets the floating grid filename (optional)
+    void setFloatingGridFilename(const char *filename);
+
     // Writes out summary
     void logSummary();
 
-    // Read/write access
+    // Read/write access to maps
     GridMap &operator [](int i)             { return gridmaps[i]; }
     GridMap &getElectrostaticMap()          { return gridmaps[elecIndex]; }
     GridMap &getDesolvationMap()            { return gridmaps[desolvIndex]; }
 
-    // Read-only access
+    // Read-only access to maps
     const GridMap &operator [](int i) const { return gridmaps[i]; }
     const GridMap &getElectrostaticMap()const{ return gridmaps[elecIndex]; }
     const GridMap &getDesolvationMap() const{ return gridmaps[desolvIndex]; }
@@ -93,10 +96,18 @@ public:
     int getElectrostaticMapIndex() const    { return elecIndex; }
     int getDesolvationMapIndex() const      { return desolvIndex; }
 
+    // TODO: once we move handling of all output files (gridmaps and floating grid) into this class, remove these functions
+    void prepareFiles(const InputData *input, const char *gridParameterFilename);
+    FILE *getFloatingGridFile()             { return floatingGridFile; }
+
 private:
+    LogFile *logFile;
+
     int numMaps, numAtomMaps, elecIndex, desolvIndex;
     GridMap *gridmaps;
-    LogFile *logFile;
-    char fileHeader[1<<14];
-    int fileHeaderLength;
+
+    char floatingGridFilename[MAX_CHARS];
+
+    // TODO: once we move handling of all output files (gridmaps and floating grid) into this class, remove these members:
+    FILE *floatingGridFile;
 };

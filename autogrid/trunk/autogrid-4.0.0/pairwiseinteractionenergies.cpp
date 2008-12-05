@@ -70,14 +70,14 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
                 epsij = gridmaps[ia].nbpEps[i];
 
                 // for each receptor_type get its parms and fill in tables
-                cA = (tmpconst = epsij / (double)(xA - xB)) * pow(Rij, (double)xA) * (double)xB;
-                cB = tmpconst * pow(Rij, (double)xB) * (double)xA;
+                cA = (tmpconst = epsij / (xA - xB)) * pow(Rij, xA) * xB;
+                cB = tmpconst * pow(Rij, xB) * xA;
                 if (isnan(cA))
                     logFile.printError(FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
                 if (isnan(cB))
                     logFile.printError(FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
-                dxA = (double)xA;
-                dxB = (double)xB;
+                dxA = xA;
+                dxB = xB;
                 if (xA == 0)
                     logFile.printError(FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
                 if (xB == 0)
