@@ -33,15 +33,15 @@
 #define FORMATTED_MSG_MAX_SIZE (1<<14)
 
 // Formats a message
-// The reason we use a macro instead of a function is that we need an access to the variable number of arguments
+// The reason we use a macro instead of a function is that we need access to the variable number of arguments
 #define FORMAT_MESSAGE(message, messageLength, format) \
         char message[FORMATTED_MSG_MAX_SIZE]; \
         int messageLength; \
         message[sizeof(message)-1] = 0; \
         va_list ap; \
         va_start(ap, format); \
-        /* if the message buffer is not long enough or hasn't been terminated by zero */ \
         messageLength = vsnprintf(message, sizeof(message), format, ap); \
+        /* if the message buffer is not long enough or hasn't been terminated by zero */ \
         if (messageLength == -1 || message[sizeof(message)-1] != 0) \
         { \
             printError(WARNING, "The following formatted string will be truncated."); \

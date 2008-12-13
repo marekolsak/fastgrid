@@ -105,9 +105,9 @@ int GridMapList::getNumMapsInclFloatingGrid() const
     return numMaps + (useFloatingGrid ? 1 : 0);
 }
 
-void GridMapList::prepareGridmaps(const int (&range)[XYZ])
+void GridMapList::prepareGridmaps(int rangeX, int rangeY, int rangeZ)
 {
-    numFloats = (range[X]*2+1) * (range[Y]*2+1) * (range[Z]*2+1);
+    numFloats = (rangeX*2+1) * (rangeY*2+1) * (rangeZ*2+1);
 
     for (int i = 0; i < numMaps; i++)
         if (gridmaps[i].filename[0])
@@ -154,7 +154,7 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
             {
                 float f = gridmaps[i].energies[j];
                 if (f == 0)
-                    fwrite("0.\n", 3, 1, file);
+                    fwrite("0\n", 2, 1, file);
                 else
                     fprintf(file, "%.3f\n", gridmaps[i].energies[j]);
             }

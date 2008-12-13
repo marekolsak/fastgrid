@@ -76,10 +76,11 @@ public:
 
     // Allocates memory for output energies.
     // The final number of gridmaps must be set by now. The energy map will contain a 3D array in the range
-    // (-icoord[axis], +icoord[axis]).
-    void prepareGridmaps(const int (&range)[XYZ]);
+    // (-range{X,Y,Z}, +range{X,Y,Z}).
+    void prepareGridmaps(int rangeX, int rangeY, int rangeZ);
 
-    // TODO: unify functions: setNumMaps, enableFloatingGrid, prepareGridmaps
+    // TODO: unify functions: setNumMaps, enableFloatingGrid, prepareGridmaps, to:
+    // void initialize(int numMaps, bool floatingGrid, int rangeX, int rangeY, int rangeZ);
 
     // Saves all energies and possibly the floating grid to files
     void saveToFiles(const InputData *input, const char *gridParameterFilename);

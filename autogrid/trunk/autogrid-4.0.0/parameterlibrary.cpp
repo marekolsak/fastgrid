@@ -136,7 +136,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_VDW:
-        nfields = sscanf(line, "%*s %lf", &this->coeff_vdW);
+        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_vdW);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -146,7 +146,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_HBOND:
-        nfields = sscanf(line, "%*s %lf", &this->coeff_hbond);
+        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_hbond);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -156,7 +156,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_ESTAT:
-        nfields = sscanf(line, "%*s %lf", &this->coeff_estat);
+        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_estat);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -166,7 +166,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_DESOLV:
-        nfields = sscanf(line, "%*s %lf", &this->coeff_desolv);
+        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_desolv);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -176,7 +176,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_TORS:
-        nfields = sscanf(line, "%*s %lf", &this->coeff_tors);
+        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_tors);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -188,7 +188,7 @@ void ParameterLibrary::readLine(const char *line)
     case PAR_ATOM_PAR:
         // Read in one line of atom parameters;
         // NB: scanf doesn't try to write missing fields
-        nfields = sscanf(line, "%*s %s %lf %lf %lf %lf %lf %lf %d %d %d %d",
+        nfields = snscanf(line, MAX_CHARS, "%*s %s %lf %lf %lf %lf %lf %lf %d %d %d %d",
                             thisParameter.autogridType,
                             &thisParameter.Rij,
                             &thisParameter.epsij,
@@ -218,7 +218,7 @@ void ParameterLibrary::readLine(const char *line)
         else
             thisParameter.hbond = NON;
 
-        thisParameter.epsij    *= this->coeff_vdW;
+        thisParameter.epsij   *= this->coeff_vdW;
         thisParameter.epsijHB *= this->coeff_hbond;
 
         insertAtomParameter(thisParameter.autogridType, thisParameter);

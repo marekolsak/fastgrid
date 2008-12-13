@@ -531,7 +531,7 @@ void autogridMain(int argc, char **argv)
         gridmaps.enableFloatingGrid();
 
     // Inititializing arrays of output energies
-    gridmaps.prepareGridmaps(input->ne);
+    gridmaps.prepareGridmaps(input->ne[X], input->ne[Y], input->ne[Z]);
 
     // TODO: add a smarter mechanism of checking for the available disk space, we need to know it as soon as possible.
     // the formerly implemented checks in the middle of calculations were done too late

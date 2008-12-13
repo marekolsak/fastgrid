@@ -181,7 +181,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
         case GPF_RECEPTOR:
             {
                 // read in the receptor gridParameterFilename
-                sscanf(GPFLine, "%*s %s", receptorFilename);
+                snscanf(GPFLine, LINE_LEN, "%*s %s", receptorFilename);
                 logFile->printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
 
                 // try to open receptor file
@@ -195,7 +195,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 int ia = 0;
                 while ((fgets(line, length, receptor_fileptr)) != 0)
                 {
-                    sscanf(line, "%6s", record);
+                    snscanf(line, LINE_LEN, "%6s", record);
                     if (equal(record, "ATOM", 4) || // Amino Acid or DNA/RNA atoms
                         equal(record, "HETA", 4) || // Non-standard heteroatoms
                         equal(record, "CHAR", 4))
@@ -210,23 +210,23 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         logFile->printFormatted("Atom no. %2d, \"%s\"", ia + 1, atom_name);
 
                         // Read in this receptor atom's coordinates,partial charges, and solvation parameters in PDBQS format...
-                        sscanf(&line[30], "%lf", &coord[ia][X]);
-                        sscanf(&line[38], "%lf", &coord[ia][Y]);
-                        sscanf(&line[46], "%lf", &coord[ia][Z]);
+                        snscanf(&line[30], LINE_LEN-30, "%lf", &coord[ia][X]);
+                        snscanf(&line[38], LINE_LEN-38, "%lf", &coord[ia][Y]);
+                        snscanf(&line[46], LINE_LEN-46, "%lf", &coord[ia][Z]);
 
                         // Output the coordinates of this atom...
                         logFile->printFormatted(" at (%.3lf, %.3lf, %.3lf), ", coord[ia][X], coord[ia][Y], coord[ia][Z]);
 
                         // 1:CHANGE HERE: need to set up vol and solpar
-                        sscanf(&line[70], "%lf", &charge[ia]);
-                        sscanf(&line[77], "%s", thisparm.autogridType);
+                        snscanf(&line[70], LINE_LEN-70, "%lf", &charge[ia]);
+                        snscanf(&line[77], LINE_LEN-77, "%s", thisparm.autogridType);
                         foundParam = parameterLibrary.findAtomParameter(thisparm.autogridType);
                         if (foundParam != 0)
                         {
                             logFile->printFormatted("DEBUG: foundParam->recIndex = %d", foundParam->recIndex);
                             if (foundParam->recIndex < 0)
                             {
-                                strcpy(receptorTypes[numReceptorTypes], foundParam->autogridType);
+                                strncpy(receptorTypes[numReceptorTypes], foundParam->autogridType, 3);
                                 foundParam->recIndex = numReceptorTypes++;
                                 logFile->printFormatted("DEBUG: foundParam->recIndex => %d", foundParam->recIndex);
                             }
@@ -363,14 +363,14 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             break;
 
         case GPF_GRIDFLD:
-            sscanf(GPFLine, "%*s %s", fldFilenameAVS);
+            snscanf(GPFLine, LINE_LEN, "%*s %s", fldFilenameAVS);
             infld = strIndex(fldFilenameAVS, ".fld");
             if (infld == -1)
                 logFile->printError(FATAL_ERROR, "Grid data file needs the extension \".fld\" for AVS input\n\n");
             else
             {
                 infld = strIndex(fldFilenameAVS, "fld");
-                strcpy(xyzFilename, fldFilenameAVS);
+                strncpy(xyzFilename, fldFilenameAVS, MAX_CHARS);
                 xyzFilename[infld] = 'x';
                 xyzFilename[infld + 1] = 'y';
                 xyzFilename[infld + 2] = 'z';
@@ -386,7 +386,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             break;
 
         case GPF_NPTS:
-            sscanf(GPFLine, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
+            snscanf(GPFLine, LINE_LEN, "%*s %d %d %d", &nelements[X], &nelements[Y], &nelements[Z]);
             for (int i = 0; i < XYZ; i++)
             {
                 nelements[i] = checkSize(nelements[i], xyz[i]);
@@ -402,12 +402,12 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             break;
 
         case GPF_SPACING:
-            sscanf(GPFLine, "%*s %lf", &spacing);
+            snscanf(GPFLine, LINE_LEN, "%*s %lf", &spacing);
             logFile->printFormatted("Grid Spacing :\t\t\t%.3lf Angstrom\n\n", spacing);
             break;
 
         case GPF_GRIDCENTER:
-            sscanf(GPFLine, "%*s %s", token);
+            snscanf(GPFLine, LINE_LEN, "%*s %s", token);
             if (equal(token, "auto", 4))
             {
                 for (int i = 0; i < XYZ; i++)
@@ -417,7 +417,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             }
             else
             {
-                sscanf(GPFLine, "%*s %lf %lf %lf", &center[X], &center[Y], &center[Z]);
+                snscanf(GPFLine, LINE_LEN, "%*s %lf %lf %lf", &center[X], &center[Y], &center[Z]);
                 logFile->printFormatted("\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", center[X], center[Y], center[Z]);
             }
             // centering stuff...
@@ -463,7 +463,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
                 int numAtomMaps = parseTypes(GPFLine, ligandAtomTypes, MAX_ATOM_TYPES);
                 for (int i = 0; i < numAtomMaps; i++)
-                    strcpy(ligandTypes[i], ligandAtomTypes[i]);
+                    strncpy(ligandTypes[i], ligandAtomTypes[i], 3);
                 for (int i = 0; i < numAtomMaps; i++)
                 {
                     foundParam = parameterLibrary.findAtomParameter(ligandTypes[i]);
@@ -489,7 +489,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 for (int i = 0; i < numAtomMaps; i++)
                 {
                     gridmaps[i].mapIndex = i;
-                    strcpy(gridmaps[i].type, ligandTypes[i]);   // eg HD or OA or NA or N
+                    strncpy(gridmaps[i].type, ligandTypes[i], 3);   // eg HD or OA or NA or N
                     foundParam = parameterLibrary.findAtomParameter(ligandTypes[i]);
                     gridmaps[i].atomType = foundParam->mapIndex;
                     gridmaps[i].solparProbe = foundParam->solpar;
@@ -570,7 +570,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 has_receptor_types_in_gpf = 1;
 
                 for (int i = 0; i < numReceptorTypes; i++)
-                    strcpy(receptorTypes[i], receptor_atom_types[i]);
+                    strncpy(receptorTypes[i], receptor_atom_types[i], 3);
                 for (int i = 0; i < numReceptorTypes; i++)
                 {
                     foundParam = parameterLibrary.findAtomParameter(receptor_atom_types[i]);
@@ -587,7 +587,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
         case GPF_SOL_PAR:      // THIS IS OBSOLETE!!!
             // Read volume and solvation parameter for probe:
-            sscanf(GPFLine, "%*s %s %lf %lf", thisparm.autogridType, &temp_vol, &temp_solpar);
+            snscanf(GPFLine, LINE_LEN, "%*s %s %lf %lf", thisparm.autogridType, &temp_vol, &temp_solpar);
             foundParam = parameterLibrary.findAtomParameter(thisparm.autogridType);
             if (foundParam != 0)
             {
@@ -622,22 +622,22 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
             // Read in the gridParameterFilename for this grid map
-            sscanf(GPFLine, "%*s %s", gridmaps[mapIndex].filename);
+            snscanf(GPFLine, LINE_LEN, "%*s %s", gridmaps[mapIndex].filename);
             logFile->printFormatted("\nOutput Grid Map %d:   %s\n\n", (mapIndex + 1), gridmaps[mapIndex].filename);
             break;
 
         case GPF_ELECMAP:
-            sscanf(GPFLine, "%*s %s", gridmaps.getElectrostaticMap().filename);
+            snscanf(GPFLine, LINE_LEN, "%*s %s", gridmaps.getElectrostaticMap().filename);
             logFile->printFormatted("\nOutput Electrostatic Potential Energy Grid Map: %s\n\n", gridmaps.getElectrostaticMap().filename);
             break;
 
         case GPF_DSOLVMAP:
-            sscanf(GPFLine, "%*s %s", gridmaps.getDesolvationMap().filename);
+            snscanf(GPFLine, LINE_LEN, "%*s %s", gridmaps.getDesolvationMap().filename);
             logFile->printFormatted("\nOutput Desolvation Free Energy Grid Map: %s\n\n", gridmaps.getDesolvationMap().filename);
             break;
 
         case GPF_COVALENTMAP:
-            sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covpos[X]), &(covpos[Y]), &(covpos[Z]));
+            snscanf(GPFLine, LINE_LEN, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covpos[X]), &(covpos[Y]), &(covpos[Z]));
             logFile->printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
                                    "\nCovalent well's half-width in Angstroms:         %8.3f\n"
                                    "\nCovalent barrier energy in kcal/mol:             %8.3f\n"
@@ -655,18 +655,18 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             break;
 
         case GPF_SMOOTH:
-            sscanf(GPFLine, "%*s %lf", &rSmooth);
+            snscanf(GPFLine, LINE_LEN, "%*s %lf", &rSmooth);
             logFile->printFormatted("\nPotentials will be smoothed by: %.3lf Angstrom\n\n", rSmooth);
             break;
 
         case GPF_QASP:
-            sscanf(GPFLine, "%*s %lf", &solparQ);
+            snscanf(GPFLine, LINE_LEN, "%*s %lf", &solparQ);
             logFile->printFormatted("\nCharge component of the atomic solvation parameter: %.3lf\n\n", solparQ);
             // Typical value of solparQ is 0.001118
             break;
 
         case GPF_DIEL:
-            sscanf(GPFLine, "%*s %lf", &diel);
+            snscanf(GPFLine, LINE_LEN, "%*s %lf", &diel);
             if (diel < 0)
             {
                 // negative...
@@ -699,13 +699,13 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             break;
 
         case GPF_FMAP:
-            sscanf(GPFLine, "%*s %s", floatingGridFilename);
+            snscanf(GPFLine, LINE_LEN, "%*s %s", floatingGridFilename);
             logFile->printFormatted("\nFloating Grid file name = %s\n", floatingGridFilename);
             break;
 
         case GPF_PARAM_FILE:
             // open and read the AD4 parameters .dat file
-            sscanf(GPFLine, "%*s %s ", parameterLibraryFilename);
+            snscanf(GPFLine, LINE_LEN, "%*s %s ", parameterLibraryFilename);
             break;
         }                       // second switch
     }                           // while
