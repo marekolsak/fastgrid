@@ -29,7 +29,7 @@
 #include "desolvexpfunc.h"
 #include "bondvectors.h"
 #include "inputdataloader.h"
-#include <exception>
+#include <new>
 
 void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile)
 {

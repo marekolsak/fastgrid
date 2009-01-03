@@ -25,9 +25,13 @@
 #include "parameterlibrary.h"
 #include "utils.h"
 #include "exceptions.h"
-#include "../autodock-4.0.1/default_parameters.h"
 #include <cstring>
 #include <cctype>
+
+// Uh, this is ugly, but... we want to make the param_string variable (declared
+// in default_parameters.h) const without changing the autodock source code
+const
+#include "../autodock-4.0.1/default_parameters.h"
 
 // Define tokens for parsing AutoDock atomic parameter files
 enum ParserTokens
@@ -136,7 +140,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_VDW:
-        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_vdW);
+        nfields = sscanf(line, "%*s %lf", &this->coeff_vdW);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -146,7 +150,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_HBOND:
-        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_hbond);
+        nfields = sscanf(line, "%*s %lf", &this->coeff_hbond);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -156,7 +160,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_ESTAT:
-        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_estat);
+        nfields = sscanf(line, "%*s %lf", &this->coeff_estat);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -166,7 +170,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_DESOLV:
-        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_desolv);
+        nfields = sscanf(line, "%*s %lf", &this->coeff_desolv);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -176,7 +180,7 @@ void ParameterLibrary::readLine(const char *line)
         break;
 
     case PAR_TORS:
-        nfields = snscanf(line, MAX_CHARS, "%*s %lf", &this->coeff_tors);
+        nfields = sscanf(line, "%*s %lf", &this->coeff_tors);
         if (nfields < 1)
         {
             logFile->printTitled("WARNING:  Please supply a coefficient as a floating point number.\n\n");
@@ -188,7 +192,7 @@ void ParameterLibrary::readLine(const char *line)
     case PAR_ATOM_PAR:
         // Read in one line of atom parameters;
         // NB: scanf doesn't try to write missing fields
-        nfields = snscanf(line, MAX_CHARS, "%*s %s %lf %lf %lf %lf %lf %lf %d %d %d %d",
+        nfields = sscanf(line, "%*s %s %lf %lf %lf %lf %lf %lf %d %d %d %d",
                             thisParameter.autogridType,
                             &thisParameter.Rij,
                             &thisParameter.epsij,
@@ -246,7 +250,7 @@ int ParameterLibrary::parseParamLine(const char *line)
 
     const struct
     {
-       char *lexeme;
+       const char *lexeme;
        int tokenvalue;
     } tokentable[] = {
         {"FE_coeff_vdW", PAR_VDW},          // 1

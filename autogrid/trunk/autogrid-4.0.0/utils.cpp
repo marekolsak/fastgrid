@@ -139,7 +139,7 @@ void endTimer()
     clock_t time = times(&_t) - timers[indexOfNesting];
     for (unsigned int i = 0; i < indexOfNesting; i++)
         fprintf(stderr, "  ");
-    fprintf(stderr, "} took %i ms.\n", (time*1000/getClocksPerSec()));
+    fprintf(stderr, "} took %i ms.\n", int(time*1000/getClocksPerSec()));
 }
 
 // Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.

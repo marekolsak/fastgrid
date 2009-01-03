@@ -25,10 +25,14 @@
 #if defined(_WIN32)
     #define WIN32_LEAN_AND_MEAN
     #include <Winsock2.h>
+#else
+    #include <unistd.h>
 #endif
 #include "logfile.h"
 #include "exceptions.h"
 #include "utils.h"
+#include <cstring>
+#include <cstdarg>
 
 #define FORMATTED_MSG_MAX_SIZE (1<<14)
 
@@ -113,7 +117,7 @@ void LogFile::printTitledFormatted(const char *format, ...)
 
 void LogFile::printError(ErrorLevel errorLevel, const char *msg)
 {
-    char *tags[5] = {
+    const char *tags[5] = {
         "ERROR",
         "ERROR",
         "WARNING",
@@ -184,7 +188,7 @@ void LogFile::printExecutionTimesInHMS(Clock startTime, Clock endTime, tms *star
 // Output banner...
 void LogFile::printBanner(double versionNumber)
 {
-    fprintf(file, 
+    fprintf(file,
         "\n       _______________________________________________________\n"
         "\n"
         "__________//____________________________/////_________________/________\n"

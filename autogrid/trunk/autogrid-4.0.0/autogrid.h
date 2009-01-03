@@ -33,7 +33,6 @@
     #define isnan _isnan
     #define strncasecmp _strnicmp
     #define snprintf _snprintf
-    #define snscanf _snscanf
 #endif
 
 #include "../autodock-4.0.1/autocomm.h"

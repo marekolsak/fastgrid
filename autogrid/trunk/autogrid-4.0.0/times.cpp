@@ -23,10 +23,15 @@
 */
 
 #include "times.h"
+#if !defined(_WIN32)
+    #include <unistd.h>
+    #include <cstdio>
+    #include "exceptions.h"
+#endif
 
 int getClocksPerSec()
 {
-#if defined(WIN32)
+#if defined(_WIN32)
     return CLOCKS_PER_SEC;
 #else
     int clocks = sysconf(_SC_CLK_TCK);
