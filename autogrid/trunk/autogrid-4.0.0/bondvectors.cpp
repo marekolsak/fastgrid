@@ -46,7 +46,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
         // If 'ia' is a hydrogen atom, it could be a
         // RECEPTOR hydrogen-BOND DONOR,
         // 8:CHANGE HERE: fix the input->atomType vs atom_types problem in following
-        if ((int)input->hbond[ia] == 2) // D1 hydrogen bond donor
+        if (input->hbond[ia] == D1) // D1 hydrogen bond donor
         {
             for (int ib = from; ib <= to; ib++)
                 if (ib != ia) // ib = i_receptor_atom_b
@@ -99,7 +99,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
             // If 'ia' is an Oxygen atom, it could be a
             // RECEPTOR H_BOND ACCEPTOR,
         }
-        else if (input->hbond[ia] == 5)
+        else if (input->hbond[ia] == A2)
         {                       // A2
             // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
             //        to (ia + 5)th m/m-atom
@@ -299,7 +299,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         rvector[ia][i] *= inv_rd;
                 }               // end disordered hydroxyl
         }
-        else if (input->hbond[ia] == 4)
+        else if (input->hbond[ia] == A1)
         {                       // A1
             // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
             //        to (ia+5)th m/m-atom

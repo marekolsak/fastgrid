@@ -33,20 +33,6 @@
 const
 #include "../autodock-4.0.1/default_parameters.h"
 
-// Define tokens for parsing AutoDock atomic parameter files
-enum ParserTokens
-{
-    PAR_ = -1,
-    PAR_NULL = 0,
-    PAR_VDW,
-    PAR_HBOND,
-    PAR_ESTAT,
-    PAR_DESOLV,
-    PAR_TORS,
-    PAR_ATOM_PAR,
-    PAR_COMMENT
-};
-
 ParameterLibrary::ParameterLibrary(LogFile *logFile, int debug, int outputLevel): logFile(logFile), debug(debug), outputLevel(outputLevel)
 {
     memset(dictionary, 0, sizeof(dictionary));
@@ -127,7 +113,7 @@ void ParameterLibrary::readLine(const char *line)
     ParameterEntry thisParameter;
     int int_hbond_type = 0;
     int nfields;
-    int paramKeyword = parseParamLine(line);
+    ParserTokens paramKeyword = parseParamLine(line);
 
     if (debug > 0)
         logFile->printFormatted("DEBUG: line = %sDEBUG: paramKeyword          = %d\n", line, paramKeyword);
@@ -240,9 +226,10 @@ void ParameterLibrary::readLine(const char *line)
     }
 }
 
-int ParameterLibrary::parseParamLine(const char *line)
+ParameterLibrary::ParserTokens ParameterLibrary::parseParamLine(const char *line)
 {
-    int j, i, token = PAR_; // return -1 if nothing is recognized.
+    int j, i;
+    ParserTokens token = PAR_; // return -1 if nothing is recognized.
     char c[LINE_LEN];
 
     // tokentablesize should be set to the length of the tokentable
@@ -251,7 +238,7 @@ int ParameterLibrary::parseParamLine(const char *line)
     const struct
     {
        const char *lexeme;
-       int tokenvalue;
+       ParserTokens tokenvalue;
     } tokentable[] = {
         {"FE_coeff_vdW", PAR_VDW},          // 1
         {"FE_coeff_hbond", PAR_HBOND},      // 2
