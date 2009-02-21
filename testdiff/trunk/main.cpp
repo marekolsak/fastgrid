@@ -43,7 +43,7 @@ private:
     std::vector<std::string> added;
     std::vector<std::string> removed;
 
-    static bool IsSimilar(const std::string &s1, const std::string &s2);
+    static bool IsSimilar(const std::string &s1, const std::string &s2, double &absError, double &relError);
 
     friend std::ostream &operator <<(std::ostream &s, const FileDiff &diff);
 };
@@ -51,10 +51,10 @@ private:
 std::ostream &operator <<(std::ostream &s, const FileDiff &diff)
 {
     s << diff.fileinfo << '\n';
-    int i = 0;
+    int i = 1;
     for (std::vector<std::string>::const_iterator it = diff.removed.begin(); it != diff.removed.end(); ++it, ++i)
         s << '[' << i << "]-" << *it << '\n';
-    i = 0;
+    i = 1;
     for (std::vector<std::string>::const_iterator it = diff.added.begin(); it != diff.added.end(); ++it, ++i)
         s << '[' << i << "]+" << *it << '\n';
     return s;
@@ -93,18 +93,22 @@ bool FileDiff::ExamineChanges(std::ostream &output)
     }
 
     bool ok = true;
+    double absError, relError;
     for (size_t i = 0; i < added.size(); i++)
-        if (!IsSimilar(added[i], removed[i]))
+        if (!IsSimilar(added[i], removed[i], absError, relError))
         {
-            output << "*** Test failed. The " << (i+1) << (i%10 == 0 && i != 10? "st" : i%10 == 1 && i != 11? "nd" : "th") << " item is different. See below. ***\n";
+            if (ok)
+            {
+                output << "*** Test failed. See below. ***\n";
+                output << fileinfo << '\n';
+            }
+            output << "        [" << (i+1) << "] -{" << removed[i] << "} +{" << added[i] << "}, AE: " << absError << ", RE: " << relError << "\n";
             ok = false;
         }
-    if (!ok)
-        output << *this;
     return ok;
 }
 
-bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2)
+bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &absError, double &relError)
 {
     // do not care about execution times
     if (s1.find("Real") != std::string::npos && s2.find("Real") != std::string::npos &&
@@ -132,6 +136,9 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2)
         stream1 >> n1;
         stream2 >> n2;
 
+        absError = 0;
+        relError = 0;
+
         // a parser error occured
         if (!stream1 || !stream2)
             return false;
@@ -142,18 +149,17 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2)
 
         // convert both strings to double
         bool converted = strto<double>(n1, x) && strto<double>(n2, y);
+        if (!converted)
+            return false;
 
-        if (!(
-                // consider the last digit of the number a rounding error
-                (n1.length() == n2.length() && std::string(n1, 0, n1.length()-1) == std::string(n2, 0, n2.length()-1)) ||
-                // just an implication
-                implication(
-                    converted, // implies:
-                    // the original string representation may differ even though the numbers are the same
-                    (x == y) ||
-                    // consider +-0 a rounding error
-                    ((x == 0 || y == 0) && (fabs(x) == fabs(y)))
-                )
+        absError = fabs(x - y);
+        relError = fabs((x - y) / y);
+
+        if (!(0
+                // take the absolute error into account
+                || (absError < 0.05)
+                // take the relative error into account
+                || (relError < 0.08)
             ))
             return false;
     }

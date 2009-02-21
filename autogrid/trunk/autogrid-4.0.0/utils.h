@@ -31,5 +31,11 @@ void boincDone();
 FILE *boincOpenFile(const char *path, const char *mode);
 
 // Timer
-void beginTimer(const char *description);
-void endTimer();
+void beginTimer(int id);
+void endTimer(int id);
+void logTimers();
+
+#if 0
+#define beginTimer(id)
+#define endTimer(id)
+#endif

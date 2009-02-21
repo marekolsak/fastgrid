@@ -54,17 +54,17 @@ GridMapList::~GridMapList()
         delete [] gridmaps;
 }
 
-void GridMapList::setNumMaps(int num)
+void GridMapList::setNumMaps(int numMaps)
 {
     if (gridmaps)
         delete [] gridmaps;
 
-    numAtomMaps = num - 2;
-    elecIndex = num - 2;
-    desolvIndex = num - 1;
-    numMaps = num;
+    numAtomMaps = numMaps - 2;
+    elecIndex = numMaps - 2;
+    desolvIndex = numMaps - 1;
+    this->numMaps = numMaps;
 
-    gridmaps = new(std::nothrow) GridMap[num];
+    gridmaps = new(std::nothrow) GridMap[numMaps];
     if (!gridmaps)
     {
         logFile->printError(ERROR, "Could not allocate memory to create the GridMap \"gridmaps\".\n");
@@ -105,15 +105,15 @@ int GridMapList::getNumMapsInclFloatingGrid() const
     return numMaps + (useFloatingGrid ? 1 : 0);
 }
 
-void GridMapList::prepareGridmaps(int rangeX, int rangeY, int rangeZ)
+void GridMapList::prepareGridmaps(int numGridPointsPerMap)
 {
-    numFloats = (rangeX*2+1) * (rangeY*2+1) * (rangeZ*2+1);
+    this->numGridPointsPerMap = numGridPointsPerMap;
 
     for (int i = 0; i < numMaps; i++)
         if (gridmaps[i].filename[0])
-            gridmaps[i].energies = new float[numFloats];
+            gridmaps[i].energies = new double[numGridPointsPerMap];
     if (useFloatingGrid)
-        floatingGridMins = new float[numFloats];
+        floatingGridMins = new float[numGridPointsPerMap];
 }
 
 void GridMapList::saveToFiles(const InputData *input, const char *gridParameterFilename)
@@ -150,9 +150,9 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
             fwrite(fileHeader, fileHeaderLength, 1, file);
 
             // Save energies
-            for (int j = 0; j < numFloats; j++)
+            for (int j = 0; j < numGridPointsPerMap; j++)
             {
-                float f = gridmaps[i].energies[j];
+                double f = gridmaps[i].energies[j];
                 if (f == 0)
                     fwrite("0\n", 2, 1, file);
                 else
@@ -175,7 +175,7 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
         fwrite(fileHeader, fileHeaderLength, 1, file);
 
         // Save the floating grid
-        for (int j = 0; j < numFloats; j++)
+        for (int j = 0; j < numGridPointsPerMap; j++)
             fprintf(file, "%.3f\n", floatingGridMins[j]);
 
         fclose(file);

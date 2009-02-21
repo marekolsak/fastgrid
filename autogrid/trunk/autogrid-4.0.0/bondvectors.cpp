@@ -1,4 +1,5 @@
 #include "bondvectors.h"
+#include "math.h"
 #include <cstring>
 
 BondVectors::BondVectors(LogFile *logFile): logFile(logFile)

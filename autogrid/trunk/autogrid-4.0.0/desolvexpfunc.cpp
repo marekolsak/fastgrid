@@ -24,6 +24,7 @@
 
 #include "desolvexpfunc.h"
 #include "autogrid.h"
+#include "math.h"
 
 DesolvExpFunc::DesolvExpFunc(double coeffDesolv)
 {

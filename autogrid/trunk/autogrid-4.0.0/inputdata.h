@@ -54,7 +54,7 @@ struct InputData
     double center[XYZ];
     double covpos[XYZ];         // Cartesian-coordinate of covalent affinity well.
     int ne[XYZ];
-    int n1[XYZ];
+    int numGridPoints[XYZ];
     int nelements[XYZ];
 
     double epsilon[MAX_DIST];

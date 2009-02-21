@@ -31,6 +31,13 @@
 #include "exceptions.h"
 #include "times.h"
 
+#if defined(beginTimer)
+    #undef beginTimer
+#endif
+#if defined(endTimer)
+    #undef endTimer
+#endif
+
 // the BOINC API header files
 #if defined(BOINC)
     #include "diagnostics.h"
@@ -107,39 +114,63 @@ FILE *boincOpenFile(const char *path, const char *mode)
     return filep;
 }
 
-static clock_t timers[256];
-static unsigned int indexOfNesting = 0;
-
-void beginTimer(const char *description)
+class Timer
 {
-    if (indexOfNesting > 255)
+public:
+    Timer(): real(0), user(0), sys(0) {}
+
+    void start()
     {
-        fprintf(stderr, "ERROR: Cannot initiate a timer\n");
-        throw ExitProgram(1);
+        tms t;
+        realStart = times(&t);
+        userStart = t.tms_utime;
+        sysStart = t.tms_stime;
     }
 
-    for (unsigned int i = 0; i < indexOfNesting; i++)
-        fprintf(stderr, "  ");
-    fprintf(stderr, "\"%s\" {\n", description);
-    tms _t;
-    timers[indexOfNesting] = times(&_t);
-    ++indexOfNesting;
+    void stop()
+    {
+        tms t;
+        real += times(&t) - realStart;
+        user += t.tms_utime - userStart;
+        sys += t.tms_stime - sysStart;
+    }
+
+    void log() const
+    {
+        int cps = getClocksPerSec() ;
+        fprintf(stderr, "Real: %i ms,\tCPU: %i ms,\tSys: %i ms\n", real * 1000 / cps, user * 1000 / cps, sys * 1000 / cps);
+    }
+
+    bool started() const
+    {
+        return real != 0;
+    }
+
+private:
+    clock_t real, user, sys;
+    clock_t realStart, userStart, sysStart;
+};
+
+static Timer timers[256];
+
+void beginTimer(int id)
+{
+    timers[id].start();
 }
 
-void endTimer()
+void endTimer(int id)
 {
-    if (indexOfNesting <= 0)
-    {
-        fprintf(stderr, "ERROR: Cannot terminate a timer\n");
-        throw ExitProgram(1);
-    }
+    timers[id].stop();
+}
 
-    --indexOfNesting;
-    tms _t;
-    clock_t time = times(&_t) - timers[indexOfNesting];
-    for (unsigned int i = 0; i < indexOfNesting; i++)
-        fprintf(stderr, "  ");
-    fprintf(stderr, "} took %i ms.\n", int(time*1000/getClocksPerSec()));
+void logTimers()
+{
+    for (int i = 0; i < 256; i++)
+        if (timers[i].started())
+        {
+            fprintf(stderr, "Timer %i:\t", i);
+            timers[i].log();
+        }
 }
 
 // Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.

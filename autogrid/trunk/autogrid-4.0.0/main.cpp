@@ -29,7 +29,11 @@
 #include "desolvexpfunc.h"
 #include "bondvectors.h"
 #include "inputdataloader.h"
+#include "math.h"
 #include <new>
+#include <omp.h>
+
+//#define AG_OPENMP
 
 void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile)
 {
@@ -52,9 +56,9 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
     fprintf(fldFileAVS, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
     fprintf(fldFileAVS, "ndim=3\t\t\t# number of dimensions in the field\n");
-    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->n1[X]);
-    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->n1[Y]);
-    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->n1[Z]);
+    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->numGridPoints[X]);
+    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->numGridPoints[Y]);
+    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->numGridPoints[Z]);
     fprintf(fldFileAVS, "nspace=3\t\t# number of physical coordinates per point\n");
     fprintf(fldFileAVS, "veclen=%d\t\t# number of affinity values at each point\n", numMaps);
     fprintf(fldFileAVS, "data=float\t\t# data type (byte, integer, float, double)\n");
@@ -77,33 +81,16 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     fclose(fldFileAVS);
 }
 
-void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
                        LogFile &logFile)
 {
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
-    char *maptypeptr;           // ptr for current map->type
-    double cross[XYZ];
-    double c[XYZ];
-    int icoord[XYZ] = {0};
-    int outputIndex = 0;
-    double PI_halved = PI / 2;
-    double rcov = 0.0;          // Distance from current grid point to the covalent attachment point
-    double racc, cos_theta, r_min = 0, tmp, rdon, inv_r, inv_rmax, rsph, theta;
-    double t0, ti;
-    double ln_half = log(0.5);
-    double temp_hbond_enrg, hbondmin[MAX_MAPS], hbondmax[MAX_MAPS];
-    double rmin, Hramp;
+    const double logHalf = log(0.5);
+
     int nDone = 0;
-    bool hbondflag[MAX_MAPS];
-    int ii = 0;
     int ic = 0;
-    int closestH = 0;
-    Clock grd_start;
-    Clock grd_end;
-    tms tms_grd_start;
-    tms tms_grd_end;
-    bool warned = false;
+    int infoCount = 0, infoCalc = 0;
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
@@ -114,127 +101,158 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                            gridmaps.getNumMapsInclFloatingGrid(), input->numGridPointsPerMap, input->numReceptorAtoms);
 
     // Iterate over all grid points, Z(Y (X)) (X is fastest)...
-    for (icoord[Z] = -input->ne[Z]; icoord[Z] <= input->ne[Z]; icoord[Z]++)
+    beginTimer(1);
+    // Z axis
+    for (int z = 0; z < input->numGridPoints[Z]; z++)
     {
-        //  c[0:2] contains the current grid point.
-        c[Z] = icoord[Z] * input->spacing;
-        grd_start = times(&tms_grd_start);
+        //  gridPos contains the current grid point.
+        int gridCoordZ = z - input->ne[Z];
+        double gridPosZ = gridCoordZ * input->spacing;
+        int outputIndexZBase = z * input->numGridPoints[X] * input->numGridPoints[Y];
 
-        for (icoord[Y] = -input->ne[Y]; icoord[Y] <= input->ne[Y]; icoord[Y]++)
+        tms timesGridStart;
+        Clock gridStartTime = times(&timesGridStart);
+
+#if defined(AG_OPENMP)
+        #pragma omp parallel for schedule(dynamic, 1)
+#endif
+        // Y axis
+        for (int y = 0; y < input->numGridPoints[Y]; y++)
         {
-            c[Y] = icoord[Y] * input->spacing;
+            int gridCoordY = y - input->ne[Y];
+            double gridPosY = gridCoordY * input->spacing;
+            int outputIndexZYBase = outputIndexZBase +  y * input->numGridPoints[X];
 
-            for (icoord[X] = -input->ne[X]; icoord[X] <= input->ne[X]; icoord[X]++)
+            // X axis
+            for (int x = 0; x < input->numGridPoints[X]; x++)
             {
-                c[X] = icoord[X] * input->spacing;
+                int gridCoordX = x - input->ne[X];
+                double gridPosX = gridCoordX * input->spacing;
+                double gridPos[XYZ] = {gridPosX, gridPosY, gridPosZ};
+
+                // Calculate outputIndex independently of other grid points. This will come in handy for parallelism.
+                int outputIndex = outputIndexZYBase + x;
 
                 for (int j = 0; j < gridmaps.getNumMaps(); j++)
                     if (gridmaps[j].isCovalent)
                     {
                         // Calculate the distance from the current grid point, c, to the covalent attachment point, input->covpos
-                        double d[XYZ];
-                        for (ii = 0; ii < XYZ; ii++)
-                            d[ii] = input->covpos[ii] - c[ii];
-                        rcov = hypotenuse(d[X], d[Y], d[Z]);
-                        rcov = rcov / input->covHalfWidth;
-                        if (rcov < APPROX_ZERO)
-                            rcov = APPROX_ZERO;
-                        gridmaps[j].energy = input->covBarrier * (1 - exp(ln_half * rcov * rcov));
+                        double distance[XYZ];
+                        for (int i = 0; i < XYZ; i++)
+                            distance[i] = input->covpos[i] - gridPos[i];
+
+                        // Distance squared from current grid point to the covalent attachment point
+                        double rcovSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
+                        rcovSq = rcovSq / (input->covHalfWidth * input->covHalfWidth);
+                        if (rcovSq < APPROX_ZERO_SQ)
+                            rcovSq = APPROX_ZERO_SQ;
+                        gridmaps[j].energies[outputIndex] = input->covBarrier * (1 - exp(logHalf * rcovSq));
                     }
                     else // is not covalent
-                        gridmaps[j].energy = 0; // used to initialize to 'constant'for this gridmaps
-
-                if (gridmaps.containsFloatingGrid())
-                    r_min = BIG;
+                        gridmaps[j].energies[outputIndex] = 0; // used to initialize to 'constant'for this gridmaps
 
                 // Initialize Min Hbond variables for each new point
-                for (int mapIndex = 0; mapIndex < gridmaps.getNumAtomMaps(); mapIndex++)
+                struct HBondInfo
                 {
-                    hbondmin[mapIndex] = 999999;
-                    hbondmax[mapIndex] = -999999;
-                    hbondflag[mapIndex] = false;
+                    double min[MAX_MAPS], max[MAX_MAPS];
+                    bool flag[MAX_MAPS];
+                } hbond;
+
+                for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
+                {
+                    hbond.min[i] = 999999;
+                    hbond.max[i] = -999999;
+                    hbond.flag[i] = false;
                 }
 
                 // NEW2: Find Closest Hbond
-                rmin = 999999;
-                closestH = 0;
-                for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-                    if ((input->hbond[ia] == 1) || (input->hbond[ia] == 2))
-                    {
-                        // DS or D1
-                        double d[XYZ];
-                        for (int i = 0; i < XYZ; i++)
-                            d[i] = input->coord[ia][i] - c[i];
-                        double r = hypotenuse(d[X], d[Y], d[Z]);
-                        if (r < rmin)
+                int closestH = 0;
+                {
+                    double rminSq = sq(999999.0);
+                    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+                        if ((input->hbond[ia] == 1) || (input->hbond[ia] == 2))
                         {
-                            rmin = r;
-                            closestH = ia;
-                        }
-                    }           // Hydrogen test
+                            // DS or D1
+                            double distance[XYZ];
+                            for (int i = 0; i < XYZ; i++)
+                                distance[i] = input->coord[ia][i] - gridPos[i];
+                            double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
+                            if (rSq < rminSq)
+                            {
+                                rminSq = rSq;
+                                closestH = ia;
+                            }
+                        }           // Hydrogen test
+                }
                 // END NEW2: Find Min Hbond
+
+                double invRMin = 1.0 / BIG;
 
                 //  Do all Receptor (protein, DNA, etc.) atoms...
                 for (int ia = 0; ia < input->numReceptorAtoms; ia++)
                 {
                     //  Get distance, r, from current grid point, c, to this receptor atom, input->coord,
-                    double d[XYZ];
+                    double distance[XYZ];
                     for (int i = 0; i < XYZ; i++)
-                        d[i] = input->coord[ia][i] - c[i];
-                    double r = hypotenuse(d[X], d[Y], d[Z]);
-                    if (r < APPROX_ZERO)
-                        r = APPROX_ZERO;
-                    inv_r = 1 / r;
-                    inv_rmax = 1 / max(r, 0.5);
-
-                    for (int i = 0; i < XYZ; i++)
-                        d[i] *= inv_r;
-                    // make sure lookup index is in the table
-                    int indexR = min(lookup(r), MAX_DIST-1);
+                        distance[i] = input->coord[ia][i] - gridPos[i];
+                    double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
+                    if (rSq < APPROX_ZERO_SQ)
+                        rSq = APPROX_ZERO_SQ;
+                    double invR = rsqrt(rSq);
 
                     if (gridmaps.containsFloatingGrid())
                         // Calculate the so-called "Floating Grid"...
-                        r_min = min(r, r_min);
+                        invRMin = max(invR, invRMin);
 
-                    // elecPE is the next-to-last last grid map, i.e. electrostatics
+                    double elecEnergy = input->charge[ia] * min(invR, 2.0) * parameterLibrary.coeff_estat;
+                    int indexR = -1;
+                    //++infoCount;
                     if (input->distDepDiel)
+                    {
                         // Distance-dependent dielectric...
-                        // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->epsilon[indexR];
                         // apply the estat forcefield coefficient/weight here
-                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->epsilon[indexR] * parameterLibrary.coeff_estat;
+                        indexR = min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
+                        gridmaps.getElectrostaticMap().energies[outputIndex] += elecEnergy * input->epsilon[indexR];
+                        //++infoCalc;
+                    }
                     else
                         // Constant dielectric...
-                        // gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_r * input->invDielCal;
-                        gridmaps.getElectrostaticMap().energy += input->charge[ia] * inv_rmax * input->invDielCal * parameterLibrary.coeff_estat;
+                        gridmaps.getElectrostaticMap().energies[outputIndex] += elecEnergy * input->invDielCal;
 
                     // If distance from grid point to atom ia is too large,
                     // or if atom is a disordered hydrogen,
                     //   add nothing to the grid-point's non-bond energy;
                     //   just continue to next atom...
-                    if (r > NBCUTOFF)
+
+                    // Approximately 3% may pass through this condition
+                    if (rSq > sq(NBCUTOFF))
                         continue;   // onto the next atom...
                     if (input->atomType[ia] == hydrogen && bondVectors->disorder[ia])
                         continue;   // onto the next atom...
 
-                    // racc = rdon = 1;
-                    racc = 1;
-                    rdon = 1;
-                    // NEW2 Hramp ramps in Hbond acceptor probes
-                    Hramp = 1;
-                    // END NEW2 Hramp ramps in Hbond acceptor probes
+                    if (indexR == -1)
+                        indexR = min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
+
+                    for (int i = 0; i < XYZ; i++)
+                        distance[i] *= invR;
+
+                    double racc = 1;
+                    double rdon = 1;
+                    double Hramp = 1;   // Hramp ramps in Hbond acceptor probes
 
                     if (input->hbond[ia] == 2)
-                    {           // D1
+                    {
+                        // D1
                         //  ia-th receptor atom = Hydrogen (4 = H)
                         //  => receptor H-bond donor, OH or NH.
                         //  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
-                        cos_theta = 0;
-                        //  d[] = Unit vector from current grid pt to ia_th m/m atom.
-                        //  cos_theta = d dot bondVectors->rvector == cos(angle) subtended.
+                        double cosTheta = 0;
+                        //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
+                        //  cosTheta = d dot bondVectors->rvector == cos(angle) subtended.
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
+                            cosTheta -= distance[i] * bondVectors->rvector[ia][i];
 
-                        if (cos_theta <= 0)
+                        if (cosTheta <= 0)
                             //  H->current-grid-pt vector >= 90 degrees from
                             //  N->H or O->H vector,
                             racc = 0;
@@ -242,34 +260,27 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                         {
                             //  racc = [cos(theta)]^2.0 for N-H
                             //  racc = [cos(theta)]^4.0 for O-H,
+                            racc = cosTheta;
+
                             switch (bondVectors->rexp[ia])
                             {
-                            case 1:
-                            default:
-                                racc = cos_theta;
-                                break;
-                            case 2:
-                                racc = cos_theta * cos_theta;
-                                break;
                             case 4:
-                                tmp = cos_theta * cos_theta;
-                                racc = tmp * tmp;
-                                break;
+                                racc = sq(racc);
+                            case 2:
+                                racc = sq(racc);
                             }
-                            // racc = pow(cos_theta, bondVectors->rexp[ia]);
+                            // racc = pow(cosTheta, bondVectors->rexp[ia]);
 
                             // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
                             if (ia == closestH)
                                 Hramp = 1;
                             else
                             {
-                                cos_theta = 0;
+                                cosTheta = 0;
                                 for (int i = 0; i < XYZ; i++)
-                                    cos_theta += bondVectors->rvector[closestH][i] * bondVectors->rvector[ia][i];
-                                cos_theta = min(cos_theta, 1.0);
-                                cos_theta = max(cos_theta, -1.0);
-                                theta = acos(cos_theta);
-                                Hramp = 0.5 - 0.5 * cos(theta * 120 / 90);
+                                    cosTheta += bondVectors->rvector[closestH][i] * bondVectors->rvector[ia][i];
+                                double theta = acos(clamp(cosTheta, -1.0, 1.0));
+                                Hramp = 0.5 - 0.5 * cos(theta * (120.0 / 90.0));
                             }   // ia test
                             // END NEW2 calculate dot product of bond vector with bond vector of best input->hbond
                         }
@@ -280,81 +291,68 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                     {           // A1
                         //  ia-th macromolecule atom = Nitrogen (4 = H)
                         //  calculate rdon for H-bond Donor PROBES at this grid pt.
-                        cos_theta = 0;
-                        //  d[] = Unit vector from current grid pt to ia_th m/m atom.
-                        //  cos_theta = d dot bondVectors->rvector == cos(angle) subtended.
+                        double cosTheta = 0;
+                        //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
+                        //  cosTheta = d dot bondVectors->rvector == cos(angle) subtended.
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
+                            cosTheta -= distance[i] * bondVectors->rvector[ia][i];
 
-                        if (cos_theta <= 0)
+                        if (cosTheta <= 0)
                             //  H->current-grid-pt vector >= 90 degrees from
                             //  X->N vector,
                             rdon = 0;
                         else
                             //  racc = [cos(theta)]^2.0 for H->N
-                            rdon = cos_theta * cos_theta;
+                            rdon = cosTheta * cosTheta;
                         // endif (input->atomType[ia] == nitrogen)
                         // end NEW Directional N acceptor
-
                     }
                     else if (input->hbond[ia] == 5 && !bondVectors->disorder[ia])
-                    {           // A2
+                    {
+                        // A2
                         //  ia-th receptor atom = Oxygen
                         //  => receptor H-bond acceptor, oxygen.
-                        rdon = 0;
 
                         // check to see that probe is in front of oxygen, not behind
-                        cos_theta = 0;
+                        double cosTheta = 0;
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
+                            cosTheta -= distance[i] * bondVectors->rvector[ia][i];
                         // t0 is the angle out of the lone pair plane, calculated
                         // as 90 deg - acos (vector to grid point DOT lone pair
                         // plane normal)
-                        t0 = 0;
+                        double t0 = 0;
                         for (int i = 0; i < XYZ; i++)
-                            t0 += d[i] * bondVectors->rvector2[ia][i];
-                        if (t0 > 1)
-                            t0 = 1;
-                        else if (t0 < -1)
-                            t0 = -1;
-                        t0 = PI_halved - acos(t0);
+                            t0 += distance[i] * bondVectors->rvector2[ia][i];
+                        t0 = (PI / 2) - acos(clamp(t0, -1.0, 1.0));
 
                         // ti is the angle in the lone pair plane, away from the
                         // vector between the lone pairs,
                         // calculated as (grid vector CROSS lone pair plane normal)
                         // DOT C=O vector - 90 deg
-                        cross[0] = d[1] * bondVectors->rvector2[ia][2] - d[2] * bondVectors->rvector2[ia][1];
-                        cross[1] = d[2] * bondVectors->rvector2[ia][0] - d[0] * bondVectors->rvector2[ia][2];
-                        cross[2] = d[0] * bondVectors->rvector2[ia][1] - d[1] * bondVectors->rvector2[ia][0];
+                        double cross[XYZ];
+                        cross[0] = distance[1] * bondVectors->rvector2[ia][2] - distance[2] * bondVectors->rvector2[ia][1];
+                        cross[1] = distance[2] * bondVectors->rvector2[ia][0] - distance[0] * bondVectors->rvector2[ia][2];
+                        cross[2] = distance[0] * bondVectors->rvector2[ia][1] - distance[1] * bondVectors->rvector2[ia][0];
                         double rd2 = sq(cross[0]) + sq(cross[1]) + sq(cross[2]);
                         if (rd2 < APPROX_ZERO)
-                        {
-                            if ((rd2 == 0) && !warned)
-                                warned = true;
                             rd2 = APPROX_ZERO;
-                        }
-                        double inv_rd = 1 / sqrt(rd2);
-                        ti = 0;
+                        double inv_rd = rsqrt(rd2);
+                        double ti = 0;
                         for (int i = 0; i < XYZ; i++)
                             ti += cross[i] * inv_rd * bondVectors->rvector[ia][i];
 
                         // rdon expressions from Goodford
                         rdon = 0;
-                        if (cos_theta >= 0)
+                        if (cosTheta >= 0)
                         {
-                            if (ti > 1)
-                                ti = 1;
-                            else if (ti < -1)
-                                ti = -1;
-                            ti = acos(ti) - PI_halved;
-                            if (ti < 0)
-                                ti = -ti;
+                            ti = fabs(acos(clamp(ti, -1.0, 1.0)) - (PI / 2));
                             // the 2.0*ti can be replaced by (ti + ti) in: rdon = (0.9 + 0.1*sin(2.0*ti))*cos(t0);
                             rdon = (0.9 + 0.1 * sin(ti + ti)) * cos(t0);
                             // 0.34202 = cos (100 deg)
                         }
-                        else if (cos_theta >= -0.34202)
-                            rdon = 562.25 * pow(0.116978 - sq(cos_theta), 3) * cos(t0);
+                        else if (cosTheta >= -0.34202)
+                            //rdon = 562.25 * pow(0.116978 - sq(cosTheta), 3) * cos(t0);
+                            rdon = 562.25 * cube(0.116978 - sq(cosTheta)) * cos(t0);
 
                         // endif input->atomType == oxygen, not disordered
                     }
@@ -362,115 +360,117 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                     {
                         // A2
                         // cylindrically disordered hydroxyl
-                        cos_theta = 0;
+                        double cosTheta = 0;
                         for (int i = 0; i < XYZ; i++)
-                            cos_theta -= d[i] * bondVectors->rvector[ia][i];
-                        if (cos_theta > 1)
-                            cos_theta = 1;
-                        else if (cos_theta < -1)
-                            cos_theta = -1;
-                        theta = acos(cos_theta);
+                            cosTheta -= distance[i] * bondVectors->rvector[ia][i];
                         racc = 0;
                         rdon = 0;
-                        if (theta <= 1.24791 + PI_halved)
+                        double theta = acos(clamp(cosTheta, -1.0, 1.0));
+                        if (theta <= 1.24791 + (PI / 2))
                         {
                             // 1.24791 rad = 180 deg minus C-O-H bond angle, ** 108.5 deg
-                            rdon = pow(cos(theta - 1.24791), 4);
+                            rdon = sq(sq(cos(theta - 1.24791)));    // pow(.., 4)
                             racc = rdon;
                         }
                     }           // input->atomType test
 
                     // For each probe atom-type,
                     // Sum pairwise interactions between each probe
-                    // at this grid point (c[0:2])
+                    // at this grid point (gridPos[0:2])
                     // and the current receptor atom, ia...
                     for (int mapIndex = 0; mapIndex < gridmaps.getNumAtomMaps(); mapIndex++)
                     {
                         // We do not want to change the current enrg value for any covalent maps, make sure iscovalent is false...
-                        maptypeptr = gridmaps[mapIndex].type;
-
                         if (!gridmaps[mapIndex].isCovalent)
                         {
+                            double energy = energyLookup(input->atomType[ia], indexR, mapIndex);
+
                             if (gridmaps[mapIndex].isHBonder)
                             {
                                 // PROBE forms H-bonds...
 
                                 // rsph ramps in angular dependence for distances with negative energy
-                                rsph = energyLookup(input->atomType[ia], indexR, mapIndex) / 100;
-                                rsph = max(rsph, 0);
-                                rsph = min(rsph, 1);
+                                double rsph = clamp(energy / 100, 0.0, 1.0);
+
                                 if ((gridmaps[mapIndex].hbond == 3 || gridmaps[mapIndex].hbond == 5)    // AS or A2
                                     && (input->hbond[ia] == 1 || input->hbond[ia] == 2))
-                                {   // DS or D1
+                                {
+                                    // DS or D1
                                     // PROBE can be an H-BOND ACCEPTOR,
+                                    double f = Hramp * (racc + (1 - racc) * rsph);
                                     if (!bondVectors->disorder[ia])
-                                        gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex) * Hramp * (racc + (1 - racc) * rsph);
+                                        gridmaps[mapIndex].energies[outputIndex] += f * energy;
                                     else
-                                        gridmaps[mapIndex].energy += energyLookup(hydrogen, max(0, indexR - 110), mapIndex) * Hramp * (racc + (1 - racc) * rsph);
+                                        gridmaps[mapIndex].energies[outputIndex] += f * energyLookup(hydrogen, max(0, indexR - 110), mapIndex);
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 4)    // A1
                                          && (input->hbond[ia] == 1 || input->hbond[ia] == 2))
-                                {   // DS,D1
-                                    hbondmin[mapIndex] = min(hbondmin[mapIndex], energyLookup(input->atomType[ia], indexR, mapIndex) * (racc + (1 - racc) * rsph));
-                                    hbondmax[mapIndex] = max(hbondmax[mapIndex], energyLookup(input->atomType[ia], indexR, mapIndex) * (racc + (1 - racc) * rsph));
-                                    hbondflag[mapIndex] = true;
+                                {
+                                    // DS,D1
+                                    double hbondEnergy = energy * (racc + (1 - racc) * rsph);
+                                    hbond.min[mapIndex] = min(hbond.min[mapIndex], hbondEnergy);
+                                    hbond.max[mapIndex] = max(hbond.max[mapIndex], hbondEnergy);
+                                    hbond.flag[mapIndex] = true;
                                 }
                                 else if ((gridmaps[mapIndex].hbond == 1 || gridmaps[mapIndex].hbond == 2) && (input->hbond[ia] > 2))
-                                {   // DS,D1 vs AS,A1,A2
+                                {
+                                    // DS,D1 vs AS,A1,A2
                                     // PROBE is H-BOND DONOR,
-                                    temp_hbond_enrg = energyLookup(input->atomType[ia], indexR, mapIndex) * (rdon + (1 - rdon) * rsph);
-                                    hbondmin[mapIndex] = min(hbondmin[mapIndex], temp_hbond_enrg);
-                                    hbondmax[mapIndex] = max(hbondmax[mapIndex], temp_hbond_enrg);
-                                    hbondflag[mapIndex] = true;
+                                    double hbondEnergy = energy * (rdon + (1 - rdon) * rsph);
+                                    hbond.min[mapIndex] = min(hbond.min[mapIndex], hbondEnergy);
+                                    hbond.max[mapIndex] = max(hbond.max[mapIndex], hbondEnergy);
+                                    hbond.flag[mapIndex] = true;
                                 }
                                 else
                                     // hbonder PROBE-ia cannot form a H-bond...,
-                                    gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex);
+                                    gridmaps[mapIndex].energies[outputIndex] += energy;
                             }
                             else
                                 // PROBE does not form H-bonds...,
-                                gridmaps[mapIndex].energy += energyLookup(input->atomType[ia], indexR, mapIndex);
+                                gridmaps[mapIndex].energies[outputIndex] += energy;
 
                             // add desolvation energy
                             // forcefield desolv coefficient/weight in desolvExpFunc
-                            gridmaps[mapIndex].energy += gridmaps[mapIndex].solparProbe * input->vol[ia] * desolvExpFunc(indexR) +
+                            gridmaps[mapIndex].energies[outputIndex] += gridmaps[mapIndex].solparProbe * input->vol[ia] * desolvExpFunc(indexR) +
                                 (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[mapIndex].volProbe * desolvExpFunc(indexR);
-                        }       // is not covalent
-                    }           // mapIndex
-                    gridmaps.getDesolvationMap().energy += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
-                }               // ia loop, over all receptor atoms...
+                        } // is not covalent
+                    } // mapIndex
+                    gridmaps.getDesolvationMap().energies[outputIndex] += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
+                } // ia loop, over all receptor atoms...
+
                 for (int mapIndex = 0; mapIndex < gridmaps.getNumAtomMaps(); mapIndex++)
-                    if (hbondflag[mapIndex])
+                    if (hbond.flag[mapIndex])
                     {
-                        gridmaps[mapIndex].energy += hbondmin[mapIndex];
-                        gridmaps[mapIndex].energy += hbondmax[mapIndex];
+                        gridmaps[mapIndex].energies[outputIndex] += hbond.min[mapIndex];
+                        gridmaps[mapIndex].energies[outputIndex] += hbond.max[mapIndex];
                     }
 
                 // O U T P U T . . .
                 // Now output this grid point's energies to the maps:
                 for (int k = 0; k < gridmaps.getNumMaps(); k++)
                 {
-                    gridmaps[k].energyMax = max(gridmaps[k].energyMax, gridmaps[k].energy);
-                    gridmaps[k].energyMin = min(gridmaps[k].energyMin, gridmaps[k].energy);
-                    if (fabs(gridmaps[k].energy) < PRECISION)
+                    // TODO: writing out energyMin/Max is currently broken, fix it by moving min/max calculations inside logSummary
+                    //gridmaps[k].energyMax = max(gridmaps[k].energyMax, gridmaps[k].energies[outputIndex]);
+                    //gridmaps[k].energyMin = min(gridmaps[k].energyMin, gridmaps[k].energies[outputIndex]);
+                    if (fabs(gridmaps[k].energies[outputIndex]) < PRECISION)
                         gridmaps[k].energies[outputIndex] = 0;
-                    else
-                        gridmaps[k].energies[outputIndex] = float(round3dp(gridmaps[k].energy));
                 }
                 if (gridmaps.containsFloatingGrid())
-                    gridmaps.getFloatingGridMins()[outputIndex] = float(round3dp(r_min));
+                    gridmaps.getFloatingGridMins()[outputIndex] = float(1 / invRMin);
+            } // gridCoordX loop
+        } // gridCoordY loop
 
-                outputIndex++;
-            }                   // icoord[X] loop
-        }                       // icoord[Y] loop
-
-        grd_end = times(&tms_grd_end);
+        tms timerGridEnd;
+        Clock gridEndTime = times(&timerGridEnd);
         ++nDone;
-        logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", icoord[Z], input->cgridmin[Z] + c[Z], (100 / double(input->n1[Z])) * double(++ic));
-        logFile.printTimeInHMS((grd_end - grd_start) * (input->n1[Z] - nDone));
+        logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", gridCoordZ, input->cgridmin[Z] + gridPosZ, (100 / double(input->numGridPoints[Z])) * double(++ic));
+        logFile.printTimeInHMS((gridEndTime - gridStartTime) * (input->numGridPoints[Z] - nDone));
         logFile.print("  ");
-        logFile.printExecutionTimes(grd_start, grd_end, &tms_grd_start, &tms_grd_end);
-    }                           // icoord[Z] loop
+        logFile.printExecutionTimes(gridStartTime, gridEndTime, &timesGridStart, &timerGridEnd);
+    } // gridCoordZ loop
+    endTimer(1);
+
+    //fprintf(stderr, "Count: %i, Calc: %i = %i %%\n", infoCount, infoCalc, (infoCalc * 100) / infoCount);
 }
 
 // Function: Calculation of interaction energy grids for Autodock.
@@ -527,11 +527,13 @@ void autogridMain(int argc, char **argv)
     // Now we want to make the input data read-only
     const InputData *input = inputDataLoader;
 
+
     if (input->floatingGridFilename[0])
         gridmaps.enableFloatingGrid();
 
     // Inititializing arrays of output energies
-    gridmaps.prepareGridmaps(input->ne[X], input->ne[Y], input->ne[Z]);
+    //gridmaps.prepareGridmaps(input->ne[X], input->ne[Y], input->ne[Z]);
+    gridmaps.prepareGridmaps(input->numGridPointsPerMap);
 
     // TODO: add a smarter mechanism of checking for the available disk space, we need to know it as soon as possible.
     // the formerly implemented checks in the middle of calculations were done too late
@@ -547,6 +549,8 @@ void autogridMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
+    beginTimer(0);
+
     // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies energyLookup;
     energyLookup.calculate(gridmaps, logFile, input->numReceptorTypes, input->receptorTypes, input->rSmooth);
@@ -556,6 +560,9 @@ void autogridMain(int argc, char **argv)
 
     // Calculating bond vectors for directional H-bonds
     BondVectors *bondVectors = new BondVectors(&logFile);
+
+    endTimer(0);
+
     bondVectors->calculate(input, parameterLibrary);
 
     // Calculation of gridmaps
@@ -593,6 +600,8 @@ int main(int argc, char **argv)
 
         // This should not return if used
         boincDone();
+
+        logTimers();
         return 0;
     }
     catch (ExitProgram &e)  // the ExitProgram exception is a replacement for C's exit function.

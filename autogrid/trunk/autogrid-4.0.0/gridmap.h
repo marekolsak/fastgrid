@@ -34,9 +34,6 @@ struct GridMap
     char filename[MAX_CHARS];
     char type[3];           // eg HD or OA or NA or N
     double constant;        // this will become obsolete
-    double energyMax;
-    double energyMin;
-    double energy;
     double volProbe;
     double solparProbe;
 
@@ -54,7 +51,9 @@ struct GridMap
     int xB[NUM_RECEPTOR_TYPES]; // 6 for non-hbonders 10 for h-bonders
     int hbonder[NUM_RECEPTOR_TYPES];
 
-    float *energies;  // output energies, this array will be saved to file
+    double *energies;  // output energies, this array will be saved to file
+    double energyMax;
+    double energyMin;
 
     GridMap();
 };
@@ -69,18 +68,16 @@ public:
     // "num" is the number of maps to be created: the number of ligand atom types, plus 1 for the electrostatic map,
     // plus 1 for the desolvation map. (the floating grid should not be included here, see enableFloatingGrid)
     // Keep in mind that AutoDock can only read in MAX_MAPS maps.
-    void setNumMaps(int num);
+    void setNumMaps(int numMaps);
 
     // Enables the floating grid. By default, the floating grid is disabled.
     void enableFloatingGrid();
 
     // Allocates memory for output energies.
-    // The final number of gridmaps must be set by now. The energy map will contain a 3D array in the range
-    // (-range{X,Y,Z}, +range{X,Y,Z}).
-    void prepareGridmaps(int rangeX, int rangeY, int rangeZ);
+    void prepareGridmaps(int numGridPointsPerMap);
 
     // TODO: unify functions: setNumMaps, enableFloatingGrid, prepareGridmaps, to:
-    // void initialize(int numMaps, bool floatingGrid, int rangeX, int rangeY, int rangeZ);
+    // void initialize(int numMaps, bool enableFloatingGrid, int numGridPointsPerMap);
 
     // Saves all energies and possibly the floating grid to files
     void saveToFiles(const InputData *input, const char *gridParameterFilename);
@@ -92,7 +89,7 @@ public:
     GridMap &operator [](int i)             { return gridmaps[i]; }
     GridMap &getElectrostaticMap()          { return gridmaps[elecIndex]; }
     GridMap &getDesolvationMap()            { return gridmaps[desolvIndex]; }
-    float *getFloatingGridMins()            { return floatingGridMins; }
+    float *getFloatingGridMins() const      { return floatingGridMins; }
 
     // Read-only access to maps
     const GridMap &operator [](int i) const { return gridmaps[i]; }
@@ -114,5 +111,5 @@ private:
 
     bool useFloatingGrid;
     float *floatingGridMins;
-    int numFloats;
+    int numGridPointsPerMap;
 };

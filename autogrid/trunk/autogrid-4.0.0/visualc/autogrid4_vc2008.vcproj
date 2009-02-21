@@ -47,6 +47,7 @@
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
+				OpenMP="true"
 				UsePrecompiledHeader="0"
 				BrowseInformation="1"
 				WarningLevel="4"
@@ -135,6 +136,7 @@
 				BufferSecurityCheck="false"
 				EnableEnhancedInstructionSet="2"
 				FloatingPointModel="2"
+				OpenMP="true"
 				UsePrecompiledHeader="0"
 				BrowseInformation="1"
 				WarningLevel="4"
@@ -221,6 +223,7 @@
 				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
+				OpenMP="true"
 				UsePrecompiledHeader="0"
 				BrowseInformation="1"
 				WarningLevel="4"
@@ -336,6 +339,10 @@
 			</File>
 			<File
 				RelativePath="..\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\math.h"
 				>
 			</File>
 			<File

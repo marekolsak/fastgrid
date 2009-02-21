@@ -25,6 +25,7 @@
 #include "inputdataloader.h"
 #include "utils.h"
 #include "exceptions.h"
+#include "math.h"
 #include <cstring>
 #include <cctype>
 
@@ -391,14 +392,14 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             {
                 nelements[i] = checkSize(nelements[i], xyz[i]);
                 ne[i] = nelements[i] / 2;
-                n1[i] = nelements[i] + 1;
+                numGridPoints[i] = nelements[i] + 1;
             }
             logFile->printFormatted("\nNumber of grid points in x-direction:\t%d\n"
                                    "Number of grid points in y-direction:\t%d\n"
                                    "Number of grid points in z-direction:\t%d\n\n",
-                                   n1[X], n1[Y], n1[Z]);
+                                   numGridPoints[X], numGridPoints[Y], numGridPoints[Z]);
 
-            numGridPointsPerMap = n1[X] * n1[Y] * n1[Z];
+            numGridPointsPerMap = numGridPoints[X] * numGridPoints[Y] * numGridPoints[Z];
             break;
 
         case GPF_SPACING:

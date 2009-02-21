@@ -81,13 +81,12 @@
 
 #define PRECISION   0.0001 /* fabs(Energies) less than this will be written as '0' */
 
+#define APPROX_ZERO_SQ (APPROX_ZERO*APPROX_ZERO)
+
 /*----------------------------------------------------------------------------*/
 /* Macros,                                                                    */
 /*----------------------------------------------------------------------------*/
 
-#define sq(a)               ((a) * (a))
-#define sq_hyp(x,y,z)       ((x)*(x) + (y)*(y) + (z)*(z))
-#define hypotenuse(x,y,z)   (sqrt(double(sq(x) + sq(y) + sq(z))))
 #define equal(a,b,n)        (strncmp(a, b, size_t(n)) == 0)
 
 // round() is a C99 function and not universally available
@@ -98,14 +97,6 @@
     #define round3dp(x) ((floor((x)*1000.0 + 0.5)) / 1000.0)
 #endif
 
-// we do not want to have a redefinition of the following macro max,min
-#ifdef _WIN32
-#undef min
-#undef max
-#endif
-
-#define max(x,y)            (((x) > (y)) ? (x) : (y))
-#define min(x,y)            (((x) < (y)) ? (x) : (y))
 #define angstrom(i)         ((double(i)) / A_DIVISOR)
 #define lookup(r)           (int((r) * A_DIVISOR))
 
