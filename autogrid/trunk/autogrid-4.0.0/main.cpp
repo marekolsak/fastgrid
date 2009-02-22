@@ -110,7 +110,7 @@ void calculateElectrostaticMap(const InputData *input, const GridMapList &gridma
 
             // apply the estat forcefield coefficient/weight here
             double tmp = input->charge[ia] * min(invR, 2.0) * parameterLibrary.coeff_estat;
-            if (input->distDepDiel) // distDepDiel is a constant, so we can implement two separate versions to remove branching
+            if (input->distDepDiel) // distDepDiel is a constant
             {
                 // Distance-dependent dielectric...
                 int indexR = min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
