@@ -45,7 +45,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
 
         // If 'ia' is a hydrogen atom, it could be a
         // RECEPTOR hydrogen-BOND DONOR,
-        // 8:CHANGE HERE: fix the input->atomType vs atom_types problem in following
+        // TODO: 8:CHANGE HERE: fix the input->atomType vs atom_types problem in following
         if (input->hbond[ia] == D1) // D1 hydrogen bond donor
         {
             for (int ib = from; ib <= to; ib++)
@@ -58,7 +58,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     //                            ib-ia  ib-ia
                     for (int i = 0; i < XYZ; i++)
                         d[i] = input->coord[ia][i] - input->coord[ib][i];
-                    rd2 = sq(d[X]) + sq(d[Y]) + sq(d[Z]);
+                    rd2 = hypotenuseSq(d[X], d[Y], d[Z]);
                     // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
                     if (rd2 < 1.90)
                     {           // INCREASED for H-S bonds
@@ -70,7 +70,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                     ia + 1, ib + 1);
                             rd2 = APPROX_ZERO;
                         }
-                        inv_rd = 1 / sqrt(rd2);
+                        inv_rd = rsqrt(rd2);
 
                         // N-H: Set exponent rexp to 2 for m/m H-atom,
                         // if (input->atomType[ib] == nitrogen) rexp[ia] = 2;
@@ -158,7 +158,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = 1 / sqrt(rd2);
+                inv_rd = rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
 
@@ -192,7 +192,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                 }
                                 rd2 = APPROX_ZERO;
                             }
-                            inv_rd = 1 / sqrt(rd2);
+                            inv_rd = rsqrt(rd2);
                             for (int i = 0; i < XYZ; i++)
                                 d[i] *= inv_rd;
 
@@ -212,7 +212,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                 }
                                 rd2 = APPROX_ZERO;
                             }
-                            inv_rd = 1 / sqrt(rd2);
+                            inv_rd = rsqrt(rd2);
                             for (int i = 0; i < XYZ; i++)
                                 rvector2[ia][i] *= inv_rd;
                         }
@@ -244,7 +244,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
                         rd2 = APPROX_ZERO;
                     }
-                    inv_rd = 1 / sqrt(rd2);
+                    inv_rd = rsqrt(rd2);
                     for (int i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
                 }
@@ -267,7 +267,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
                         rd2 = APPROX_ZERO;
                     }
-                    inv_rd = 1 / sqrt(rd2);
+                    inv_rd = rsqrt(rd2);
                     for (int i = 0; i < XYZ; i++)
                         rvector2[ia][i] *= inv_rd;
 
@@ -294,7 +294,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
                         rd2 = APPROX_ZERO;
                     }
-                    inv_rd = 1 / sqrt(rd2);
+                    inv_rd = rsqrt(rd2);
                     for (int i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
                 }               // end disordered hydroxyl
@@ -360,7 +360,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = 1 / sqrt(rd2);
+                inv_rd = rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
             }                   // endif nbond==1
@@ -384,7 +384,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = 1 / sqrt(rd2);
+                inv_rd = rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
             }                   // end two bonds for nitrogen
@@ -408,7 +408,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = 1 / sqrt(rd2);
+                inv_rd = rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
 

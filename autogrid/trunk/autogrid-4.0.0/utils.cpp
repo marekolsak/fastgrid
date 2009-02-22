@@ -45,6 +45,52 @@
     #include "filesys.h"    // boinc_fopen(), etc...
 #endif
 
+void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile)
+{
+    FILE *fldFileAVS;
+    if ((fldFileAVS = boincOpenFile(input->fldFilenameAVS, "w")) == 0)
+    {
+        logFile.printErrorFormatted(ERROR, "can't create grid dimensions data file %s\n", input->fldFilenameAVS);
+        logFile.printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+    }
+    else
+        logFile.printFormatted("\nCreating (AVS-readable) grid maps file : %s\n", input->fldFilenameAVS);
+
+    int numMaps = gridmaps.getNumMapsInclFloatingGrid();
+    fprintf(fldFileAVS, "# AVS field file\n#\n");
+    fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
+    fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
+    fprintf(fldFileAVS, "#SPACING %.3f\n", float(input->spacing));
+    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
+    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
+    fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
+    fprintf(fldFileAVS, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
+    fprintf(fldFileAVS, "ndim=3\t\t\t# number of dimensions in the field\n");
+    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->numGridPoints[X]);
+    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->numGridPoints[Y]);
+    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->numGridPoints[Z]);
+    fprintf(fldFileAVS, "nspace=3\t\t# number of physical coordinates per point\n");
+    fprintf(fldFileAVS, "veclen=%d\t\t# number of affinity values at each point\n", numMaps);
+    fprintf(fldFileAVS, "data=float\t\t# data type (byte, integer, float, double)\n");
+    fprintf(fldFileAVS, "field=uniform\t\t# field type (uniform, rectilinear, irregular)\n");
+    for (int i = 0; i < XYZ; i++)
+        fprintf(fldFileAVS, "coord %d file=%s filetype=ascii offset=%d\n", (i + 1), input->xyzFilename, (i * 2));
+    for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
+        fprintf(fldFileAVS, "label=%s-affinity\t# component label for variable %d\n", gridmaps[i].type, (i + 1));
+    fprintf(fldFileAVS, "label=Electrostatics\t# component label for variable %d\n", numMaps - 2);
+    fprintf(fldFileAVS, "label=Desolvation\t# component label for variable %d\n", numMaps - 1);
+    if (gridmaps.containsFloatingGrid())
+        fprintf(fldFileAVS, "label=Floating_Grid\t# component label for variable %d\n", numMaps);
+    fprintf(fldFileAVS, "#\n# location of affinity grid files and how to read them\n#\n");
+
+    for (int i = 0; i < gridmaps.getNumMaps(); i++)
+        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", (i + 1), gridmaps[i].filename);
+
+    if (gridmaps.containsFloatingGrid())
+        fprintf(fldFileAVS, "variable %d file=%s filetype=ascii skip=6\n", numMaps, input->floatingGridFilename);
+    fclose(fldFileAVS);
+}
+
 // initializes BOINC
 void boincInit()
 {

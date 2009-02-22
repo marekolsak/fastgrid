@@ -1,6 +1,6 @@
 #pragma once
 
-// Define fixed-size integer types
+// Define fixed-sized integer types
 #if defined(_MSC_VER)
     #define TYPEDEF_FIXED_INT(bits) typedef signed __int##bits int##bits; typedef unsigned __int##bits uint##bits
 #else

@@ -24,15 +24,13 @@
 
 #include "gridmap.h"
 #include "utils.h"
+#include "math.h"
 #include <new>
 #include <cstring>
 
 GridMap::GridMap()
 {
     memset(this, 0, sizeof(*this));
-    energyMax = -BIG;
-    energyMin = BIG;
-    hbond = NON;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -81,14 +79,23 @@ void GridMapList::logSummary()
                   "\t\t(kcal/mol)\t(kcal/mol)\n"
                   "____\t____\t_____________\t_____________\n");
 
-    for (int i = 0; i < numAtomMaps; i++)
-        logFile->printFormatted(" %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmaps[i].type, gridmaps[i].energyMin, gridmaps[i].energyMax);
+    for (int i = 0; i < numMaps; i++)
+    {
+        double energyMin, energyMax;
+        calculateEnergyMinMax(i, energyMin, energyMax);
+        logFile->printFormatted(" %d\t %s\t  %6.2lf\t%9.2le\n", i + 1, gridmaps[i].type, energyMin, energyMax);
+    }
+
+    double energyMinElec, energyMaxElec;
+    double energyMinDesolv, energyMaxDesolv;
+    calculateEnergyMinMax(elecIndex, energyMinElec, energyMaxElec);
+    calculateEnergyMinMax(desolvIndex, energyMinDesolv, energyMaxDesolv);
 
     logFile->printFormatted(" %d\t %c\t  %6.2lf\t%9.2le\tElectrostatic Potential\n"
                            " %d\t %c\t  %6.2lf\t%9.2le\tDesolvation Potential\n"
                            "\n\n * Note:  Every pairwise-atomic interaction was clamped at %.2f\n\n\n",
-                           getElectrostaticMapIndex() + 1, 'e', getElectrostaticMap().energyMin, getElectrostaticMap().energyMax,
-                           getDesolvationMapIndex() + 1, 'd', getDesolvationMap().energyMin, getDesolvationMap().energyMax,
+                           getElectrostaticMapIndex() + 1, 'e', energyMinElec, energyMaxElec,
+                           getDesolvationMapIndex() + 1, 'd', energyMinDesolv, energyMaxDesolv,
                            EINTCLAMP);
 
     fprintf(stderr, "\n%s: Successful Completion.\n", logFile->getProgramName());
@@ -111,7 +118,10 @@ void GridMapList::prepareGridmaps(int numGridPointsPerMap)
 
     for (int i = 0; i < numMaps; i++)
         if (gridmaps[i].filename[0])
+        {
             gridmaps[i].energies = new double[numGridPointsPerMap];
+            memset(gridmaps[i].energies, 0, numGridPointsPerMap * sizeof(double));
+        }
     if (useFloatingGrid)
         floatingGridMins = new float[numGridPointsPerMap];
 }
@@ -179,5 +189,17 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
             fprintf(file, "%.3f\n", floatingGridMins[j]);
 
         fclose(file);
+    }
+}
+
+void GridMapList::calculateEnergyMinMax(int map, double &energyMin, double &energyMax)
+{
+    energyMax = -BIG;
+    energyMin = BIG;
+
+    for (int j = 0; j < numGridPointsPerMap; j++)
+    {
+        energyMax = max(energyMax, gridmaps[map].energies[j]);
+        energyMin = min(energyMin, gridmaps[map].energies[j]);
     }
 }

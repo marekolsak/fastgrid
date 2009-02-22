@@ -69,7 +69,7 @@ InputDataLoader::InputDataLoader(LogFile *logFile): logFile(logFile)
     numReceptorTypes = 0;
     numGridPointsPerMap = INIT_NUM_GRID_PTS;
     numReceptorAtoms = 0;
-    memset(covpos, 0, sizeof(covpos));
+    memset(covalentPoint, 0, sizeof(covalentPoint));
 
     // for NEW3 desolvation terms
     solparQ = .01097;   // unweighted value restored 3:9:05
@@ -489,7 +489,6 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
                 for (int i = 0; i < numAtomMaps; i++)
                 {
-                    gridmaps[i].mapIndex = i;
                     strncpy(gridmaps[i].type, ligandTypes[i], 3);   // eg HD or OA or NA or N
                     foundParam = parameterLibrary.findAtomParameter(ligandTypes[i]);
                     gridmaps[i].atomType = foundParam->mapIndex;
@@ -514,7 +513,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         // setup hbond dependent stuff
                         gridmaps[i].xB[j] = 6;
                         gridmaps[i].hbonder[j] = 0;
-                        if ((int)(gridmaps[i].hbond) > 2 && ((int)foundParam->hbond == 1 || (int)foundParam->hbond == 2))
+                        if (gridmaps[i].hbond > D1 && (foundParam->hbond == DS || foundParam->hbond == D1))
                         {           // AS,A1,A2 map vs DS,D1 probe
                             gridmaps[i].xB[j] = 10;
                             gridmaps[i].hbonder[j] = 1;
@@ -526,7 +525,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                             // apply the hbond forcefield parameter/weight here
                             // This was removed because "setup_p_l" does this for us... gridmaps[i].nbpEps[j] *= FE_coeff_hbond;
                         }
-                        else if (((int)gridmaps[i].hbond == 1 || (int)gridmaps[i].hbond == 2) && ((int)foundParam->hbond > 2))
+                        else if ((gridmaps[i].hbond == DS || gridmaps[i].hbond == D1) && foundParam->hbond > D1)
                         {           // DS,D1 map vs AS,A1,A2 probe
                             gridmaps[i].xB[j] = 10;
                             gridmaps[i].hbonder[j] = 1;
@@ -544,9 +543,9 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 logFile->printFormatted("\nAtom type names for ligand atom types 1-%d used for ligand-atom affinity grid maps:\n\n", numAtomMaps);
                 for (int i = 0; i < numAtomMaps; i++)
                 {
-                    logFile->printFormatted("\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", gridmaps[i].mapIndex, gridmaps[i].type);
+                    logFile->printFormatted("\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", i, gridmaps[i].type);
 
-                    // FIX THIS!!! Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
+                    // TODO: FIX THIS!!! Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
                     /* if (gridmaps[i].atomType == COVALENTTYPE) { gridmaps[i].isCovalent = true;  logFile->printFormatted("\nAtom type number %d will be used to calculate a covalent affinity
                        grid map\n\n", i + 1); } */
                 }
@@ -638,16 +637,16 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             break;
 
         case GPF_COVALENTMAP:
-            sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covpos[X]), &(covpos[Y]), &(covpos[Z]));
+            sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covalentPoint[X]), &(covalentPoint[Y]), &(covalentPoint[Z]));
             logFile->printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
                                    "\nCovalent well's half-width in Angstroms:         %8.3f\n"
                                    "\nCovalent barrier energy in kcal/mol:             %8.3f\n"
                                    "\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n",
-                                   covHalfWidth, covBarrier, covpos[X], covpos[Y], covpos[Z]);
+                                   covHalfWidth, covBarrier, covalentPoint[X], covalentPoint[Y], covalentPoint[Z]);
 
-            // center covpos in the grid maps frame of reference,
+            // center covalentPoint in the grid maps frame of reference,
             for (int i = 0; i < XYZ; i++)
-                covpos[i] -= center[i];
+                covalentPoint[i] -= center[i];
             break;
 
         case GPF_DISORDER:

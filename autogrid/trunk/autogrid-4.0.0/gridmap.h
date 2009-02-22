@@ -28,7 +28,6 @@
 struct GridMap
 {
     int atomType;          // corresponds to receptor numbers????
-    int mapIndex;
     bool isCovalent;
     int isHBonder;
     char filename[MAX_CHARS];
@@ -52,8 +51,6 @@ struct GridMap
     int hbonder[NUM_RECEPTOR_TYPES];
 
     double *energies;  // output energies, this array will be saved to file
-    double energyMax;
-    double energyMin;
 
     GridMap();
 };
@@ -112,4 +109,6 @@ private:
     bool useFloatingGrid;
     float *floatingGridMins;
     int numGridPointsPerMap;
+
+    void calculateEnergyMinMax(int map, double &energyMin, double &energyMax);
 };

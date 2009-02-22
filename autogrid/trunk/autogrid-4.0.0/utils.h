@@ -24,6 +24,10 @@
 
 #pragma once
 #include <cstdio>
+#include "gridmap.h"
+#include "programparameters.h"
+
+void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile);
 
 // BOINC
 void boincInit();
@@ -34,8 +38,3 @@ FILE *boincOpenFile(const char *path, const char *mode);
 void beginTimer(int id);
 void endTimer(int id);
 void logTimers();
-
-#if 0
-#define beginTimer(id)
-#define endTimer(id)
-#endif
