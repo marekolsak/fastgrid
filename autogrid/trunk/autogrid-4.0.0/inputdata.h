@@ -27,6 +27,7 @@
 
 struct InputData
 {
+    // Filenames
     // if the first char is equal to '\0', the filename is not specified
     char fldFilenameAVS[MAX_CHARS];
     char floatingGridFilename[MAX_CHARS];
@@ -39,8 +40,6 @@ struct InputData
     // NB: these are sparse arrays, some entries are not set
     char receptorTypes[NUM_RECEPTOR_TYPES][3];
     int numReceptorTypes; // number of different receptor atom types actually found in receptor PDBQT
-
-    int numGridPointsPerMap;
     int numReceptorAtoms;
 
     double charge[AG_MAX_ATOMS];
@@ -48,14 +47,15 @@ struct InputData
     double solpar[AG_MAX_ATOMS];
     int atomType[AG_MAX_ATOMS];
     HBondType hbond[AG_MAX_ATOMS];
-    double coord[AG_MAX_ATOMS][XYZ];
+    double receptorAtomCoord[AG_MAX_ATOMS][XYZ];
 
-    double cgridmin[XYZ];
-    double center[XYZ];
-    double covalentPoint[XYZ];         // Cartesian-coordinate of covalent affinity well.
-    int ne[XYZ];
-    int numGridPoints[XYZ];
-    int nelements[XYZ];
+    // Grid
+    int numGridPointsPerMap;    // for the entire grid
+    int numGridPoints[XYZ];     // in one axis
+    int numGridPointsDiv2[XYZ]; // in one axis
+    double gridCornerMin[XYZ];  // corner of the grid (minimal coordinates)
+    double gridCenter[XYZ];     // center of mass where the grid is centered on
+    double gridSpacing;         // One quarter of a C-C bond length.
 
     double epsilon[MAX_DIST];
 
@@ -63,9 +63,9 @@ struct InputData
     double solparQ;   // unweighted value restored 3:9:05
     double invDielCal;
     double rSmooth;
-    double spacing;     // One quarter of a C-C bond length.
-    double covHalfWidth;
+    double covHalfWidthSquaredInv;
     double covBarrier;
+    double covalentPoint[XYZ];         // Cartesian-coordinate of covalent affinity well.
 
     bool distDepDiel, disorderH;
 };

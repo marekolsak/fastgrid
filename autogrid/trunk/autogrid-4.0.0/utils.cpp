@@ -60,9 +60,9 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     fprintf(fldFileAVS, "# AVS field file\n#\n");
     fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
     fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
-    fprintf(fldFileAVS, "#SPACING %.3f\n", float(input->spacing));
-    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->nelements[X], input->nelements[Y], input->nelements[Z]);
-    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->center[X], input->center[Y], input->center[Z]);
+    fprintf(fldFileAVS, "#SPACING %.3f\n", float(input->gridSpacing));
+    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->numGridPoints[X]-1, input->numGridPoints[Y]-1, input->numGridPoints[Z]-1);
+    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->gridCenter[X], input->gridCenter[Y], input->gridCenter[Z]);
     fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
     fprintf(fldFileAVS, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
     fprintf(fldFileAVS, "ndim=3\t\t\t# number of dimensions in the field\n");

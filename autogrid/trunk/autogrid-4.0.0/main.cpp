@@ -32,7 +32,8 @@
 #include "math.h"
 #include <new>
 
-//#define AG_OPENMP
+#define AG_OPENMP
+#define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
 
 // Useful macros
 
@@ -41,19 +42,19 @@
     for (int z = 0; z < input->numGridPoints[Z]; z++) \
     { \
         /* gridPos contains the current grid point. */ \
-        double gridPosZ = (z - input->ne[Z]) * input->spacing; \
+        double gridPosZ = (z - input->numGridPointsDiv2[Z]) * input->gridSpacing; \
         int outputIndexZBase = z * input->numGridPoints[X] * input->numGridPoints[Y]; \
 \
         /* Y axis */ \
         for (int y = 0; y < input->numGridPoints[Y]; y++) \
         { \
-            double gridPosY = (y - input->ne[Y]) * input->spacing; \
-            int outputIndexZYBase = outputIndexZBase +  y * input->numGridPoints[X]; \
+            double gridPosY = (y - input->numGridPointsDiv2[Y]) * input->gridSpacing; \
+            int outputIndexZYBase = outputIndexZBase + y * input->numGridPoints[X]; \
 \
             /* X axis */ \
             for (int x = 0; x < input->numGridPoints[X]; x++) \
             { \
-                double gridPos[XYZ] = {(x - input->ne[X]) * input->spacing, gridPosY, gridPosZ}; \
+                double gridPos[XYZ] = {(x - input->numGridPointsDiv2[X]) * input->gridSpacing, gridPosY, gridPosZ}; \
                 int outputIndex = outputIndexZYBase + x;
 
 #define END_FOR() } } }
@@ -66,19 +67,32 @@ double roundOutput(double a)
     return a;
 }
 
-double getEnergyForCovalentMap(const InputData *input, const double *gridPos)
+void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
 {
-    // Calculate the distance from the current grid point to the covalent attachment point
-    double distance[XYZ];
-    for (int i = 0; i < XYZ; i++)
-        distance[i] = input->covalentPoint[i] - gridPos[i];
+    // TODO: once covalent maps are supported, rewrite this function using NVIDIA CUDA
 
-    // Distance squared from current grid point to the covalent attachment point
-    double rcovSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
-    rcovSq = rcovSq / (input->covHalfWidth * input->covHalfWidth);
-    if (rcovSq < APPROX_ZERO_SQ)
-        rcovSq = APPROX_ZERO_SQ;
-    return input->covBarrier * (1 - exp(-0.69314718055994529 * rcovSq)); // -0.69314718055994529 = log(0.5)
+    for (int m = 0; m < gridmaps.getNumMaps(); m++)
+        if (gridmaps[m].isCovalent)
+#if defined(AG_OPENMP)
+    #pragma AG_OPENMP_PARALLEL_FOR
+#endif
+            FOR_EACH_GRID_POINT(gridPos, outputIndex)
+            {
+                // Calculate the distance from the current grid point to the covalent attachment point
+                double distance[XYZ];
+                for (int i = 0; i < XYZ; i++)
+                    distance[i] = input->covalentPoint[i] - gridPos[i];
+
+                // Distance squared from current grid point to the covalent attachment point
+                double rcovSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
+                rcovSq = rcovSq * input->covHalfWidthSquaredInv;
+                if (rcovSq < APPROX_ZERO_SQ)
+                    rcovSq = APPROX_ZERO_SQ;
+                double energy = input->covBarrier * (1 - exp(-0.69314718055994529 * rcovSq)); // -0.69314718055994529 = log(0.5)
+
+                gridmaps[m].energies[outputIndex] = energy;
+            }
+            END_FOR();
 }
 
 void calculateElectrostaticMap(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary)
@@ -86,23 +100,19 @@ void calculateElectrostaticMap(const InputData *input, const GridMapList &gridma
     // TODO: rewrite this function using NVIDIA CUDA
 
 #if defined(AG_OPENMP)
-    #pragma omp parallel for schedule(dynamic, 1)
+    #pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
         double &outputEnergy = gridmaps.getElectrostaticMap().energies[outputIndex];
 
-        // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
-        if (gridmaps.getElectrostaticMap().isCovalent)
-            outputEnergy = getEnergyForCovalentMap(input, gridPos);
-
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
-            //  Get distance, r, from current grid point, c, to this receptor atom, input->coord,
+            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
             for (int i = 0; i < XYZ; i++)
-                distance[i] = input->coord[ia][i] - gridPos[i];
+                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
             double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
             if (rSq < APPROX_ZERO_SQ)
                 rSq = APPROX_ZERO_SQ;
@@ -129,8 +139,10 @@ void calculateElectrostaticMap(const InputData *input, const GridMapList &gridma
 
 void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
 {
+    // TODO: rewrite this function using NVIDIA CUDA
+
 #if defined(AG_OPENMP)
-    #pragma omp parallel for schedule(dynamic, 1)
+    #pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
@@ -139,10 +151,10 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
-            //  Get distance, r, from current grid point, c, to this receptor atom, input->coord,
+            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
             for (int i = 0; i < XYZ; i++)
-                distance[i] = input->coord[ia][i] - gridPos[i];
+                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
             double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
             if (rSq < APPROX_ZERO_SQ)
                 rSq = APPROX_ZERO_SQ;
@@ -182,7 +194,7 @@ int findClosestHBond(const InputData *input, const double *gridPos)
             // DS or D1
             double distance[XYZ];
             for (int i = 0; i < XYZ; i++)
-                distance[i] = input->coord[ia][i] - gridPos[i];
+                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
             double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
             if (rSq < rminSq)
             {
@@ -199,27 +211,20 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
 
 #if defined(AG_OPENMP)
-    #pragma omp parallel for schedule(dynamic, 1)
+    #pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
-        // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
-        for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
-            if (gridmaps[m].isCovalent)
-                gridmaps[m].energies[outputIndex] = getEnergyForCovalentMap(input, gridPos);
-        if (gridmaps.getDesolvationMap().isCovalent)
-            gridmaps.getDesolvationMap().energies[outputIndex] = getEnergyForCovalentMap(input, gridPos);
-
         HBondInfo hbond(gridmaps.getNumAtomMaps());
         int closestH = findClosestHBond(input, gridPos);
 
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
-            //  Get distance, r, from current grid point, c, to this receptor atom, input->coord,
+            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
             for (int i = 0; i < XYZ; i++)
-                distance[i] = input->coord[ia][i] - gridPos[i];
+                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
             double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
             if (rSq < APPROX_ZERO_SQ)
                 rSq = APPROX_ZERO_SQ;
@@ -532,7 +537,7 @@ void autogridMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
-    beginTimer(1);
+    beginTimer(0);
 
     // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies energyLookup;
@@ -545,7 +550,7 @@ void autogridMain(int argc, char **argv)
     BondVectors *bondVectors = new BondVectors(&logFile);
     bondVectors->calculate(input, parameterLibrary);
 
-    endTimer(1);
+    endTimer(0);
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
@@ -557,7 +562,7 @@ void autogridMain(int argc, char **argv)
 
     // TODO: rewrite writing out progress in percents
     /* Former code:
-    
+
         for (all z)
         {
             tms timesGridStart;
@@ -567,12 +572,17 @@ void autogridMain(int argc, char **argv)
 
             tms timerGridEnd;
             Clock gridEndTime = times(&timerGridEnd);
-            logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", gridCoordZ, input->cgridmin[Z] + gridPosZ, ((z+1) * 100.0) / input->numGridPoints[Z]);
+            logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", gridCoordZ, input->gridCornerMin[Z] + gridPosZ, ((z+1) * 100.0) / input->numGridPoints[Z]);
             logFile.printTimeInHMS((gridEndTime - gridStartTime) * (input->numGridPoints[Z] - z));
             logFile.print("  ");
             logFile.printExecutionTimes(gridStartTime, gridEndTime, &timesGridStart, &timerGridEnd);
         }
     */
+
+    beginTimer(1);
+    // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
+    initCovalentMaps(input, gridmaps);
+    endTimer(1);
 
     beginTimer(2);
     calculateElectrostaticMap(input, gridmaps, parameterLibrary);

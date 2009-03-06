@@ -34,7 +34,7 @@ public:
 private:
     LogFile *logFile;
 
-    int checkSize(int nelements, char axischar);
+    int checkSize(int numGridPointsMinusOne, char axischar);
     static int parseGPFLine(const char *line);
     static double calculateDDDMehlerSolmajer(double distance, double approx_zero);
     static int parseTypes(char *line, char **words, int maxwords);
