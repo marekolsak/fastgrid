@@ -7,6 +7,13 @@
 
 #define implication(x, y) (!(x) || (y))
 
+// Max
+template<typename T>
+inline T max(T x, T y)
+{
+    return x > y ? x : y;
+}
+
 template<typename T>
 inline std::string tostr(const T &var)
 {
@@ -36,14 +43,14 @@ public:
     void ReadFileInfo(const std::string &command, std::istream &input);
     void InsertLine(const std::string line);
     void Clear() { added.clear(); removed.clear(); }
-    bool ExamineChanges(std::ostream &output);
+    bool ExamineChanges(std::ostream &output, double &absErrorMax, double &relErrorMax);
 
 private:
     std::string line, fileinfo;
     std::vector<std::string> added;
     std::vector<std::string> removed;
 
-    static bool IsSimilar(const std::string &s1, const std::string &s2, double &absError, double &relError);
+    static bool IsSimilar(const std::string &s1, const std::string &s2, double &absErrorMax, double &relErrorMax);
 
     friend std::ostream &operator <<(std::ostream &s, const FileDiff &diff);
 };
@@ -81,7 +88,7 @@ void FileDiff::InsertLine(const std::string line)
 }
 
 // examines changes and returns true if they were irrelevant (typically caused by a different floating-point implementation)
-bool FileDiff::ExamineChanges(std::ostream &output)
+bool FileDiff::ExamineChanges(std::ostream &output, double &absErrorMax, double &relErrorMax)
 {
     if (!added.size() && !removed.size())
         return true;
@@ -93,8 +100,9 @@ bool FileDiff::ExamineChanges(std::ostream &output)
     }
 
     bool ok = true;
-    double absError, relError;
     for (size_t i = 0; i < added.size(); i++)
+    {
+        double absError = 0, relError = 0;
         if (!IsSimilar(added[i], removed[i], absError, relError))
         {
             if (ok)
@@ -105,10 +113,14 @@ bool FileDiff::ExamineChanges(std::ostream &output)
             output << "        [" << (i+1) << "] -{" << removed[i] << "} +{" << added[i] << "}, AE: " << absError << ", RE: " << relError << "\n";
             ok = false;
         }
+
+        absErrorMax = max(absErrorMax, absError);
+        relErrorMax = max(relErrorMax, relError);
+    }
     return ok;
 }
 
-bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &absError, double &relError)
+bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &absErrorMax, double &relErrorMax)
 {
     // do not care about execution times
     if (s1.find("Real") != std::string::npos && s2.find("Real") != std::string::npos &&
@@ -131,13 +143,13 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &a
     double x,y;
 
     // both strings may consist of several separate numbers or substrings, we must check each of them
-    while (!stream1.eof() || !stream2.eof())    // until both of them reach an eof
+    while (!stream1.eof() || !stream2.eof())    // until both of them reach eof
     {
         stream1 >> n1;
         stream2 >> n2;
 
-        absError = 0;
-        relError = 0;
+        double absError = 0;
+        double relError = 0;
 
         // a parser error occured
         if (!stream1 || !stream2)
@@ -152,8 +164,14 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &a
         if (!converted)
             return false;
 
-        absError = fabs(x - y);
-        relError = fabs((x - y) / y);
+        if (x != y)
+        {
+            absError = fabs(x - y);
+            relError = fabs((x - y) / y);
+        }
+
+        absErrorMax = max(absErrorMax, absError);
+        relErrorMax = max(relErrorMax, relError);
 
         if (!(0
                 // take the absolute error into account
@@ -189,6 +207,7 @@ int main(int argc, char **argv)
     std::string line;
     line.reserve(256);
     FileDiff diff;
+    double absErrorMax = 0, relErrorMax = 0;
 
     bool skipLog = false;
     while (f.getline(buf, 512))
@@ -198,7 +217,7 @@ int main(int argc, char **argv)
         switch (line[0])
         {
         case 'd':
-            if (!diff.ExamineChanges(std::cout))
+            if (!diff.ExamineChanges(std::cout, absErrorMax, relErrorMax))
                 returnValue = 1;
             skipLog = line.find(argv[2]) != std::string::npos;
             if (!skipLog)
@@ -222,9 +241,10 @@ int main(int argc, char **argv)
         }
     }
 
-    if (!diff.ExamineChanges(std::cout))
+    if (!diff.ExamineChanges(std::cout, absErrorMax, relErrorMax))
         returnValue = 1;
 
+    std::cout << "*** Max AbsError: " << absErrorMax << ", Max RelError: " << relErrorMax << " ***\n";
     if (!returnValue)
         std::cout << "*** Test OK. ***\n";
     return returnValue;

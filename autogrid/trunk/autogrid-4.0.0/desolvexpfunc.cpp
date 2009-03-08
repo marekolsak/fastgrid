@@ -22,8 +22,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "desolvexpfunc.h"
 #include "autogrid.h"
+#include "desolvexpfunc.h"
 #include "math.h"
 
 DesolvExpFunc::DesolvExpFunc(double coeffDesolv)

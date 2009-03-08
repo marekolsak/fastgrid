@@ -35,6 +35,14 @@ struct InputData
     char xyzFilename[MAX_CHARS];
     char parameterLibraryFilename[MAX_CHARS];   // the AD4 parameters .dat file name
 
+    // Grid
+    int numGridPointsPerMap;    // for the entire grid
+    int numGridPoints[XYZ];     // in one axis
+    int numGridPointsDiv2[XYZ]; // in one axis
+    double gridCornerMin[XYZ];  // corner of the grid (minimal coordinates)
+    double gridCenter[XYZ];     // center of mass where the grid is centered on
+    double gridSpacing;         // One quarter of a C-C bond length.
+
     // variables for RECEPTOR:
     // each type is now at most two characters, eg 'NA\0'
     // NB: these are sparse arrays, some entries are not set
@@ -48,14 +56,6 @@ struct InputData
     int atomType[AG_MAX_ATOMS];
     HBondType hbond[AG_MAX_ATOMS];
     double receptorAtomCoord[AG_MAX_ATOMS][XYZ];
-
-    // Grid
-    int numGridPointsPerMap;    // for the entire grid
-    int numGridPoints[XYZ];     // in one axis
-    int numGridPointsDiv2[XYZ]; // in one axis
-    double gridCornerMin[XYZ];  // corner of the grid (minimal coordinates)
-    double gridCenter[XYZ];     // center of mass where the grid is centered on
-    double gridSpacing;         // One quarter of a C-C bond length.
 
     double epsilon[MAX_DIST];
 

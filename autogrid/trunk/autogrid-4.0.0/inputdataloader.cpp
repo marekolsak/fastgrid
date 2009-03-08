@@ -197,10 +197,11 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 while ((fgets(line, length, receptor_fileptr)) != 0)
                 {
                     sscanf(line, "%6s", record);
-                    if (equal(record, "ATOM", 4) || // Amino Acid or DNA/RNA atoms
-                        equal(record, "HETA", 4) || // Non-standard heteroatoms
-                        equal(record, "CHAR", 4))
-                    {               // Partial Atomic Charge - not a PDB record
+                    if (strncmp(record, "ATOM", 4) == 0 || // Amino Acid or DNA/RNA atoms
+                        strncmp(record, "HETA", 4) == 0 || // Non-standard heteroatoms
+                        strncmp(record, "CHAR", 4) == 0)
+                    {
+                        // Partial Atomic Charge - not a PDB record
 
                         strncpy(atom_name, &line[12], 4);
                         /* atom_name is declared as an array of 6 characters, the PDB atom name is 4 characters (C indices 0, 1, 2 and 3) but let's ensure that the fifth character (C index 4)
@@ -415,7 +416,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
         case GPF_GRIDCENTER:
             sscanf(GPFLine, "%*s %s", token);
-            if (equal(token, "auto", 4))
+            if (strncmp(token, "auto", 4) == 0)
             {
                 for (int i = 0; i < XYZ; i++)
                     gridCenter[i] = cmean[i];
@@ -520,7 +521,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         gridmaps[i].xB[j] = 6;
                         gridmaps[i].hbonder[j] = 0;
                         if (gridmaps[i].hbond > D1 && (foundParam->hbond == DS || foundParam->hbond == D1))
-                        {           // AS,A1,A2 map vs DS,D1 probe
+                        {
+                            // AS,A1,A2 map vs DS,D1 probe
                             gridmaps[i].xB[j] = 10;
                             gridmaps[i].hbonder[j] = 1;
                             gridmaps[i].isHBonder = true;
@@ -532,7 +534,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                             // This was removed because "setup_p_l" does this for us... gridmaps[i].nbpEps[j] *= FE_coeff_hbond;
                         }
                         else if ((gridmaps[i].hbond == DS || gridmaps[i].hbond == D1) && foundParam->hbond > D1)
-                        {           // DS,D1 map vs AS,A1,A2 probe
+                        {
+                            // DS,D1 map vs AS,A1,A2 probe
                             gridmaps[i].xB[j] = 10;
                             gridmaps[i].hbonder[j] = 1;
                             gridmaps[i].isHBonder = true;
@@ -750,49 +753,49 @@ int InputDataLoader::parseGPFLine(const char *line)
         token = GPF_NULL;
     else if (c[0]=='#')
         token = GPF_COMMENT;
-    else if (equal(c,"receptor_types",14))
+    else if (strncmp(c, "receptor_types", 14) == 0)
         token = GPF_RECEPTOR_TYPES;
-    else if (equal(c,"receptor",8))
+    else if (strncmp(c, "receptor", 8) == 0)
         token = GPF_RECEPTOR;
-    else if (equal(c,"gridfld",7))
+    else if (strncmp(c, "gridfld", 7) == 0)
         token = GPF_GRIDFLD;
-    else if (equal(c,"npts",4))
+    else if (strncmp(c, "npts", 4) == 0)
         token = GPF_NPTS;
-    else if (equal(c,"spacing",7))
+    else if (strncmp(c, "spacing", 7) == 0)
         token = GPF_SPACING;
-    else if (equal(c,"gridcenter",10))
+    else if (strncmp(c, "gridcenter", 10) == 0)
         token = GPF_GRIDCENTER;
-    else if (equal(c,"types",5))
+    else if (strncmp(c, "types", 5) == 0)
         token = GPF_LIGAND_TYPES;
-    else if (equal(c,"ligand_types",12))
+    else if (strncmp(c, "ligand_types", 12) == 0)
         token = GPF_LIGAND_TYPES;
-    else if (equal(c,"map",3))
+    else if (strncmp(c, "map", 3) == 0)
         token = GPF_MAP;
-    else if (equal(c,"elecmap",7))
+    else if (strncmp(c, "elecmap", 7) == 0)
         token = GPF_ELECMAP;
-    else if (equal(c,"dsolvmap",8))
+    else if (strncmp(c, "dsolvmap", 8) == 0)
         token = GPF_DSOLVMAP;
-    else if (equal(c,"covalentmap",11))
+    else if (strncmp(c, "covalentmap", 11) == 0)
         token = GPF_COVALENTMAP;
-    else if (equal(c,"nbp_coeffs",10))
+    else if (strncmp(c, "nbp_coeffs", 10) == 0)
         token = GPF_NBP_COEFFS;
-    else if (equal(c,"nbp_r_eps",9))
+    else if (strncmp(c, "nbp_r_eps", 9) == 0)
         token = GPF_NBP_R_EPS;
-    else if (equal(c,"dielectric",10))
+    else if (strncmp(c, "dielectric", 10) == 0)
         token = GPF_DIEL;
-    else if (equal(c,"qasp",4))
+    else if (strncmp(c, "qasp", 4) == 0)
         token = GPF_QASP;
-    else if (equal(c,"fmap",4))
+    else if (strncmp(c, "fmap", 4) == 0)
         token = GPF_FMAP;
-    else if (equal(c,"disorder_h",10))
+    else if (strncmp(c, "disorder_h", 10) == 0)
         token = GPF_DISORDER;
-    else if (equal(c,"smooth",6))
+    else if (strncmp(c, "smooth", 6) == 0)
         token = GPF_SMOOTH;
-    else if (equal(c,"sol_par",7))
+    else if (strncmp(c, "sol_par", 7) == 0)
         token = GPF_SOL_PAR;
-    else if (equal(c,"constant",8))
+    else if (strncmp(c, "constant", 8) == 0)
         token = GPF_CONSTANT;
-    else if (equal(c,"parameter_file",14))
+    else if (strncmp(c, "parameter_file", 14) == 0)
         token = GPF_PARAM_FILE;
 
     return token;

@@ -193,22 +193,8 @@ void ParameterLibrary::readLine(const char *line)
         if (nfields < 2)
             return; // skip any line without enough info
 
-        if (int_hbond_type == 0)
-            thisParameter.hbond = NON;
-        else if (int_hbond_type == 1)
-            thisParameter.hbond = DS;
-        else if (int_hbond_type == 2)
-            thisParameter.hbond = D1;
-        else if (int_hbond_type == 3)
-            thisParameter.hbond = AS;
-        else if (int_hbond_type == 4)
-            thisParameter.hbond = A1;
-        else if (int_hbond_type == 5)
-            thisParameter.hbond = A2;
-        else
-            thisParameter.hbond = NON;
-
-        thisParameter.epsij   *= this->coeff_vdW;
+        thisParameter.hbond = int_hbond_type <= A2 ? HBondType(int_hbond_type) : NON;
+        thisParameter.epsij *= this->coeff_vdW;
         thisParameter.epsijHB *= this->coeff_hbond;
 
         insertAtomParameter(thisParameter.autogridType, thisParameter);

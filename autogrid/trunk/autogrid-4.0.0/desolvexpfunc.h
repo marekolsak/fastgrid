@@ -31,7 +31,10 @@ public:
     DesolvExpFunc(double coeffDesolv);
     ~DesolvExpFunc();
 
-    double operator ()(int i) const { return func[i]; }
+    double operator ()(int i) const
+    {
+        return func[i];
+    }
 
 private:
     double *func;

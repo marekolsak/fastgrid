@@ -32,9 +32,6 @@
 #include "math.h"
 #include <new>
 
-#define AG_OPENMP
-#define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
-
 // Useful macros
 
 #define FOR_EACH_GRID_POINT(gridPos, outputIndex) \
@@ -59,12 +56,11 @@
 
 #define END_FOR() } } }
 
-double roundOutput(double a)
+__forceinline double roundOutput(double a)
 {
-    a = round3dp(a);
-    if (fabs(a) < PRECISION)
+    if (fabs(a) < 0.0005)
         return 0;
-    return a;
+    return round3dp(a);
 }
 
 void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
@@ -80,14 +76,13 @@ void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
             {
                 // Calculate the distance from the current grid point to the covalent attachment point
                 double distance[XYZ];
-                for (int i = 0; i < XYZ; i++)
-                    distance[i] = input->covalentPoint[i] - gridPos[i];
+                subtractVectors(distance, input->covalentPoint, gridPos);
 
                 // Distance squared from current grid point to the covalent attachment point
-                double rcovSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
+                double rcovSq = lengthSquared(distance[X], distance[Y], distance[Z]);
                 rcovSq = rcovSq * input->covHalfWidthSquaredInv;
-                if (rcovSq < APPROX_ZERO_SQ)
-                    rcovSq = APPROX_ZERO_SQ;
+                if (rcovSq < sq(APPROX_ZERO))
+                    rcovSq = sq(APPROX_ZERO);
                 double energy = input->covBarrier * (1 - exp(-0.69314718055994529 * rcovSq)); // -0.69314718055994529 = log(0.5)
 
                 gridmaps[m].energies[outputIndex] = energy;
@@ -111,11 +106,10 @@ void calculateElectrostaticMap(const InputData *input, const GridMapList &gridma
         {
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
-            for (int i = 0; i < XYZ; i++)
-                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
-            double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
-            if (rSq < APPROX_ZERO_SQ)
-                rSq = APPROX_ZERO_SQ;
+            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
+            if (rSq < sq(APPROX_ZERO))
+                rSq = sq(APPROX_ZERO);
             double invR = rsqrt(rSq);
 
             // apply the estat forcefield coefficient/weight here
@@ -153,11 +147,10 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
         {
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
-            for (int i = 0; i < XYZ; i++)
-                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
-            double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
-            if (rSq < APPROX_ZERO_SQ)
-                rSq = APPROX_ZERO_SQ;
+            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
+            if (rSq < sq(APPROX_ZERO))
+                rSq = sq(APPROX_ZERO);
 
             // Calculate the so-called "Floating Grid"...
             fgridInvRMin = max(rsqrt(rSq), fgridInvRMin);
@@ -170,32 +163,48 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
 
 struct HBondInfo
 {
-    double min[MAX_MAPS], max[MAX_MAPS];
-    bool flag[MAX_MAPS];
-
-    HBondInfo(int numAtomMaps)
+    struct Info
     {
+        double min, max;
+        bool flag;
+    } info[MAX_MAPS];
+
+    __forceinline HBondInfo(int numAtomMaps)
+    {
+        Info def;
+        def.min = 999999;
+        def.max = -999999;
+        def.flag = false;
+
         for (int m = 0; m < numAtomMaps; m++)
-        {
-            min[m] = 999999;
-            max[m] = -999999;
-            flag[m] = false;
-        }
+            info[m] = def;
+    }
+
+    __forceinline Info &operator [](int i)
+    {
+        return info[i];
+    }
+
+    __forceinline void insert(int mapIndex, double energy)
+    {
+        Info &i = info[mapIndex];
+        i.min = min(i.min, energy);
+        i.max = max(i.max, energy);
+        i.flag = true;
     }
 };
 
-int findClosestHBond(const InputData *input, const double *gridPos)
+__forceinline int findClosestHBond(const InputData *input, const double *gridPos)
 {
     int closestH = 0;
     double rminSq = sq(999999.0);
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-        if ((input->hbond[ia] == DS) || (input->hbond[ia] == D1))
+        if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
             // DS or D1
             double distance[XYZ];
-            for (int i = 0; i < XYZ; i++)
-                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
-            double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
+            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
             if (rSq < rminSq)
             {
                 rminSq = rSq;
@@ -205,10 +214,171 @@ int findClosestHBond(const InputData *input, const double *gridPos)
     return closestH;
 }
 
+__forceinline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, double (&distance)[XYZ],
+                             double &racc, double &rdon, double &Hramp) // output
+{
+    racc = 1;
+    rdon = 1;
+    Hramp = 1;   // Hramp ramps in Hbond acceptor probes
+
+    //  cosTheta = distance dot bondVectors->rvector == cos(angle) subtended.
+    double cosTheta = -dotProduct(distance, bondVectors->rvector[ia]);
+
+    // Calculate racc/rdon/Hramp
+    if (input->hbond[ia] == D1)
+    {
+        // D1
+        //  ia-th receptor atom = Hydrogen (4 = H)
+        //  => receptor H-bond donor, OH or NH.
+        //  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
+
+        racc = 0;
+
+        //  H->current-grid-pt vector < 90 degrees from
+        //  N->H or O->H vector,
+        if (cosTheta > 0)
+        {
+            //  racc = [cos(theta)]^2.0 for N-H
+            //  racc = [cos(theta)]^4.0 for O-H
+            racc = cosTheta;
+
+            switch (bondVectors->rexp[ia]) // racc = pow(cosTheta, bondVectors->rexp[ia]);
+            {
+            case 4:
+                racc = sq(racc);
+            case 2:
+                racc = sq(racc);
+            }
+
+            // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
+            if (ia != closestH)
+            {
+                double theta = angle(bondVectors->rvector[closestH], bondVectors->rvector[ia]);
+                Hramp = 0.5 - 0.5 * cos(theta * (120.0 / 90.0));
+            }   // ia test
+            // END NEW2 calculate dot product of bond vector with bond vector of best input->hbond
+        }
+        // endif (input->atomType[ia] == hydrogen)
+        // NEW Directional N acceptor
+    }
+    else if (input->hbond[ia] == A1)
+    {
+        // A1
+        //  ia-th macromolecule atom = Nitrogen (4 = H)
+        //  calculate rdon for H-bond Donor PROBES at this grid pt.
+
+        //  H->current-grid-pt vector < 90 degrees from X->N vector
+        rdon = 0;
+        if (cosTheta > 0)
+            rdon = sq(cosTheta); // for H->N
+        // endif (input->atomType[ia] == nitrogen)
+        // end NEW Directional N acceptor
+    }
+    else if (input->hbond[ia] == A2)
+    {
+        rdon = 0;
+
+        if (bondVectors->disorder[ia])
+        {
+            // A2
+            // cylindrically disordered hydroxyl
+
+            racc = 0;
+            double theta = acos_clamped(cosTheta);
+            if (theta <= 1.24791 + (PI / 2))
+            {
+                // 1.24791 rad = 180 deg minus C-O-H bond angle, ** 108.5 deg
+                rdon = sq(sq(cos(theta - 1.24791)));    // pow(.., 4)
+                racc = rdon;
+            }
+        }
+        else
+        {
+            // A2
+            //  ia-th receptor atom = Oxygen
+            //  => receptor H-bond acceptor, oxygen.
+
+            // rdon expressions from Goodford
+            if (cosTheta >= 0)
+            {
+                // ti is the angle in the lone pair plane, away from the
+                // vector between the lone pairs,
+                // calculated as (grid vector CROSS lone pair plane normal)
+                // DOT C=O vector - 90 deg
+                double cross[XYZ];
+                crossProduct(cross, distance, bondVectors->rvector2[ia]);
+                double rd2 = lengthSquared(cross[0], cross[1], cross[2]);
+                if (rd2 < APPROX_ZERO)
+                    rd2 = APPROX_ZERO;
+                double inv_rd = rsqrt(rd2);
+
+                double ti = fabs(acos_clamped(inv_rd * dotProduct(cross, bondVectors->rvector[ia])) - (PI / 2));
+                // the 2.0*ti can be replaced by (ti + ti) in: rdon = (0.9 + 0.1*sin(2.0*ti))*cos(t0);
+                rdon = 0.9 + 0.1 * sin(ti + ti);
+                // 0.34202 = cos (100 deg)
+            }
+            else if (cosTheta >= -0.34202)
+                rdon = 562.25 * cube(0.116978 - sq(cosTheta));
+
+            // t0 is the angle out of the lone pair plane, calculated
+            // as 90 deg - acos (vector to grid point DOT lone pair
+            // plane normal)
+            double t0 = (PI / 2) - angle(distance, bondVectors->rvector2[ia]);
+            rdon *= cos(t0);
+
+            // endif input->atomType == oxygen, not disordered
+        }
+    }
+}
+
+__forceinline void sumPairwiseInteractions(const InputData *input, const GridMapList &gridmaps, const PairwiseInteractionEnergies &energyLookup,
+                             const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors, HBondInfo &hbond,
+                             int outputIndex, int m, int ia, int indexR, int hydrogen, double racc, double rdon, double Hramp)
+{
+    double &e = gridmaps[m].energies[outputIndex];
+    double pwiEnergy = energyLookup(input->atomType[ia], indexR, m);
+
+    if (gridmaps[m].isHBonder)
+    {
+        // PROBE forms H-bonds...
+
+        // rsph ramps in angular dependence for distances with negative energy
+        double rsph = clamp(pwiEnergy / 100, 0.0, 1.0);
+
+        if ((gridmaps[m].hbond == AS || gridmaps[m].hbond == A2) && (input->hbond[ia] == DS || input->hbond[ia] == D1))
+            // PROBE can be an H-BOND ACCEPTOR,
+            e += (bondVectors->disorder[ia] ? energyLookup(hydrogen, max(0, indexR - 110), m) : pwiEnergy) *
+                 Hramp * (racc + (1 - racc) * rsph);
+        else if (gridmaps[m].hbond == A1 && (input->hbond[ia] == DS || input->hbond[ia] == D1))
+            // A1 vs DS, D1
+            hbond.insert(m, pwiEnergy * (racc + (1 - racc) * rsph));
+        else if ((gridmaps[m].hbond == DS || gridmaps[m].hbond == D1) && input->hbond[ia] >= AS)
+            // DS,D1 vs AS,A1,A2
+            // PROBE is H-BOND DONOR,
+            hbond.insert(m, pwiEnergy * (rdon + (1 - rdon) * rsph));
+        else
+            // hbonder PROBE-ia cannot form a H-bond...,
+            e += pwiEnergy;
+    }
+    else
+        // PROBE does not form H-bonds...,
+        e += pwiEnergy;
+
+    // add desolvation energy
+    // forcefield desolv coefficient/weight in desolvExpFunc
+    e += gridmaps[m].solparProbe * input->vol[ia] * desolvExpFunc(indexR) +
+        (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
+}
+
 void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
+
+    /*
+        Ulozim si do mrizky pozice vsech receptor atoms.
+        Sirka mrizky bude NBCUTOFF * 2, pak se staci divat jen do ctyr bunek. Indexovat se bude pomoci gridPos nebo {x,y,z}.
+    */
 
 #if defined(AG_OPENMP)
     #pragma AG_OPENMP_PARALLEL_FOR
@@ -221,18 +391,18 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
-            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
-            double distance[XYZ];
-            for (int i = 0; i < XYZ; i++)
-                distance[i] = input->receptorAtomCoord[ia][i] - gridPos[i];
-            double rSq = hypotenuseSq(distance[X], distance[Y], distance[Z]);
-            if (rSq < APPROX_ZERO_SQ)
-                rSq = APPROX_ZERO_SQ;
-
             // If distance from grid point to atom ia is too large,
             // or if atom is a disordered hydrogen,
             //   add nothing to the grid-point's non-bond energy;
             //   just continue to next atom...
+
+            //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
+            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
+            double distance[XYZ];
+            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+
+            // rSq = |distance|^2
+            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
 
             if (rSq > sq(NBCUTOFF))
                 continue;   // onto the next atom...
@@ -240,225 +410,36 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
                 continue;   // onto the next atom...
 
             // Normalize the distance vector
+            if (rSq < sq(APPROX_ZERO))
+                rSq = sq(APPROX_ZERO);
             double invR = rsqrt(rSq);
-            for (int i = 0; i < XYZ; i++)
-                distance[i] *= invR;
+            scalarProduct(distance, distance, invR);
 
             int indexR = min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
 
-            double racc = 1;
-            double rdon = 1;
-            double Hramp = 1;   // Hramp ramps in Hbond acceptor probes
-
-            // Calculate racc/rdon/Hramp
-            if (input->hbond[ia] == D1)
-            {
-                // D1
-                //  ia-th receptor atom = Hydrogen (4 = H)
-                //  => receptor H-bond donor, OH or NH.
-                //  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
-                double cosTheta = 0;
-                //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
-                //  cosTheta = d dot bondVectors->rvector == cos(angle) subtended.
-                for (int i = 0; i < XYZ; i++)
-                    cosTheta -= distance[i] * bondVectors->rvector[ia][i];
-
-                if (cosTheta <= 0)
-                    //  H->current-grid-pt vector >= 90 degrees from
-                    //  N->H or O->H vector,
-                    racc = 0;
-                else
-                {
-                    //  racc = [cos(theta)]^2.0 for N-H
-                    //  racc = [cos(theta)]^4.0 for O-H,
-                    racc = cosTheta;
-
-                    switch (bondVectors->rexp[ia])
-                    {
-                    case 4:
-                        racc = sq(racc);
-                    case 2:
-                        racc = sq(racc);
-                    }
-                    // racc = pow(cosTheta, bondVectors->rexp[ia]);
-
-                    // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
-                    if (ia == closestH)
-                        Hramp = 1;
-                    else
-                    {
-                        cosTheta = 0;
-                        for (int i = 0; i < XYZ; i++)
-                            cosTheta += bondVectors->rvector[closestH][i] * bondVectors->rvector[ia][i];
-                        double theta = acos(clamp(cosTheta, -1.0, 1.0));
-                        Hramp = 0.5 - 0.5 * cos(theta * (120.0 / 90.0));
-                    }   // ia test
-                    // END NEW2 calculate dot product of bond vector with bond vector of best input->hbond
-                }
-                // endif (input->atomType[ia] == hydrogen)
-                // NEW Directional N acceptor
-            }
-            else if (input->hbond[ia] == A1)
-            {           // A1
-                //  ia-th macromolecule atom = Nitrogen (4 = H)
-                //  calculate rdon for H-bond Donor PROBES at this grid pt.
-                double cosTheta = 0;
-                //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
-                //  cosTheta = d dot bondVectors->rvector == cos(angle) subtended.
-                for (int i = 0; i < XYZ; i++)
-                    cosTheta -= distance[i] * bondVectors->rvector[ia][i];
-
-                if (cosTheta <= 0)
-                    //  H->current-grid-pt vector >= 90 degrees from
-                    //  X->N vector,
-                    rdon = 0;
-                else
-                    //  racc = [cos(theta)]^2.0 for H->N
-                    rdon = cosTheta * cosTheta;
-                // endif (input->atomType[ia] == nitrogen)
-                // end NEW Directional N acceptor
-            }
-            else if (input->hbond[ia] == A2 && !bondVectors->disorder[ia])
-            {
-                // A2
-                //  ia-th receptor atom = Oxygen
-                //  => receptor H-bond acceptor, oxygen.
-
-                // check to see that probe is in front of oxygen, not behind
-                double cosTheta = 0;
-                for (int i = 0; i < XYZ; i++)
-                    cosTheta -= distance[i] * bondVectors->rvector[ia][i];
-                // t0 is the angle out of the lone pair plane, calculated
-                // as 90 deg - acos (vector to grid point DOT lone pair
-                // plane normal)
-                double t0 = 0;
-                for (int i = 0; i < XYZ; i++)
-                    t0 += distance[i] * bondVectors->rvector2[ia][i];
-                t0 = (PI / 2) - acos(clamp(t0, -1.0, 1.0));
-
-                // ti is the angle in the lone pair plane, away from the
-                // vector between the lone pairs,
-                // calculated as (grid vector CROSS lone pair plane normal)
-                // DOT C=O vector - 90 deg
-                double cross[XYZ];
-                cross[0] = distance[1] * bondVectors->rvector2[ia][2] - distance[2] * bondVectors->rvector2[ia][1];
-                cross[1] = distance[2] * bondVectors->rvector2[ia][0] - distance[0] * bondVectors->rvector2[ia][2];
-                cross[2] = distance[0] * bondVectors->rvector2[ia][1] - distance[1] * bondVectors->rvector2[ia][0];
-                double rd2 = hypotenuseSq(cross[0], cross[1], cross[2]);
-                if (rd2 < APPROX_ZERO)
-                    rd2 = APPROX_ZERO;
-                double inv_rd = rsqrt(rd2);
-                double ti = 0;
-                for (int i = 0; i < XYZ; i++)
-                    ti += cross[i] * inv_rd * bondVectors->rvector[ia][i];
-
-                // rdon expressions from Goodford
-                rdon = 0;
-                if (cosTheta >= 0)
-                {
-                    ti = fabs(acos(clamp(ti, -1.0, 1.0)) - (PI / 2));
-                    // the 2.0*ti can be replaced by (ti + ti) in: rdon = (0.9 + 0.1*sin(2.0*ti))*cos(t0);
-                    rdon = (0.9 + 0.1 * sin(ti + ti)) * cos(t0);
-                    // 0.34202 = cos (100 deg)
-                }
-                else if (cosTheta >= -0.34202)
-                    rdon = 562.25 * cube(0.116978 - sq(cosTheta)) * cos(t0);
-
-                // endif input->atomType == oxygen, not disordered
-            }
-            else if (input->hbond[ia] == A2 && bondVectors->disorder[ia])
-            {
-                // A2
-                // cylindrically disordered hydroxyl
-                double cosTheta = 0;
-                for (int i = 0; i < XYZ; i++)
-                    cosTheta -= distance[i] * bondVectors->rvector[ia][i];
-                racc = 0;
-                rdon = 0;
-                double theta = acos(clamp(cosTheta, -1.0, 1.0));
-                if (theta <= 1.24791 + (PI / 2))
-                {
-                    // 1.24791 rad = 180 deg minus C-O-H bond angle, ** 108.5 deg
-                    rdon = sq(sq(cos(theta - 1.24791)));    // pow(.., 4)
-                    racc = rdon;
-                }
-            }           // input->atomType test
+            double racc, rdon, Hramp;
+            getHBondAngularFunction(input, bondVectors, ia, closestH, distance, racc, rdon, Hramp);
 
             // For each probe atom-type,
             // Sum pairwise interactions between each probe
             // at this grid point (gridPos[0:2])
             // and the current receptor atom, ia...
             for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
-            {
-                // We do not want to change the current enrg value for any covalent maps, make sure iscovalent is false...
                 if (!gridmaps[m].isCovalent)
-                {
-                    double pwiEnergy = energyLookup(input->atomType[ia], indexR, m);
+                    sumPairwiseInteractions(input, gridmaps, energyLookup, desolvExpFunc, bondVectors, hbond, outputIndex, m, ia, indexR, hydrogen, racc, rdon, Hramp);
 
-                    if (gridmaps[m].isHBonder)
-                    {
-                        // PROBE forms H-bonds...
-
-                        // rsph ramps in angular dependence for distances with negative energy
-                        double rsph = clamp(pwiEnergy / 100, 0.0, 1.0);
-
-                        if ((gridmaps[m].hbond == AS || gridmaps[m].hbond == A2)    // AS or A2
-                            && (input->hbond[ia] == DS || input->hbond[ia] == D1))
-                        {
-                            // DS or D1
-                            // PROBE can be an H-BOND ACCEPTOR,
-                            double f = Hramp * (racc + (1 - racc) * rsph);
-                            if (!bondVectors->disorder[ia])
-                                gridmaps[m].energies[outputIndex] += f * pwiEnergy;
-                            else
-                                gridmaps[m].energies[outputIndex] += f * energyLookup(hydrogen, max(0, indexR - 110), m);
-                        }
-                        else if ((gridmaps[m].hbond == A1)    // A1
-                                 && (input->hbond[ia] == DS || input->hbond[ia] == D1))
-                        {
-                            // DS,D1
-                            double hbondEnergy = pwiEnergy * (racc + (1 - racc) * rsph);
-                            hbond.min[m] = min(hbond.min[m], hbondEnergy);
-                            hbond.max[m] = max(hbond.max[m], hbondEnergy);
-                            hbond.flag[m] = true;
-                        }
-                        else if ((gridmaps[m].hbond == DS || gridmaps[m].hbond == D1) && (input->hbond[ia] > D1))
-                        {
-                            // DS,D1 vs AS,A1,A2
-                            // PROBE is H-BOND DONOR,
-                            double hbondEnergy = pwiEnergy * (rdon + (1 - rdon) * rsph);
-                            hbond.min[m] = min(hbond.min[m], hbondEnergy);
-                            hbond.max[m] = max(hbond.max[m], hbondEnergy);
-                            hbond.flag[m] = true;
-                        }
-                        else
-                            // hbonder PROBE-ia cannot form a H-bond...,
-                            gridmaps[m].energies[outputIndex] += pwiEnergy;
-                    }
-                    else
-                        // PROBE does not form H-bonds...,
-                        gridmaps[m].energies[outputIndex] += pwiEnergy;
-
-                    // add desolvation energy
-                    // forcefield desolv coefficient/weight in desolvExpFunc
-                    gridmaps[m].energies[outputIndex] += gridmaps[m].solparProbe * input->vol[ia] * desolvExpFunc(indexR) +
-                        (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
-                } // is not covalent
-            }
             gridmaps.getDesolvationMap().energies[outputIndex] += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
         } // ia loop, over all receptor atoms...
 
         for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
         {
             double &e = gridmaps[m].energies[outputIndex];
-            if (hbond.flag[m])
-            {
-                e += hbond.min[m];
-                e += hbond.max[m];
-            }
+            if (hbond[m].flag)
+                e += hbond[m].min + hbond[m].max;
             e = roundOutput(e);
         }
-        gridmaps.getDesolvationMap().energies[outputIndex] = roundOutput(gridmaps.getDesolvationMap().energies[outputIndex]);
+        double &e = gridmaps.getDesolvationMap().energies[outputIndex];
+        e = roundOutput(e);
     }
     END_FOR();
 }
@@ -585,10 +566,11 @@ void autogridMain(int argc, char **argv)
     endTimer(1);
 
     beginTimer(2);
+    // Calculation of the electrostatic map
     calculateElectrostaticMap(input, gridmaps, parameterLibrary);
     endTimer(2);
 
-    // Calculation of gridmaps
+    // Calculation of the atom maps and the desolvation map
     beginTimer(3);
     calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
     endTimer(3);

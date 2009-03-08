@@ -41,16 +41,19 @@ inline float rsqrtApprox(float a)
 template<typename T>
 inline T rsqrt(T a)
 {
+#if 0
     //return 1 / sqrt(a);
 
-    T g = rsqrtApprox(float(a));
+#else
+    T g = T(rsqrtApprox(float(a)));
 
     // Improve the accuracy using Newton's method
-    T halfa = 0.5 * a;
-    g *= 1.5 - halfa*g*g;
-    g *= 1.5 - halfa*g*g;
+    T halfa = T(0.5) * a;
+    for (int i = 0; i < 4; i++)
+        g *= T(1.5) - halfa*g*g;
 
     return g;
+#endif
 }
 
 // Square
@@ -69,30 +72,30 @@ inline T cube(T a)
 
 // Hypotenuse squared
 template<typename T>
-inline T hypotenuseSq(T x, T y, T z)
+inline T lengthSquared(T x, T y, T z)
 {
     return x*x + y*y + z*z;
 }
 
-// Hypotenuse
-template<typename T>
-inline T hypotenuse(T x, T y, T z)
+// Length of a vector
+/*template<typename T>
+inline T length(T x, T y, T z)
 {
-    return 1 / rsqrt(hypotenuseSq<T>(x, y, z));
-}
+    return sqrt(lengthSquared<T>(x, y, z));
+}*/
 
-// Reciprocal of hypotenuse
+// Reciprocal of length
 template<typename T>
-inline T hypotenuseInv(T x, T y, T z)
+inline T lengthInv(T x, T y, T z)
 {
-    return rsqrt<T>(hypotenuseSq<T>(x, y, z));
+    return rsqrt<T>(lengthSquared<T>(x, y, z));
 }
 
 // Normalize the vector
 template<typename T>
 inline void normalize(T &x, T &y, T &z)
 {
-    T hypInv = hypotenuseInv<T>(x, y, z);
+    T hypInv = lengthInv<T>(x, y, z);
     x *= hypInv;
     y *= hypInv;
     z *= hypInv;
@@ -125,4 +128,69 @@ inline T clamp(T x, T min, T max)
     return x < min ? min :
            x > max ? max :
            x;
+}
+
+// Acos clamped to [-1, 1]
+template<typename T>
+inline T acos_clamped(T x)
+{
+    return acos(clamp(x, T(-1), T(1)));
+}
+
+// round() is a C99 function and not universally available
+// Required to round consistently on different platforms
+#if !defined(HAVE_ROUND)
+template<typename T>
+inline T round(T x)
+{
+    return floor(x + T(0.5));
+}
+#endif
+
+// Round to 3 decimal places
+template<typename T>
+inline T round3dp(T x)
+{
+    return round(x * T(1000)) / T(1000);
+}
+
+// Subtract two vectors
+template<typename T>
+inline void subtractVectors(T *r, const T *a, const T *b)
+{
+    r[0] = a[0] - b[0];
+    r[1] = a[1] - b[1];
+    r[2] = a[2] - b[2];
+}
+
+// Dot product
+template<typename T>
+inline T dotProduct(const T *a, const T *b)
+{
+    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+}
+
+// Multiply a vector by a scalar
+template<typename T>
+inline void scalarProduct(T *r, const T *a, T s)
+{
+    r[0] = a[0] * s;
+    r[1] = a[1] * s;
+    r[2] = a[2] * s;
+}
+
+// Get angle between 2 vectors
+template<typename T>
+inline T angle(const T *a, const T *b)
+{
+    return acos_clamped(dotProduct(a, b));
+}
+
+// Cross product
+template<typename T>
+void crossProduct(T *r, const T *a, const T *b)
+{
+    r[0] = a[1] * b[2] - a[2] * b[1];
+    r[1] = a[2] * b[0] - a[0] * b[2];
+    r[2] = a[0] * b[1] - a[1] * b[0];
 }

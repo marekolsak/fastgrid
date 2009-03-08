@@ -35,7 +35,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
 
     // 7:CHANGE HERE: scan the 'mapIndex' from the input
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-    {                                      //** ia = i_receptor_atom_a **
+    {
+        //** ia = i_receptor_atom_a **
         disorder[ia] = false;   // initialize disorder flag.
         bool warned = false;
 
@@ -58,10 +59,11 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     //                            ib-ia  ib-ia
                     for (int i = 0; i < XYZ; i++)
                         d[i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                    rd2 = hypotenuseSq(d[X], d[Y], d[Z]);
+                    rd2 = lengthSquared(d[X], d[Y], d[Z]);
                     // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
                     if (rd2 < 1.90)
-                    {           // INCREASED for H-S bonds
+                    {
+                        // INCREASED for H-S bonds
                         if (rd2 < APPROX_ZERO)
                         {
                             if (rd2 == 0)
@@ -100,7 +102,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
             // RECEPTOR H_BOND ACCEPTOR,
         }
         else if (input->hbond[ia] == A2)
-        {                       // A2
+        {
+            // A2
             // Scan from at most, (ia-20)th m/m atom, or ia-th (if ia<20)
             //        to (ia + 5)th m/m-atom
             // determine number of atoms bonded to the oxygen

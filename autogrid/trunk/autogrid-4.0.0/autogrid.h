@@ -39,70 +39,32 @@
 #include <cmath>
 #include <cfloat>
 
-/******************************************************************************/
-/*      Name: autogrid.h                                                      */
-/*  Function: Header file for Autogrid.                                       */
-/* Copyright: (C) 1995, TSRI                                                  */
-/*----------------------------------------------------------------------------*/
-/*   Authors: Garrett Matthew Morris, David S. Goodsell                       */
-/*                                                                            */
-/*            The Scripps Research Institute                                  */
-/*            Department of Molecular Biology, MB5                            */
-/*            10666 North Torrey Pines Road                                   */
-/*            La Jolla, CA 92037.                                             */
-/*                                                                            */
-/*            e-mail: garrett@scripps.edu                                     */
-/*                    goodsell@scripps.edu                                    */
-/*                                                                            */
-/*      Date: 02/06/95  6-FEB-1995                                            */
-/*----------------------------------------------------------------------------*/
-/*    Inputs: None.                                                           */
-/*   Returns: Parameters, Macro substitutions, Prototyped functions.          */
-/*   Globals: (see 'autoglobal.h')                                            */
-/*----------------------------------------------------------------------------*/
-/* Modification Record                                                        */
-/* Date     Inits   Comments                                                  */
-/* 04/01/93 GMM     Created for use in makefile.                              */
-/******************************************************************************/
+// OpenMP configuration
 
-#define MAX_DIST     16384   /* Maximum distance in 100ths of an Angstrom.    */
-                             /*  = 163.84 Angstroms                           */
-#define AG_MAX_ATOMS    32768   /* Maximum number of atoms in macromolecule.     */
-/*    32768 = 2^15    */
-/*    int 16-bit two's complement ranges 0-32767, 0 to (2^15 - 1)    */
+#define AG_OPENMP
+#define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
 
-#define ORDERED     0
-#define CYLINDRICAL 1
-#define SPHERICAL   2
+// Macros
 
-#define A_DIVISOR   100    /* Angstrom is divided by this in look-up table. */
+#define MAX_DIST                (1<<14) // 2^14 = 16384 = 163.84 Angstroms. Maximum distance in 100ths of an Angstrom.
+#define AG_MAX_ATOMS            (1<<15) // 2^15 = 32768. Maximum number of atoms in macromolecule.
+#define A_DIVISOR               100     // Angstrom is divided by this in look-up table.
+#define NBCUTOFF                8       // non-bond cutoff = 8 Angstroms.
+#define MAX_LEN_AUTOGRID_TYPE   7
+#define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???
+#define NUM_RECEPTOR_TYPES      NUM_ALL_TYPES
+#define INIT_NUM_GRID_PTS       -1
 
-#define NBCUTOFF    8      /* non-bond cutoff = 8 Angstroms.                */
+// Functions
 
-#define PRECISION   0.0001 /* fabs(Energies) less than this will be written as '0' */
+template<typename T>
+inline double angstrom(T i)
+{
+    return double(i) / A_DIVISOR;
+}
 
-#define APPROX_ZERO_SQ (APPROX_ZERO*APPROX_ZERO)
-
-/*----------------------------------------------------------------------------*/
-/* Macros,                                                                    */
-/*----------------------------------------------------------------------------*/
-
-#define equal(a,b,n)        (strncmp(a, b, size_t(n)) == 0)
-
-// round() is a C99 function and not universally available
-// Required to round %.3f consistently on different platforms
-#if defined(HAVE_ROUND)
-    #define round3dp(x) ((round((x)*1000.0L))/1000.0L)
-#else
-    #define round3dp(x) ((floor((x)*1000.0 + 0.5)) / 1000.0)
-#endif
-
-#define angstrom(i)         ((double(i)) / A_DIVISOR)
-#define lookup(r)           (int((r) * A_DIVISOR))
-
-#define NUM_ALL_TYPES 20   /*??? IS THIS REASONABLE???*/
-#define MAX_LEN_AUTOGRID_TYPE 7
-
-// from main()
-#define NUM_RECEPTOR_TYPES  NUM_ALL_TYPES
-#define INIT_NUM_GRID_PTS -1
+template<typename T>
+inline int lookup(T r)
+{
+    return int(r * A_DIVISOR);
+}
