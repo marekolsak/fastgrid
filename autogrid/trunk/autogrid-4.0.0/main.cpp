@@ -30,6 +30,8 @@
 #include "bondvectors.h"
 #include "inputdataloader.h"
 #include "math.h"
+#include "spatialgrid.h"
+#include "octree.h"
 #include <new>
 
 // Useful macros
@@ -56,7 +58,7 @@
 
 #define END_FOR() } } }
 
-__forceinline double roundOutput(double a)
+inline double roundOutput(double a)
 {
     if (fabs(a) < 0.0005)
         return 0;
@@ -81,8 +83,8 @@ void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
                 // Distance squared from current grid point to the covalent attachment point
                 double rcovSq = lengthSquared(distance[X], distance[Y], distance[Z]);
                 rcovSq = rcovSq * input->covHalfWidthSquaredInv;
-                if (rcovSq < sq(APPROX_ZERO))
-                    rcovSq = sq(APPROX_ZERO);
+                if (rcovSq < Mathd::Sqr(APPROX_ZERO))
+                    rcovSq = Mathd::Sqr(APPROX_ZERO);
                 double energy = input->covBarrier * (1 - exp(-0.69314718055994529 * rcovSq)); // -0.69314718055994529 = log(0.5)
 
                 gridmaps[m].energies[outputIndex] = energy;
@@ -106,18 +108,18 @@ void calculateElectrostaticMap(const InputData *input, const GridMapList &gridma
         {
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
-            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
             double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
-            if (rSq < sq(APPROX_ZERO))
-                rSq = sq(APPROX_ZERO);
-            double invR = rsqrt(rSq);
+            if (rSq < Mathd::Sqr(APPROX_ZERO))
+                rSq = Mathd::Sqr(APPROX_ZERO);
+            double invR = Mathd::Rsqrt(rSq);
 
             // apply the estat forcefield coefficient/weight here
-            double tmp = input->charge[ia] * min(invR, 2.0) * parameterLibrary.coeff_estat;
+            double tmp = input->charge[ia] * Mathd::Min(invR, 2.0) * parameterLibrary.coeff_estat;
             if (input->distDepDiel) // distDepDiel is a constant
             {
                 // Distance-dependent dielectric...
-                int indexR = min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
+                int indexR = Mathi::Min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
                 outputEnergy += tmp * input->epsilon[indexR];
             }
             else
@@ -147,13 +149,13 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
         {
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
-            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
             double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
-            if (rSq < sq(APPROX_ZERO))
-                rSq = sq(APPROX_ZERO);
+            if (rSq < Mathd::Sqr(APPROX_ZERO))
+                rSq = Mathd::Sqr(APPROX_ZERO);
 
             // Calculate the so-called "Floating Grid"...
-            fgridInvRMin = max(rsqrt(rSq), fgridInvRMin);
+            fgridInvRMin = Mathd::Max(Mathd::Rsqrt(rSq), fgridInvRMin);
         }
 
         gridmaps.getFloatingGridMins()[outputIndex] = float(1 / fgridInvRMin);
@@ -169,7 +171,7 @@ struct HBondInfo
         bool flag;
     } info[MAX_MAPS];
 
-    __forceinline HBondInfo(int numAtomMaps)
+    inline HBondInfo(int numAtomMaps)
     {
         Info def;
         def.min = 999999;
@@ -180,30 +182,30 @@ struct HBondInfo
             info[m] = def;
     }
 
-    __forceinline Info &operator [](int i)
+    inline Info &operator [](int i)
     {
         return info[i];
     }
 
-    __forceinline void insert(int mapIndex, double energy)
+    inline void insert(int mapIndex, double energy)
     {
         Info &i = info[mapIndex];
-        i.min = min(i.min, energy);
-        i.max = max(i.max, energy);
+        i.min = Mathd::Min(i.min, energy);
+        i.max = Mathd::Max(i.max, energy);
         i.flag = true;
     }
 };
 
-__forceinline int findClosestHBond(const InputData *input, const double *gridPos)
+inline int findClosestHBond(const InputData *input, const double *gridPos)
 {
     int closestH = 0;
-    double rminSq = sq(999999.0);
+    double rminSq = Mathd::Sqr(999999.0);
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
             // DS or D1
             double distance[XYZ];
-            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
             double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
             if (rSq < rminSq)
             {
@@ -214,7 +216,7 @@ __forceinline int findClosestHBond(const InputData *input, const double *gridPos
     return closestH;
 }
 
-__forceinline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, double (&distance)[XYZ],
+inline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, double (&distance)[XYZ],
                              double &racc, double &rdon, double &Hramp) // output
 {
     racc = 1;
@@ -245,9 +247,9 @@ __forceinline void getHBondAngularFunction(const InputData *input, const BondVec
             switch (bondVectors->rexp[ia]) // racc = pow(cosTheta, bondVectors->rexp[ia]);
             {
             case 4:
-                racc = sq(racc);
+                racc = Mathd::Sqr(racc);
             case 2:
-                racc = sq(racc);
+                racc = Mathd::Sqr(racc);
             }
 
             // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
@@ -270,7 +272,7 @@ __forceinline void getHBondAngularFunction(const InputData *input, const BondVec
         //  H->current-grid-pt vector < 90 degrees from X->N vector
         rdon = 0;
         if (cosTheta > 0)
-            rdon = sq(cosTheta); // for H->N
+            rdon = Mathd::Sqr(cosTheta); // for H->N
         // endif (input->atomType[ia] == nitrogen)
         // end NEW Directional N acceptor
     }
@@ -284,11 +286,11 @@ __forceinline void getHBondAngularFunction(const InputData *input, const BondVec
             // cylindrically disordered hydroxyl
 
             racc = 0;
-            double theta = acos_clamped(cosTheta);
+            double theta = Mathd::Acos(cosTheta);
             if (theta <= 1.24791 + (PI / 2))
             {
                 // 1.24791 rad = 180 deg minus C-O-H bond angle, ** 108.5 deg
-                rdon = sq(sq(cos(theta - 1.24791)));    // pow(.., 4)
+                rdon = Mathd::Sqr(Mathd::Sqr(cos(theta - 1.24791)));    // pow(.., 4)
                 racc = rdon;
             }
         }
@@ -310,15 +312,15 @@ __forceinline void getHBondAngularFunction(const InputData *input, const BondVec
                 double rd2 = lengthSquared(cross[0], cross[1], cross[2]);
                 if (rd2 < APPROX_ZERO)
                     rd2 = APPROX_ZERO;
-                double inv_rd = rsqrt(rd2);
+                double inv_rd = Mathd::Rsqrt(rd2);
 
-                double ti = fabs(acos_clamped(inv_rd * dotProduct(cross, bondVectors->rvector[ia])) - (PI / 2));
+                double ti = fabs(Mathd::Acos(inv_rd * dotProduct(cross, bondVectors->rvector[ia])) - (PI / 2));
                 // the 2.0*ti can be replaced by (ti + ti) in: rdon = (0.9 + 0.1*sin(2.0*ti))*cos(t0);
                 rdon = 0.9 + 0.1 * sin(ti + ti);
                 // 0.34202 = cos (100 deg)
             }
             else if (cosTheta >= -0.34202)
-                rdon = 562.25 * cube(0.116978 - sq(cosTheta));
+                rdon = 562.25 * Mathd::Cube(0.116978 - Mathd::Sqr(cosTheta));
 
             // t0 is the angle out of the lone pair plane, calculated
             // as 90 deg - acos (vector to grid point DOT lone pair
@@ -331,7 +333,7 @@ __forceinline void getHBondAngularFunction(const InputData *input, const BondVec
     }
 }
 
-__forceinline void sumPairwiseInteractions(const InputData *input, const GridMapList &gridmaps, const PairwiseInteractionEnergies &energyLookup,
+inline void sumPairwiseInteractions(const InputData *input, const GridMapList &gridmaps, const PairwiseInteractionEnergies &energyLookup,
                              const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors, HBondInfo &hbond,
                              int outputIndex, int m, int ia, int indexR, int hydrogen, double racc, double rdon, double Hramp)
 {
@@ -343,11 +345,11 @@ __forceinline void sumPairwiseInteractions(const InputData *input, const GridMap
         // PROBE forms H-bonds...
 
         // rsph ramps in angular dependence for distances with negative energy
-        double rsph = clamp(pwiEnergy / 100, 0.0, 1.0);
+        double rsph = Mathd::Saturate(pwiEnergy / 100);
 
         if ((gridmaps[m].hbond == AS || gridmaps[m].hbond == A2) && (input->hbond[ia] == DS || input->hbond[ia] == D1))
             // PROBE can be an H-BOND ACCEPTOR,
-            e += (bondVectors->disorder[ia] ? energyLookup(hydrogen, max(0, indexR - 110), m) : pwiEnergy) *
+            e += (bondVectors->disorder[ia] ? energyLookup(hydrogen, Mathi::Max(0, indexR - 110), m) : pwiEnergy) *
                  Hramp * (racc + (1 - racc) * rsph);
         else if (gridmaps[m].hbond == A1 && (input->hbond[ia] == DS || input->hbond[ia] == D1))
             // A1 vs DS, D1
@@ -370,27 +372,155 @@ __forceinline void sumPairwiseInteractions(const InputData *input, const GridMap
         (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
 }
 
+void initSpatialGrid(const InputData *input, SpatialGrid<uint16> &grid)
+{
+    // Calculate gridSize
+    double cellSize = NBCUTOFF * 2;
+    Vec3i gridSize = Vec3i(Vec3d(input->numGridPoints) * (input->gridSpacing / cellSize));
+
+    // Create the grid
+    grid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
+
+#if 1
+    // Add all Receptor (protein, DNA, etc.) atoms...
+    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+        grid.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
+
+    return;
+#endif
+
+    // Add all Receptor (protein, DNA, etc.) atoms...
+    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+    {
+        Vec3i indices[8], idiff;
+        Vec3d cellPos, diff;
+
+        grid.getIndicesByPos(input->receptorAtomCoord[ia], indices[0]);
+
+        if (indices[0][X] < -1 || indices[0][X] > grid.getSize()[X] ||
+            indices[0][Y] < -1 || indices[0][Y] > grid.getSize()[Y] ||
+            indices[0][Z] < -1 || indices[0][Z] > grid.getSize()[Z]) continue;
+
+        grid.getCellPosByIndices(indices[0], cellPos);
+        diff = input->receptorAtomCoord[ia] - cellPos;
+
+        for (int i = 0; i < XYZ; i++)
+            idiff[i] = int(Mathd::Sign(diff[i]));
+
+        indices[1].x = indices[0].x + idiff.x;
+        indices[1].y = indices[0].y;
+        indices[1][Z] = indices[0][Z];
+        if (idiff.x == 0)
+            indices[1].x = -1;
+
+        indices[2].x = indices[0].x;
+        indices[2].y = indices[0].y + idiff.y;
+        indices[2][Z] = indices[0][Z];
+        if (idiff.y == 0)
+            indices[2].x = -1;
+
+        indices[3].x = indices[0].x;
+        indices[3].y = indices[0].y;
+        indices[3][Z] = indices[0][Z] + idiff[Z];
+        if (idiff[Z] == 0)
+            indices[3].x = -1;
+
+        indices[4].x = indices[0].x + idiff.x;
+        indices[4].y = indices[0].y + idiff.y;
+        indices[4][Z] = indices[0][Z];
+        if (idiff.x == 0 || idiff.y == 0)
+            indices[4].x = -1;
+
+        indices[5].x = indices[0].x;
+        indices[5].y = indices[0].y + idiff.y;
+        indices[5][Z] = indices[0][Z] + idiff[Z];
+        if (idiff.y == 0 || idiff[Z] == 0)
+            indices[5].x = -1;
+
+        indices[6].x = indices[0].x + idiff.x;
+        indices[6].y = indices[0].y;
+        indices[6][Z] = indices[0][Z] + idiff[Z];
+        if (idiff.x == 0 || idiff[Z] == 0)
+            indices[6].x = -1;
+
+        indices[7].x = indices[0].x + idiff.x;
+        indices[7].y = indices[0].y + idiff.y;
+        indices[7][Z] = indices[0][Z] + idiff[Z];
+        if (idiff.x == 0 || idiff.y == 0 || idiff[Z] == 0)
+            indices[7].x = -1;
+
+        for (int j = 0; j < 8; j++)
+            if (indices[j].x >= 0 && indices[j].x < grid.getSize().x &&
+                indices[j].y >= 0 && indices[j].y < grid.getSize().y &&
+                indices[j][Z] >= 0 && indices[j][Z] < grid.getSize()[Z]) grid.insertAtIndices(indices[j], uint16(ia));
+    }
+}
+
+void initOctree(const InputData *input, Octree<uint16> &octree)
+{
+    // Calculate gridSize
+    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
+
+    // Create the grid
+    octree.create(gridSize, 0, 5, 0, input->numReceptorAtoms);
+
+    // Add all Receptor (protein, DNA, etc.) atoms...
+    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+        octree.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
+}
+
 void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
+    // TODO: rewrite this function using a discrete grid for a faster cutoff of distant receptor atoms and search for the closest H.
+
+    // This grid will be used for finding the closest H
+    SpatialGrid<uint16> grid;
+    beginTimer(5);
+    initSpatialGrid(input, grid);
+    endTimer(5);
+
+    // This tree will be used for the cutoff of distant receptor atoms
+    Octree<uint16> octree;
+    beginTimer(6);
+    initOctree(input, octree);
+    endTimer(6);
+
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
+    int passed = 0, all = 0;
 
-    /*
-        Ulozim si do mrizky pozice vsech receptor atoms.
-        Sirka mrizky bude NBCUTOFF * 2, pak se staci divat jen do ctyr bunek. Indexovat se bude pomoci gridPos nebo {x,y,z}.
-    */
-
+    beginTimer(3);
 #if defined(AG_OPENMP)
-    #pragma AG_OPENMP_PARALLEL_FOR
+    //#pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
         HBondInfo hbond(gridmaps.getNumAtomMaps());
+
+        // TODO: rewrite this using a faster approach for finding the closest H
         int closestH = findClosestHBond(input, gridPos);
 
+#if 0
+        const Octree<uint16> *node = octree.getNodeByPos(Vec3d(gridPos[X], gridPos[Y], gridPos[Z]));
+        int num = node->getNumElements();
+
+        //  Do all Receptor (protein, DNA, etc.) atoms...
+        for (int index = 0; index < num; index++)
+        {
+            int ia = node->getElement(index);
+#elif 1
+        SpatialCell cell = grid.getCellByPos(Vec3d(gridPos[X], gridPos[Y], gridPos[Z]));
+        int num = grid.getNumElements(cell);
+
+        //  Do all Receptor (protein, DNA, etc.) atoms...
+        for (int index = 0; index < num; index++)
+        {
+            int ia = grid.getElement(cell, index);
+#else
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
+#endif
             // If distance from grid point to atom ia is too large,
             // or if atom is a disordered hydrogen,
             //   add nothing to the grid-point's non-bond energy;
@@ -399,23 +529,25 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
             //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
             double distance[XYZ];
-            subtractVectors(distance, input->receptorAtomCoord[ia], gridPos);
+            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
 
             // rSq = |distance|^2
             double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
 
-            if (rSq > sq(NBCUTOFF))
+            ++all;
+            if (rSq > Mathd::Sqr(NBCUTOFF))
                 continue;   // onto the next atom...
             if (input->atomType[ia] == hydrogen && bondVectors->disorder[ia])
                 continue;   // onto the next atom...
+            ++passed;
 
             // Normalize the distance vector
-            if (rSq < sq(APPROX_ZERO))
-                rSq = sq(APPROX_ZERO);
-            double invR = rsqrt(rSq);
+            if (rSq < Mathd::Sqr(APPROX_ZERO))
+                rSq = Mathd::Sqr(APPROX_ZERO);
+            double invR = Mathd::Rsqrt(rSq);
             scalarProduct(distance, distance, invR);
 
-            int indexR = min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
+            int indexR = Mathi::Min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
 
             double racc, rdon, Hramp;
             getHBondAngularFunction(input, bondVectors, ia, closestH, distance, racc, rdon, Hramp);
@@ -442,6 +574,9 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
         e = roundOutput(e);
     }
     END_FOR();
+    endTimer(3);
+
+    fprintf(stderr, "Passed: %1.2f\n", passed * 100.0 / all);
 }
 
 // Function: Calculation of interaction energy grids for Autodock.
@@ -565,15 +700,13 @@ void autogridMain(int argc, char **argv)
     initCovalentMaps(input, gridmaps);
     endTimer(1);
 
+    // Calculation of the atom maps and the desolvation map
+    calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
+
     beginTimer(2);
     // Calculation of the electrostatic map
     calculateElectrostaticMap(input, gridmaps, parameterLibrary);
     endTimer(2);
-
-    // Calculation of the atom maps and the desolvation map
-    beginTimer(3);
-    calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
-    endTimer(3);
 
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())

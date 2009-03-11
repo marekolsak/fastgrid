@@ -246,8 +246,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
                         // if from pdbqs: convert cal/molA**3 to kcal/molA**3
                         // solpar[ia] *= 0.001;
-                        q_max = max(q_max, charge[ia]);
-                        q_min = min(q_min, charge[ia]);
+                        q_max = Mathd::Max(q_max, charge[ia]);
+                        q_min = Mathd::Min(q_min, charge[ia]);
 
                         if (atom_name[0] == ' ')
                         {
@@ -280,8 +280,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         // Keep track of the extents of the receptor
                         for (int i = 0; i < XYZ; i++)
                         {
-                            cmax[i] = max(cmax[i], receptorAtomCoord[ia][i]);
-                            cmin[i] = min(cmin[i], receptorAtomCoord[ia][i]);
+                            cmax[i] = Mathd::Max(cmax[i], receptorAtomCoord[ia][i]);
+                            cmin[i] = Mathd::Min(cmin[i], receptorAtomCoord[ia][i]);
                             csum[i] += receptorAtomCoord[ia][i];
                         }
                         // Total up the partial charges as we go...
@@ -652,7 +652,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             {
                 double covHalfWidth;
                 sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covalentPoint[X]), &(covalentPoint[Y]), &(covalentPoint[Z]));
-                covHalfWidthSquaredInv = 1 / sq(covHalfWidth);
+                covHalfWidthSquaredInv = 1 / Mathd::Sqr(covHalfWidth);
 
                 logFile->printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
                                        "\nCovalent well's half-width in Angstroms:         %8.3f\n"

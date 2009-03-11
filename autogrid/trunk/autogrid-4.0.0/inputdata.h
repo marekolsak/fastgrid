@@ -37,7 +37,7 @@ struct InputData
 
     // Grid
     int numGridPointsPerMap;    // for the entire grid
-    int numGridPoints[XYZ];     // in one axis
+    Vec3i numGridPoints;        // in one axis
     int numGridPointsDiv2[XYZ]; // in one axis
     double gridCornerMin[XYZ];  // corner of the grid (minimal coordinates)
     double gridCenter[XYZ];     // center of mass where the grid is centered on
@@ -55,7 +55,7 @@ struct InputData
     double solpar[AG_MAX_ATOMS];
     int atomType[AG_MAX_ATOMS];
     HBondType hbond[AG_MAX_ATOMS];
-    double receptorAtomCoord[AG_MAX_ATOMS][XYZ];
+    Vec3d receptorAtomCoord[AG_MAX_ATOMS];
 
     double epsilon[MAX_DIST];
 

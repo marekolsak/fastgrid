@@ -1,0 +1,131 @@
+#include "../All.h"
+
+namespace Rune
+{
+    /**
+        Vraci vsechny rohy AABB
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API void AxisAlignedBox3<T>::GetVertices(Vec3<T> *vertices) const
+    {
+        vertices[0] = min;
+        vertices[1].Set(max.x, min.y, min.z);
+        vertices[2].Set(min.x, max.y, min.z);
+        vertices[3].Set(min.x, min.y, max.z);
+        vertices[4].Set(max.x, max.y, min.z);
+        vertices[5].Set(min.x, max.y, max.z);
+        vertices[6].Set(max.x, min.y, max.z);
+        vertices[7] = max;
+    }
+
+    template RUNEMATH_API void AxisAlignedBox3<float>::GetVertices(Vec3<float> *vertices) const;
+    template RUNEMATH_API void AxisAlignedBox3<double>::GetVertices(Vec3<double> *vertices) const;
+
+    /**
+        Spocita AABB ze stredu a vektoru od stredu
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API void AxisAlignedBox3<T>::SetCenterAndExtents(const Vec3<T> &center, const Vec3<T> &extents)
+    {
+        min = center - extents;
+        max = center + extents;
+    }
+
+    template RUNEMATH_API void AxisAlignedBox3<float>::SetCenterAndExtents(const Vec3<float> &center, const Vec3<float> &extents);
+    template RUNEMATH_API void AxisAlignedBox3<double>::SetCenterAndExtents(const Vec3<double> &center, const Vec3<double> &extents);
+
+    /**
+        Spocita AABB z vertexu
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API void AxisAlignedBox3<T>::Approximate(const Vec3<T> *vertices, int count)
+    {
+        assert(count);
+        min = *vertices;
+        max = *vertices;
+        const Vec3<T> *it, *last = vertices+count;
+        for (it = vertices+1; it != last; ++it)
+        {
+            if (it->x < min.x)      min.x = it->x;
+            else if (it->x > max.x) max.x = it->x;
+            if (it->y < min.y)      min.y = it->y;
+            else if (it->y > max.y) max.y = it->y;
+            if (it->z < min.z)      min.z = it->z;
+            else if (it->z > max.z) max.z = it->z;
+        }
+    }
+
+    template RUNEMATH_API void AxisAlignedBox3<float>::Approximate(const Vec3<float> *vertices, int count);
+    template RUNEMATH_API void AxisAlignedBox3<double>::Approximate(const Vec3<double> *vertices, int count);
+
+    /**
+        Spocita AABB z nekolika AABB
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API void AxisAlignedBox3<T>::Approximate(const AxisAlignedBox3<T> *boxes, int count)
+    {
+        min = boxes->min;
+        max = boxes->max;
+        const AxisAlignedBox3<T> *it, *last = boxes+count;
+        for (it = boxes+1; it != last; ++it)
+        {
+            if (it->min.x < min.x)      min.x = it->min.x;
+            else if (it->max.x > max.x) max.x = it->max.x;
+            if (it->min.y < min.y)      min.y = it->min.y;
+            else if (it->max.y > max.y) max.y = it->max.y;
+            if (it->min.z < min.z)      min.z = it->min.z;
+            else if (it->max.z > max.z) max.z = it->max.z;
+        }
+    }
+
+    template RUNEMATH_API void AxisAlignedBox3<float>::Approximate(const AxisAlignedBox3<float> *boxes, int count);
+    template RUNEMATH_API void AxisAlignedBox3<double>::Approximate(const AxisAlignedBox3<double> *boxes, int count);
+
+    /**
+        Transformuje kvadr rovnobezny s osama
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API AxisAlignedBox3<T> operator *(const Matrix3<T> &m, const AxisAlignedBox3<T> &b)
+    {
+        return AxisAlignedBox3<T>(m * b.min, m * b.max);
+    }
+
+    template RUNEMATH_API AxisAlignedBox3<float> operator *(const Matrix3<float> &m, const AxisAlignedBox3<float> &b);
+    template RUNEMATH_API AxisAlignedBox3<double> operator *(const Matrix3<double> &m, const AxisAlignedBox3<double> &b);
+
+    /**
+        Transformuje kvadr rovnobezny s osama transponovanou matici
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API AxisAlignedBox3<T> operator *(const AxisAlignedBox3<T> &b, const Matrix3<T> &m)
+    {
+        return AxisAlignedBox3<T>(b.min * m, b.max * m);
+    }
+
+    template RUNEMATH_API AxisAlignedBox3<float> operator *(const AxisAlignedBox3<float> &b, const Matrix3<float> &m);
+    template RUNEMATH_API AxisAlignedBox3<double> operator *(const AxisAlignedBox3<double> &b, const Matrix3<double> &m);
+
+    /**
+        Transformuje kvadr rovnobezny s osama
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API AxisAlignedBox3<T> operator *(const Matrix4<T> &m, const AxisAlignedBox3<T> &b)
+    {
+        return AxisAlignedBox3<T>(m * Vertex3<T>(b.min), m * Vertex3<T>(b.max));
+    }
+
+    template RUNEMATH_API AxisAlignedBox3<float> operator *(const Matrix4<float> &m, const AxisAlignedBox3<float> &b);
+    template RUNEMATH_API AxisAlignedBox3<double> operator *(const Matrix4<double> &m, const AxisAlignedBox3<double> &b);
+
+    /**
+        Transformuje kvadr rovnobezny s osama transponovanou matici
+    **************************************************************************************************/
+    template<typename T>
+    RUNEMATH_API AxisAlignedBox3<T> operator *(const AxisAlignedBox3<T> &b, const Matrix4<T> &m)
+    {
+        return AxisAlignedBox3<T>(Vertex3<T>(b.min) * m, Vertex3<T>(b.max) * m);
+    }
+
+    template RUNEMATH_API AxisAlignedBox3<float> operator *(const AxisAlignedBox3<float> &b, const Matrix4<float> &m);
+    template RUNEMATH_API AxisAlignedBox3<double> operator *(const AxisAlignedBox3<double> &b, const Matrix4<double> &m);
+}

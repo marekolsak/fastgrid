@@ -199,7 +199,7 @@ void GridMapList::calculateEnergyMinMax(int map, double &energyMin, double &ener
 
     for (int j = 0; j < numGridPointsPerMap; j++)
     {
-        energyMax = max(energyMax, gridmaps[map].energies[j]);
-        energyMin = min(energyMin, gridmaps[map].energies[j]);
+        energyMax = Mathd::Max(energyMax, gridmaps[map].energies[j]);
+        energyMin = Mathd::Min(energyMin, gridmaps[map].energies[j]);
     }
 }

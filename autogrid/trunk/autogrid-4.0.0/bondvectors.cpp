@@ -41,8 +41,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
         bool warned = false;
 
         // Set scan limits looking for bonded atoms
-        from = max(ia - 20, 0);
-        to = min(ia + 20, input->numReceptorAtoms - 1);
+        from = Mathi::Max(ia - 20, 0);
+        to = Mathi::Min(ia + 20, input->numReceptorAtoms - 1);
 
         // If 'ia' is a hydrogen atom, it could be a
         // RECEPTOR hydrogen-BOND DONOR,
@@ -72,7 +72,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                     ia + 1, ib + 1);
                             rd2 = APPROX_ZERO;
                         }
-                        inv_rd = rsqrt(rd2);
+                        inv_rd = Mathd::Rsqrt(rd2);
 
                         // N-H: Set exponent rexp to 2 for m/m H-atom,
                         // if (input->atomType[ib] == nitrogen) rexp[ia] = 2;
@@ -117,7 +117,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     for (int i = 0; i < XYZ; i++)
                     {
                         dc[i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                        rd2 += sq(dc[i]);
+                        rd2 += Mathd::Sqr(dc[i]);
                     }
 
                     if (((rd2 < 3.61) && ((input->atomType[ib] != hydrogen) && (input->atomType[ib] != nonHB_hydrogen))) ||
@@ -150,7 +150,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                 for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[i1][i];
-                    rd2 += sq(rvector[ia][i]);
+                    rd2 += Mathd::Sqr(rvector[ia][i]);
                 }
                 if (rd2 < APPROX_ZERO)
                 {
@@ -161,7 +161,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = rsqrt(rd2);
+                inv_rd = Mathd::Rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
 
@@ -173,7 +173,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         for (int i = 0; i < XYZ; i++)
                         {
                             dc[i] = input->receptorAtomCoord[i1][i] - input->receptorAtomCoord[i2][i];
-                            /*NEW*/ rd2 += sq(dc[i]);
+                            /*NEW*/ rd2 += Mathd::Sqr(dc[i]);
                         }
                         if (((rd2 < 2.89) && (input->atomType[i2] != hydrogen)) || ((rd2 < 1.69) && (input->atomType[i2] == hydrogen)))
                         {
@@ -183,7 +183,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                             for (int i = 0; i < XYZ; i++)
                             {
                                 d[i] = input->receptorAtomCoord[i2][i] - input->receptorAtomCoord[i1][i];
-                                rd2 += sq(d[i]);
+                                rd2 += Mathd::Sqr(d[i]);
                             }
                             if (rd2 < APPROX_ZERO)
                             {
@@ -194,7 +194,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                 }
                                 rd2 = APPROX_ZERO;
                             }
-                            inv_rd = rsqrt(rd2);
+                            inv_rd = Mathd::Rsqrt(rd2);
                             for (int i = 0; i < XYZ; i++)
                                 d[i] *= inv_rd;
 
@@ -204,7 +204,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                             rvector2[ia][2] = rvector[ia][0] * d[1] - rvector[ia][1] * d[0];
                             rd2 = 0;
                             for (int i = 0; i < XYZ; i++)
-                                rd2 += sq(rvector2[ia][i]);
+                                rd2 += Mathd::Sqr(rvector2[ia][i]);
                             if (rd2 < APPROX_ZERO)
                             {
                                 if ((rd2 == 0) && !warned)
@@ -214,7 +214,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                 }
                                 rd2 = APPROX_ZERO;
                             }
-                            inv_rd = rsqrt(rd2);
+                            inv_rd = Mathd::Rsqrt(rd2);
                             for (int i = 0; i < XYZ; i++)
                                 rvector2[ia][i] *= inv_rd;
                         }
@@ -235,7 +235,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     for (int i = 0; i < XYZ; i++)
                     {
                         rvector[ia][i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                        rd2 += sq(rvector[ia][i]);
+                        rd2 += Mathd::Sqr(rvector[ia][i]);
                     }
                     if (rd2 < APPROX_ZERO)
                     {
@@ -246,7 +246,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
                         rd2 = APPROX_ZERO;
                     }
-                    inv_rd = rsqrt(rd2);
+                    inv_rd = Mathd::Rsqrt(rd2);
                     for (int i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
                 }
@@ -258,7 +258,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     for (int i = 0; i < XYZ; i++)
                     {
                         rvector2[ia][i] = input->receptorAtomCoord[i2][i] - input->receptorAtomCoord[i1][i];
-                        rd2 += sq(rvector2[ia][i]);
+                        rd2 += Mathd::Sqr(rvector2[ia][i]);
                     }
                     if (rd2 < APPROX_ZERO)
                     {
@@ -269,7 +269,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
                         rd2 = APPROX_ZERO;
                     }
-                    inv_rd = rsqrt(rd2);
+                    inv_rd = Mathd::Rsqrt(rd2);
                     for (int i = 0; i < XYZ; i++)
                         rvector2[ia][i] *= inv_rd;
 
@@ -285,7 +285,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     for (int i = 0; i < XYZ; i++)
                     {
                         rvector[ia][i] = input->receptorAtomCoord[ia][i] - ((rdot * rvector2[ia][i]) + input->receptorAtomCoord[i1][i]);
-                        rd2 += sq(rvector[ia][i]);
+                        rd2 += Mathd::Sqr(rvector[ia][i]);
                     }
                     if (rd2 < APPROX_ZERO)
                     {
@@ -296,7 +296,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
                         rd2 = APPROX_ZERO;
                     }
-                    inv_rd = rsqrt(rd2);
+                    inv_rd = Mathd::Rsqrt(rd2);
                     for (int i = 0; i < XYZ; i++)
                         rvector[ia][i] *= inv_rd;
                 }               // end disordered hydroxyl
@@ -315,7 +315,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     for (int i = 0; i < XYZ; i++)
                     {
                         dc[i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                        rd2 += sq(dc[i]);
+                        rd2 += Mathd::Sqr(dc[i]);
                     }
 
                     if (((rd2 < 2.89) && ((input->atomType[ib] != hydrogen) && (input->atomType[ib] != nonHB_hydrogen))) ||
@@ -351,7 +351,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                 for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[i1][i];
-                    rd2 += sq(rvector[ia][i]);
+                    rd2 += Mathd::Sqr(rvector[ia][i]);
                 }
                 if (rd2 < APPROX_ZERO)
                 {
@@ -362,7 +362,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = rsqrt(rd2);
+                inv_rd = Mathd::Rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
             }                   // endif nbond==1
@@ -375,7 +375,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                 for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = input->receptorAtomCoord[ia][i] - (input->receptorAtomCoord[i2][i] + input->receptorAtomCoord[i1][i]) / 2;
-                    rd2 += sq(rvector[ia][i]);
+                    rd2 += Mathd::Sqr(rvector[ia][i]);
                 }
                 if (rd2 < APPROX_ZERO)
                 {
@@ -386,7 +386,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = rsqrt(rd2);
+                inv_rd = Mathd::Rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
             }                   // end two bonds for nitrogen
@@ -399,7 +399,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                 for (int i = 0; i < XYZ; i++)
                 {
                     rvector[ia][i] = input->receptorAtomCoord[ia][i] - (input->receptorAtomCoord[i1][i] + input->receptorAtomCoord[i2][i] + input->receptorAtomCoord[i3][i]) / 3;
-                    rd2 += sq(rvector[ia][i]);
+                    rd2 += Mathd::Sqr(rvector[ia][i]);
                 }
                 if (rd2 < APPROX_ZERO)
                 {
@@ -410,7 +410,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     }
                     rd2 = APPROX_ZERO;
                 }
-                inv_rd = rsqrt(rd2);
+                inv_rd = Mathd::Rsqrt(rd2);
                 for (int i = 0; i < XYZ; i++)
                     rvector[ia][i] *= inv_rd;
 

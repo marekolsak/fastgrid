@@ -33,6 +33,8 @@
     #define isnan _isnan
     #define strncasecmp _strnicmp
     #define snprintf _snprintf
+
+    #define inline __forceinline
 #endif
 
 #include "../autodock-4.0.1/autocomm.h"
@@ -68,3 +70,5 @@ inline int lookup(T r)
 {
     return int(r * A_DIVISOR);
 }
+
+#include "math.h"

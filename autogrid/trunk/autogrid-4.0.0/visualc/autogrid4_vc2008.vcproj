@@ -94,7 +94,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat&#x0D;&#x0A;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;echo Performing Test...&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat --no-pause&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -275,7 +275,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat&#x0D;&#x0A;"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;echo Performing Test...&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat --no-pause&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -346,6 +346,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\octree.h"
+				>
+			</File>
+			<File
 				RelativePath="..\pairwiseinteractionenergies.cpp"
 				>
 			</File>
@@ -370,6 +374,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\spatialgrid.h"
+				>
+			</File>
+			<File
 				RelativePath="..\times.cpp"
 				>
 			</File>
@@ -385,6 +393,170 @@
 				RelativePath="..\utils.h"
 				>
 			</File>
+			<Filter
+				Name="math"
+				>
+				<File
+					RelativePath="..\math\All.h"
+					>
+				</File>
+				<File
+					RelativePath="..\math\Half.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\math\Half.h"
+					>
+				</File>
+				<File
+					RelativePath="..\math\Int.h"
+					>
+				</File>
+				<File
+					RelativePath="..\math\Math.h"
+					>
+				</File>
+				<File
+					RelativePath="..\math\UnionCast.h"
+					>
+				</File>
+				<Filter
+					Name="geometric"
+					>
+					<File
+						RelativePath="..\math\Geometric\AxisAlignedBox3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\AxisAlignedBox3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Circle2.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Frustum3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Frustum3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Intersection2.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Intersection2.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Intersection3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Intersection3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Line2.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Line2.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Matrix3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Matrix3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Matrix4.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Matrix4.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Plane3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Plane3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Quaternion.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Quaternion.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Ray2.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Ray2.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Ray3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Ray3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Rect2.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Sphere3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Sphere3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec2.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec4.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec4.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vertex3.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vertex3.h"
+						>
+					</File>
+				</Filter>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="autodock"

@@ -97,7 +97,7 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
                     double r = angstrom(indexR);
                     rA = pow(r, dxA);
                     rB = pow(r, dxB);
-                    energyLookup->table[i][indexR][ia] = min(EINTCLAMP, (cA / rA - cB / rB));
+                    energyLookup->table[i][indexR][ia] = Mathd::Min(EINTCLAMP, (cA / rA - cB / rB));
                 }               // for each distance
                 energyLookup->table[i][0][ia] = EINTCLAMP;
                 energyLookup->table[i][MAX_DIST-1][ia] = 0;
@@ -108,8 +108,8 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
                     for (int indexR = 1; indexR < MAX_DIST; indexR++)
                     {
                         energySmooth[indexR] = 100000;
-                        for (int j = max(0, indexR - iSmooth); j < min(MAX_DIST, indexR + iSmooth); j++)
-                            energySmooth[indexR] = min(energySmooth[indexR], energyLookup->table[i][j][ia]);
+                        for (int j = Mathi::Max(0, indexR - iSmooth); j < Mathi::Min(MAX_DIST, indexR + iSmooth); j++)
+                            energySmooth[indexR] = Mathd::Min(energySmooth[indexR], energyLookup->table[i][j][ia]);
                     }
                     for (int indexR = 1; indexR < MAX_DIST; indexR++)
                         energyLookup->table[i][indexR][ia] = energySmooth[indexR];

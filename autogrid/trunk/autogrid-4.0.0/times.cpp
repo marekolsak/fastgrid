@@ -99,6 +99,7 @@ public:
         // Bound this thread to the first CPU
         SetThreadAffinityMask(GetCurrentThread(), 1);
         // Raise the process priority
+        //SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
         SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
     }
 };
