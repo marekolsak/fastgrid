@@ -31,7 +31,7 @@
 #include "inputdataloader.h"
 #include "math.h"
 #include "spatialgrid.h"
-#include "octree.h"
+#include "ann/ann.h"
 #include <new>
 
 // Useful macros
@@ -41,19 +41,20 @@
     for (int z = 0; z < input->numGridPoints[Z]; z++) \
     { \
         /* gridPos contains the current grid point. */ \
-        double gridPosZ = (z - input->numGridPointsDiv2[Z]) * input->gridSpacing; \
+        Vec3d gridPos; \
+        gridPos.z = (z - input->numGridPointsDiv2[Z]) * input->gridSpacing; \
         int outputIndexZBase = z * input->numGridPoints[X] * input->numGridPoints[Y]; \
 \
         /* Y axis */ \
         for (int y = 0; y < input->numGridPoints[Y]; y++) \
         { \
-            double gridPosY = (y - input->numGridPointsDiv2[Y]) * input->gridSpacing; \
+            gridPos.y = (y - input->numGridPointsDiv2[Y]) * input->gridSpacing; \
             int outputIndexZYBase = outputIndexZBase + y * input->numGridPoints[X]; \
 \
             /* X axis */ \
             for (int x = 0; x < input->numGridPoints[X]; x++) \
             { \
-                double gridPos[XYZ] = {(x - input->numGridPointsDiv2[X]) * input->gridSpacing, gridPosY, gridPosZ}; \
+                gridPos.x = (x - input->numGridPointsDiv2[X]) * input->gridSpacing; \
                 int outputIndex = outputIndexZYBase + x;
 
 #define END_FOR() } } }
@@ -77,16 +78,14 @@ void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
             FOR_EACH_GRID_POINT(gridPos, outputIndex)
             {
                 // Calculate the distance from the current grid point to the covalent attachment point
-                double distance[XYZ];
-                subtractVectors(distance, input->covalentPoint, gridPos);
+                Vec3d distance = input->covalentPoint - gridPos;
 
                 // Distance squared from current grid point to the covalent attachment point
-                double rcovSq = lengthSquared(distance[X], distance[Y], distance[Z]);
-                rcovSq = rcovSq * input->covHalfWidthSquaredInv;
+                double rcovSq = distance.MagnitudeSqr() * input->covHalfWidthSquaredInv;
                 if (rcovSq < Mathd::Sqr(APPROX_ZERO))
                     rcovSq = Mathd::Sqr(APPROX_ZERO);
-                double energy = input->covBarrier * (1 - exp(-0.69314718055994529 * rcovSq)); // -0.69314718055994529 = log(0.5)
 
+                double energy = input->covBarrier * (1 - exp(-0.69314718055994529 * rcovSq)); // -0.69314718055994529 = log(0.5)
                 gridmaps[m].energies[outputIndex] = energy;
             }
             END_FOR();
@@ -107,9 +106,8 @@ void calculateElectrostaticMap(const InputData *input, const GridMapList &gridma
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
-            double distance[XYZ];
-            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
-            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
+            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
+            double rSq = distance.MagnitudeSqr();
             if (rSq < Mathd::Sqr(APPROX_ZERO))
                 rSq = Mathd::Sqr(APPROX_ZERO);
             double invR = Mathd::Rsqrt(rSq);
@@ -137,28 +135,25 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
 {
     // TODO: rewrite this function using NVIDIA CUDA
 
+    // Calculate the so-called "Floating Grid"...
 #if defined(AG_OPENMP)
     #pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
-        double fgridInvRMin = 1.0 / BIG;
+        double minDistSq = Mathd::Sqr(BIG);
 
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
-            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
-            double distance[XYZ];
-            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
-            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
-            if (rSq < Mathd::Sqr(APPROX_ZERO))
-                rSq = Mathd::Sqr(APPROX_ZERO);
-
-            // Calculate the so-called "Floating Grid"...
-            fgridInvRMin = Mathd::Max(Mathd::Rsqrt(rSq), fgridInvRMin);
+            //  Get distance^2 from current grid point to this receptor atom
+            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
+            double distSq = distance.MagnitudeSqr();
+            if (distSq < minDistSq)
+                minDistSq = distSq;
         }
 
-        gridmaps.getFloatingGridMins()[outputIndex] = float(1 / fgridInvRMin);
+        gridmaps.getFloatingGridMins()[outputIndex] = float(Mathd::Sqrt(minDistSq));
     }
     END_FOR();
 }
@@ -204,9 +199,8 @@ inline int findClosestHBond(const InputData *input, const double *gridPos)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
             // DS or D1
-            double distance[XYZ];
-            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
-            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
+            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
+            double rSq = distance.MagnitudeSqr();
             if (rSq < rminSq)
             {
                 rminSq = rSq;
@@ -216,7 +210,7 @@ inline int findClosestHBond(const InputData *input, const double *gridPos)
     return closestH;
 }
 
-inline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, double (&distance)[XYZ],
+inline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, const Vec3d &distance,
                              double &racc, double &rdon, double &Hramp) // output
 {
     racc = 1;
@@ -224,7 +218,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
     Hramp = 1;   // Hramp ramps in Hbond acceptor probes
 
     //  cosTheta = distance dot bondVectors->rvector == cos(angle) subtended.
-    double cosTheta = -dotProduct(distance, bondVectors->rvector[ia]);
+    double cosTheta = -dotProduct((const double*)distance, bondVectors->rvector[ia]);
 
     // Calculate racc/rdon/Hramp
     if (input->hbond[ia] == D1)
@@ -308,7 +302,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
                 // calculated as (grid vector CROSS lone pair plane normal)
                 // DOT C=O vector - 90 deg
                 double cross[XYZ];
-                crossProduct(cross, distance, bondVectors->rvector2[ia]);
+                crossProduct(cross, (const double*)distance, bondVectors->rvector2[ia]);
                 double rd2 = lengthSquared(cross[0], cross[1], cross[2]);
                 if (rd2 < APPROX_ZERO)
                     rd2 = APPROX_ZERO;
@@ -325,7 +319,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
             // t0 is the angle out of the lone pair plane, calculated
             // as 90 deg - acos (vector to grid point DOT lone pair
             // plane normal)
-            double t0 = (PI / 2) - angle(distance, bondVectors->rvector2[ia]);
+            double t0 = (PI / 2) - angle((const double*)distance, bondVectors->rvector2[ia]);
             rdon *= cos(t0);
 
             // endif input->atomType == oxygen, not disordered
@@ -372,153 +366,122 @@ inline void sumPairwiseInteractions(const InputData *input, const GridMapList &g
         (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
 }
 
-void initSpatialGrid(const InputData *input, SpatialGrid<uint16> &grid)
+void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGrid)
 {
-    // Calculate gridSize
-    double cellSize = NBCUTOFF * 2;
-    Vec3i gridSize = Vec3i(Vec3d(input->numGridPoints) * (input->gridSpacing / cellSize));
+    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
+    double cellSize = NBCUTOFF / 4.0;
 
-    // Create the grid
-    grid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
+    cutoffGrid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
 
-#if 1
-    // Add all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-        grid.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
-
-    return;
-#endif
-
-    // Add all Receptor (protein, DNA, etc.) atoms...
-    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-    {
-        Vec3i indices[8], idiff;
-        Vec3d cellPos, diff;
-
-        grid.getIndicesByPos(input->receptorAtomCoord[ia], indices[0]);
-
-        if (indices[0][X] < -1 || indices[0][X] > grid.getSize()[X] ||
-            indices[0][Y] < -1 || indices[0][Y] > grid.getSize()[Y] ||
-            indices[0][Z] < -1 || indices[0][Z] > grid.getSize()[Z]) continue;
-
-        grid.getCellPosByIndices(indices[0], cellPos);
-        diff = input->receptorAtomCoord[ia] - cellPos;
-
-        for (int i = 0; i < XYZ; i++)
-            idiff[i] = int(Mathd::Sign(diff[i]));
-
-        indices[1].x = indices[0].x + idiff.x;
-        indices[1].y = indices[0].y;
-        indices[1][Z] = indices[0][Z];
-        if (idiff.x == 0)
-            indices[1].x = -1;
-
-        indices[2].x = indices[0].x;
-        indices[2].y = indices[0].y + idiff.y;
-        indices[2][Z] = indices[0][Z];
-        if (idiff.y == 0)
-            indices[2].x = -1;
-
-        indices[3].x = indices[0].x;
-        indices[3].y = indices[0].y;
-        indices[3][Z] = indices[0][Z] + idiff[Z];
-        if (idiff[Z] == 0)
-            indices[3].x = -1;
-
-        indices[4].x = indices[0].x + idiff.x;
-        indices[4].y = indices[0].y + idiff.y;
-        indices[4][Z] = indices[0][Z];
-        if (idiff.x == 0 || idiff.y == 0)
-            indices[4].x = -1;
-
-        indices[5].x = indices[0].x;
-        indices[5].y = indices[0].y + idiff.y;
-        indices[5][Z] = indices[0][Z] + idiff[Z];
-        if (idiff.y == 0 || idiff[Z] == 0)
-            indices[5].x = -1;
-
-        indices[6].x = indices[0].x + idiff.x;
-        indices[6].y = indices[0].y;
-        indices[6][Z] = indices[0][Z] + idiff[Z];
-        if (idiff.x == 0 || idiff[Z] == 0)
-            indices[6].x = -1;
-
-        indices[7].x = indices[0].x + idiff.x;
-        indices[7].y = indices[0].y + idiff.y;
-        indices[7][Z] = indices[0][Z] + idiff[Z];
-        if (idiff.x == 0 || idiff.y == 0 || idiff[Z] == 0)
-            indices[7].x = -1;
-
-        for (int j = 0; j < 8; j++)
-            if (indices[j].x >= 0 && indices[j].x < grid.getSize().x &&
-                indices[j].y >= 0 && indices[j].y < grid.getSize().y &&
-                indices[j][Z] >= 0 && indices[j][Z] < grid.getSize()[Z]) grid.insertAtIndices(indices[j], uint16(ia));
-    }
+        cutoffGrid.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
 }
 
-void initOctree(const InputData *input, Octree<uint16> &octree)
+template<typename T>
+class NearestNeighborSearch3
 {
-    // Calculate gridSize
-    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
+public:
+    NearestNeighborSearch3(): releaseCoords(false), coords(0), tree(0), pointarray(0) {}
 
-    // Create the grid
-    octree.create(gridSize, 0, 5, 0, input->numReceptorAtoms);
+    ~NearestNeighborSearch3()
+    {
+        if (tree)
+            delete tree;
+        if (pointarray)
+            delete [] pointarray;
+        if (releaseCoords && coords)
+            delete [] coords;
+    }
 
-    // Add all Receptor (protein, DNA, etc.) atoms...
+    void create(const Vec3<T> *points, int num, bool releaseCoordsOnDestroy = false)
+    {
+        releaseCoords = releaseCoordsOnDestroy;
+        coords = points;
+        pointarray = new ANNpoint[num];
+        for (int i = 0; i < num; i++)
+            pointarray[i] = const_cast<double*>(static_cast<const double*>(coords[i]));
+
+        tree = new ANNkd_tree(pointarray, num, 3);
+    }
+
+    int searchNearest(const Vec3<T> &point)
+    {
+        int result;
+        double d;
+        tree->annkSearch(const_cast<double*>(static_cast<const double*>(point)), 1, &result, &d, 0);
+        return result;
+    }
+
+private:
+    bool releaseCoords;
+    const Vec3<T> *coords;
+    ANNkd_tree *tree;
+    ANNpointArray pointarray;
+};
+
+typedef NearestNeighborSearch3<int32> NearestNeighborSearch3i;
+typedef NearestNeighborSearch3<float> NearestNeighborSearch3f;
+typedef NearestNeighborSearch3<double> NearestNeighborSearch3d;
+
+void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *&indicesHtoA)
+{
+    int numH = 0;
+    Vec3d *hcoord = new Vec3d[input->numReceptorAtoms];
+
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-        octree.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
+        if (input->hbond[ia] == DS || input->hbond[ia] == D1)
+        {
+            hcoord[numH] = input->receptorAtomCoord[ia];
+            indicesHtoA[numH] = ia;
+            ++numH;
+        }
+
+    hsearch.create(hcoord, numH, true);
 }
 
 void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
-    // TODO: rewrite this function using a discrete grid for a faster cutoff of distant receptor atoms and search for the closest H.
-
-    // This grid will be used for finding the closest H
-    SpatialGrid<uint16> grid;
+    // Create a grid which will be used for the cutoff of distant receptor atoms
     beginTimer(5);
-    initSpatialGrid(input, grid);
+    SpatialGrid<uint16> cutoffGrid;
+    initCutoffGrid(input, cutoffGrid);
     endTimer(5);
 
-    // This tree will be used for the cutoff of distant receptor atoms
-    Octree<uint16> octree;
+    // Create a tree which will be used for finding the closest H
     beginTimer(6);
-    initOctree(input, octree);
+    int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating the H index into the receptor atom index
+    NearestNeighborSearch3d hsearch;
+    initHSearch(input, hsearch, indicesHtoA);
     endTimer(6);
 
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
-    int passed = 0, all = 0;
 
     beginTimer(3);
 #if defined(AG_OPENMP)
-    //#pragma AG_OPENMP_PARALLEL_FOR
+    #pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
         HBondInfo hbond(gridmaps.getNumAtomMaps());
 
-        // TODO: rewrite this using a faster approach for finding the closest H
-        int closestH = findClosestHBond(input, gridPos);
-
-#if 0
-        const Octree<uint16> *node = octree.getNodeByPos(Vec3d(gridPos[X], gridPos[Y], gridPos[Z]));
-        int num = node->getNumElements();
-
-        //  Do all Receptor (protein, DNA, etc.) atoms...
-        for (int index = 0; index < num; index++)
-        {
-            int ia = node->getElement(index);
-#elif 1
-        SpatialCell cell = grid.getCellByPos(Vec3d(gridPos[X], gridPos[Y], gridPos[Z]));
-        int num = grid.getNumElements(cell);
-
-        //  Do all Receptor (protein, DNA, etc.) atoms...
-        for (int index = 0; index < num; index++)
-        {
-            int ia = grid.getElement(cell, index);
+#if 1
+        int closestH = indicesHtoA[hsearch.searchNearest(gridPos)];
 #else
+        int closestH = findClosestHBond(input, gridPos);
+#endif
+
         //  Do all Receptor (protein, DNA, etc.) atoms...
-        for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+#if 1
+        SpatialCell cell = cutoffGrid.getCellByPos(gridPos);
+        int num = cutoffGrid.getNumElements(cell);
+
+        for (int index = 0; index < num; index++)
+        {
+            int ia = cutoffGrid.getElement(cell, index);
+#else
+        int num = input->numReceptorAtoms;
+        for (int ia = 0; ia < num; ia++)
         {
 #endif
             // If distance from grid point to atom ia is too large,
@@ -528,24 +491,21 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
 
             //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
             //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
-            double distance[XYZ];
-            subtractVectors(distance, (const double*)input->receptorAtomCoord[ia], gridPos);
+            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
 
             // rSq = |distance|^2
-            double rSq = lengthSquared(distance[X], distance[Y], distance[Z]);
+            double rSq = distance.MagnitudeSqr();
 
-            ++all;
             if (rSq > Mathd::Sqr(NBCUTOFF))
                 continue;   // onto the next atom...
             if (input->atomType[ia] == hydrogen && bondVectors->disorder[ia])
                 continue;   // onto the next atom...
-            ++passed;
 
             // Normalize the distance vector
             if (rSq < Mathd::Sqr(APPROX_ZERO))
                 rSq = Mathd::Sqr(APPROX_ZERO);
             double invR = Mathd::Rsqrt(rSq);
-            scalarProduct(distance, distance, invR);
+            distance *= invR;
 
             int indexR = Mathi::Min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
 
@@ -576,7 +536,7 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
     END_FOR();
     endTimer(3);
 
-    fprintf(stderr, "Passed: %1.2f\n", passed * 100.0 / all);
+    delete [] indicesHtoA;
 }
 
 // Function: Calculation of interaction energy grids for Autodock.

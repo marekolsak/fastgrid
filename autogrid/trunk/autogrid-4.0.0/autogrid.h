@@ -43,15 +43,16 @@
 
 // OpenMP configuration
 
-#define AG_OPENMP
+//#define AG_OPENMP
 #define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
 
 // Macros
 
-#define MAX_DIST                (1<<14) // 2^14 = 16384 = 163.84 Angstroms. Maximum distance in 100ths of an Angstrom.
-#define AG_MAX_ATOMS            (1<<15) // 2^15 = 32768. Maximum number of atoms in macromolecule.
-#define A_DIVISOR               100     // Angstrom is divided by this in look-up table.
 #define NBCUTOFF                8       // non-bond cutoff = 8 Angstroms.
+//#define MAX_DIST                (1<<14) // 2^14 = 16384 = 163.84 Angstroms. Maximum distance in 100ths of an Angstrom.
+#define MAX_DIST                (1<<13) // 2^13 = 8192 = 81.92 Angstroms. Maximum distance in 100ths of an Angstrom.
+#define AG_MAX_ATOMS            (1<<15) // 2^15 = 32768. Maximum number of atoms in macromolecule.
+#define A_DIVISOR               100     // Angstrom is divided by this in the look-up table.
 #define MAX_LEN_AUTOGRID_TYPE   7
 #define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???
 #define NUM_RECEPTOR_TYPES      NUM_ALL_TYPES

@@ -215,7 +215,7 @@ namespace Rune
     template<typename T>
     RUNEMATH_API bool Intersect(const Sphere3<T> &s, const Vec3<T> &point)
     {
-        return Vec3<T>::GetDistance(s.pos, point) < s.radius;
+        return Vec3<T>::GetDistanceSqr(s.pos, point) < s.radius * s.radius;
     }
 
     template RUNEMATH_API bool Intersect(const Sphere3<float> &s, const Vec3<float> &point);

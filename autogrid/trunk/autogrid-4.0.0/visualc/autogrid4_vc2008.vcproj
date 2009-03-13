@@ -346,10 +346,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\octree.h"
-				>
-			</File>
-			<File
 				RelativePath="..\pairwiseinteractionenergies.cpp"
 				>
 			</File>
@@ -553,6 +549,118 @@
 					</File>
 					<File
 						RelativePath="..\math\Geometric\Vertex3.h"
+						>
+					</File>
+				</Filter>
+			</Filter>
+			<Filter
+				Name="ann"
+				>
+				<File
+					RelativePath="..\ann\ANN.h"
+					>
+				</File>
+				<File
+					RelativePath="..\ann\ANNperf.h"
+					>
+				</File>
+				<File
+					RelativePath="..\ann\ANNx.h"
+					>
+				</File>
+				<Filter
+					Name="src"
+					>
+					<File
+						RelativePath="..\ann\src\ANN.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\bd_fix_rad_search.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\bd_pr_search.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\bd_search.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\bd_tree.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\bd_tree.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\brute.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_dump.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_fix_rad_search.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_fix_rad_search.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_pr_search.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_pr_search.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_search.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_search.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_split.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_split.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_tree.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_tree.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_util.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\kd_util.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\perf.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\pr_queue.h"
+						>
+					</File>
+					<File
+						RelativePath="..\ann\src\pr_queue_k.h"
 						>
 					</File>
 				</Filter>

@@ -48,8 +48,9 @@ namespace Rune
         Vec3 operator +(T f) const                      { return Vec3(x+f, y+f, z+f); }
         Vec3 operator -(const Vec3 &v) const            { return Vec3(x-v.x, y-v.y, z-v.z); }
         Vec3 operator -(T f) const                      { return Vec3(x-f, y-f, z-f); }
-        Vec3 operator *(T f) const                      { return Vec3(x*f, y*f, z*f); }
         Vec3 operator *(const Vec3 &v) const            { return Vec3(x*v.x, y*v.y, z*v.z); }
+        Vec3 operator *(T f) const                      { return Vec3(x*f, y*f, z*f); }
+        Vec3 operator /(const Vec3 &v) const            { return Vec3(x/v.x, y/v.y, z/v.z); }
         Vec3 operator /(T f) const                      { f = 1/f; return Vec3(x*f, y*f, z*f); }
         Vec3 operator -() const                         { return Vec3(-x, -y, -z); }
         T& operator [](int i)                           { return (&x)[i]; }
