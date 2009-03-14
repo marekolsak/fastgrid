@@ -40,6 +40,7 @@
 #include "../autodock-4.0.1/autocomm.h"
 #include <cmath>
 #include <cfloat>
+#include "math.h"
 
 // OpenMP configuration
 
@@ -75,4 +76,34 @@ inline int lookup(T r)
     return int(r * A_DIVISOR);
 }
 
-#include "math.h"
+inline double roundOutput(double a)
+{
+    if (fabs(a) < 0.0005)
+        return 0;
+    return round3dp(a);
+}
+
+// Useful macros - loop over all grid points
+
+#define FOR_EACH_GRID_POINT(gridPos, outputIndex) \
+    /* Z axis */ \
+    for (int z = 0; z < input->numGridPoints[Z]; z++) \
+    { \
+        /* gridPos contains the current grid point. */ \
+        Vec3d gridPos; \
+        gridPos.z = (z - input->numGridPointsDiv2[Z]) * input->gridSpacing; \
+        int outputIndexZBase = z * input->numGridPoints[X] * input->numGridPoints[Y]; \
+\
+        /* Y axis */ \
+        for (int y = 0; y < input->numGridPoints[Y]; y++) \
+        { \
+            gridPos.y = (y - input->numGridPointsDiv2[Y]) * input->gridSpacing; \
+            int outputIndexZYBase = outputIndexZBase + y * input->numGridPoints[X]; \
+\
+            /* X axis */ \
+            for (int x = 0; x < input->numGridPoints[X]; x++) \
+            { \
+                gridPos.x = (x - input->numGridPointsDiv2[X]) * input->gridSpacing; \
+                int outputIndex = outputIndexZYBase + x;
+
+#define END_FOR() } } }

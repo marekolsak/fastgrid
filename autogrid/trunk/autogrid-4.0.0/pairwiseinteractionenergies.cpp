@@ -23,7 +23,6 @@
 */
 
 #include "pairwiseinteractionenergies.h"
-#include "math.h"
 
 PairwiseInteractionEnergies::PairwiseInteractionEnergies()
 {

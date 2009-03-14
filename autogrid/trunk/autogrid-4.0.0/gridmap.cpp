@@ -24,7 +24,6 @@
 
 #include "gridmap.h"
 #include "utils.h"
-#include "math.h"
 #include <new>
 #include <cstring>
 

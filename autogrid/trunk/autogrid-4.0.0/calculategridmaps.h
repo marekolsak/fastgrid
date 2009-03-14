@@ -1,8 +1,11 @@
 /*
-    Auxiliary Math library
+    AutoGrid
 
-    Copyright (C) 2003-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
-    Copyright (C) 2003-2005, Tomas Pastorek (tomas@tomaspastorek.cz), All Rights Reserved.
+    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+    All Rights Reserved.
+    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+
+    AutoGrid is a Trade Mark of The Scripps Research Institute.
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -20,18 +23,10 @@
 */
 
 #pragma once
+#include "inputdata.h"
+#include "pairwiseinteractionenergies.h"
+#include "desolvexpfunc.h"
+#include "bondvectors.h"
 
-// Definice fixnich typu
-#if defined(_MSC_VER)
-    #define RUNE_TYPEDEF_FIXED_INT(bits) typedef signed __int##bits int##bits; typedef unsigned __int##bits uint##bits
-#else
-    #define RUNE_TYPEDEF_FIXED_INT(bits) typedef int##bits##_t int##bits; typedef uint##bits##_t uint##bits
-#endif
-
-namespace Rune
-{
-    RUNE_TYPEDEF_FIXED_INT(8);
-    RUNE_TYPEDEF_FIXED_INT(16);
-    RUNE_TYPEDEF_FIXED_INT(32);
-    RUNE_TYPEDEF_FIXED_INT(64);
-}
+void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+                       const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors);

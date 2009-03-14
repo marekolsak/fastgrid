@@ -25,7 +25,6 @@
 #include "inputdataloader.h"
 #include "utils.h"
 #include "exceptions.h"
-#include "math.h"
 #include <cstring>
 #include <cctype>
 

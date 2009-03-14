@@ -298,6 +298,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\calculategridmaps.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\calculategridmaps.h"
+				>
+			</File>
+			<File
 				RelativePath="..\desolvexpfunc.cpp"
 				>
 			</File>
