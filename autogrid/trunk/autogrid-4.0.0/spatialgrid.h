@@ -158,22 +158,20 @@ public:
         clampIndices(indicesMin);
         clampIndices(indicesMax);
 
-#if defined(AG_OPENMP)
+        // Commented out, because this is such a simple task (in our case) that using threads would rather slow it down.
+/*#if defined(AG_OPENMP)
     #pragma AG_OPENMP_PARALLEL_FOR
-#endif
+#endif*/
         for (int x = indicesMin.x; x <= indicesMax.x; x++)
             for (int y = indicesMin.y; y <= indicesMax.y; y++)
                 for (int z = indicesMin.z; z <= indicesMax.z; z++)
                 {
                     Vec3i indices(x, y, z);
                     Vec3d cellPos;
-                    getCellCenterPosByIndices(indices, cellPos);
+                    getCellCornerPosByIndices(indices, cellPos);
 
-                    bool test = Intersect(s, cellPos);
-                    if (!test)
-                        test = Intersect(AxisAlignedBox3d(cellPos - cellSizeHalf, cellPos + cellSizeHalf), s);
-                    if (test)
-                            insertAtIndices(indices, id);
+                    if (Intersect(AxisAlignedBox3d(cellPos, cellPos + cellSize), s))
+                        insertAtIndices(indices, id);
                 }
     }
 

@@ -38,11 +38,11 @@
 //		among the various search procedures.
 //----------------------------------------------------------------------
 
-extern int				ANNkdDim;		// dimension of space (static copy)
-extern ANNpoint			ANNkdQ;			// query point (static copy)
-extern double			ANNkdMaxErr;	// max tolerable squared error
-extern ANNpointArray	ANNkdPts;		// the points (static copy)
-extern ANNmin_k			*ANNkdPointMK;	// set of k closest points
-extern int				ANNptsVisited;	// number of points visited
+extern ANN_THREAD_LOCAL int				ANNkdDim;		// dimension of space (static copy)
+extern ANN_THREAD_LOCAL ANNpoint		ANNkdQ;			// query point (static copy)
+extern ANN_THREAD_LOCAL double			ANNkdMaxErr;	// max tolerable squared error
+extern ANN_THREAD_LOCAL ANNpointArray	ANNkdPts;		// the points (static copy)
+extern ANN_THREAD_LOCAL ANNmin_k		*ANNkdPointMK;	// set of k closest points
+extern ANN_THREAD_LOCAL int				ANNptsVisited;	// number of points visited
 
 #endif

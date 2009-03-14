@@ -72,13 +72,13 @@
 //		These are given below.
 //----------------------------------------------------------------------
 
-double			ANNprEps;				// the error bound
-int				ANNprDim;				// dimension of space
-ANNpoint		ANNprQ;					// query point
-double			ANNprMaxErr;			// max tolerable squared error
-ANNpointArray	ANNprPts;				// the points
-ANNpr_queue		*ANNprBoxPQ;			// priority queue for boxes
-ANNmin_k		*ANNprPointMK;			// set of k closest points
+ANN_THREAD_LOCAL double			ANNprEps;				// the error bound
+ANN_THREAD_LOCAL int				ANNprDim;				// dimension of space
+ANN_THREAD_LOCAL ANNpoint		ANNprQ;					// query point
+ANN_THREAD_LOCAL double			ANNprMaxErr;			// max tolerable squared error
+ANN_THREAD_LOCAL ANNpointArray	ANNprPts;				// the points
+ANN_THREAD_LOCAL ANNpr_queue		*ANNprBoxPQ;			// priority queue for boxes
+ANN_THREAD_LOCAL ANNmin_k		*ANNprPointMK;			// set of k closest points
 
 //----------------------------------------------------------------------
 //	annkPriSearch - priority search for k nearest neighbors

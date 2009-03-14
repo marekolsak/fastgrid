@@ -76,11 +76,11 @@
 //		These are given below.
 //----------------------------------------------------------------------
 
-int				ANNkdDim;				// dimension of space
-ANNpoint		ANNkdQ;					// query point
-double			ANNkdMaxErr;			// max tolerable squared error
-ANNpointArray	ANNkdPts;				// the points
-ANNmin_k		*ANNkdPointMK;			// set of k closest points
+ANN_THREAD_LOCAL    int				ANNkdDim;				// dimension of space
+ANN_THREAD_LOCAL    ANNpoint		ANNkdQ;					// query point
+ANN_THREAD_LOCAL    double			ANNkdMaxErr;			// max tolerable squared error
+ANN_THREAD_LOCAL    ANNpointArray	ANNkdPts;				// the points
+ANN_THREAD_LOCAL    ANNmin_k		*ANNkdPointMK;			// set of k closest points
 
 //----------------------------------------------------------------------
 //	annkSearch - search for the k nearest neighbors

@@ -83,6 +83,12 @@
   #define DLL_API
 //#endif
 
+#if defined(WIN32)
+#define ANN_THREAD_LOCAL __declspec(thread)
+#else
+#define ANN_THREAD_LOCAL __thread
+#endif
+
 //----------------------------------------------------------------------
 //  basic includes
 //----------------------------------------------------------------------

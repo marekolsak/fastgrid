@@ -346,6 +346,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nearestneighborsearch3.h"
+				>
+			</File>
+			<File
 				RelativePath="..\pairwiseinteractionenergies.cpp"
 				>
 			</File>
