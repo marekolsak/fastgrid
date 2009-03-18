@@ -83,14 +83,14 @@ namespace Rune
         Vec2 GetVec2() const                            { return Vec2(x, y); }
         T GetMax() const                                { return Math<T>::Max(Math<T>::Max(x, y), z); }
         Vec3 GetAbs() const                             { return Vec3(Math<T>::Abs(x), Math<T>::Abs(y), Math<T>::Abs(z)); }
-        Vec3 GetNormalized() const                      { T f = RMagnitude(); return Vec3(x*f, y*f, z*f); }
+        Vec3 GetNormalized() const                      { T f = MagnitudeInv(); return Vec3(x*f, y*f, z*f); }
         T Magnitude() const                             { return Math<T>::Sqrt(MagnitudeSqr()); }
-        T RMagnitude() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
+        T MagnitudeInv() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
         T MagnitudeSqr() const                          { return x*x + y*y + z*z; }
         Vec3 Reflect(const Vec3 &normal) const          { return *this - 2*Dot(normal, *this)*normal; }
         Vec3 Project(const Vec3 &v) const               { return *this * Dot(v, *this)/MagnitudeSqr(); }
         Vec3 Orthogonalize(const Vec3 &v) const         { return v - Project(v); }
-        void Normalize()                                { operator *=(RMagnitude()); }
+        void Normalize()                                { operator *=(MagnitudeInv()); }
         void PackTo01()                                 { operator *=(T(0.5)); operator +=(T(0.5)); }
         void PackBack()                                 { operator *=(2); operator -=(1); }
         void Set(T X, T Y, T Z)                         { x = X; y = Y; z = Z; }

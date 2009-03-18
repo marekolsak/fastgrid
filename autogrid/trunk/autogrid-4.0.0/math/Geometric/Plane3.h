@@ -48,8 +48,8 @@ namespace Rune
         const Vec4<T> &GetVec4() const                      { return *reinterpret_cast<const Vec4<T>*>(&normal.x); }
         void Set(T a, T b, T c, T D)                        { normal.Set(a, b, c); d = D; }
         void Set(Vec3<T> &v, T D)                           { normal = v; d = D; }
-        void Normalize()                                    { *this *= normal.RMagnitude(); }
-        Plane3 GetNormalized() const                        { return *this * normal.RMagnitude(); }
+        void Normalize()                                    { *this *= normal.MagnitudeInv(); }
+        Plane3 GetNormalized() const                        { return *this * normal.MagnitudeInv(); }
         T GetDistance(const Vec3<T> &point) const           { return Vec3<T>::Dot(normal, point) + d; }
         Vec3<T> GetMirroredPoint(const Vec3<T> &point) const{ return point + normal*GetDistance(point)*-2; }
         Vec3<T> GetMirroredVector(const Vec3<T> &vec) const { return vec + normal*Vec3<T>::Dot(normal, vec)*-2; }

@@ -44,7 +44,7 @@ namespace Rune
     template<typename T>
     RUNEMATH_API Vec4<T> Quaternion<T>::GetRotation() const
     {
-        T rm = v.RMagnitude(), w = v.w * rm, s = Math<T>::Rsqrt(1 - w*w) * rm;
+        T rm = v.MagnitudeInv(), w = v.w * rm, s = Math<T>::Rsqrt(1 - w*w) * rm;
         return Vec4<T>(v.x*s, v.y*s, v.z*s, Math<T>::Acos(w) * Math<T>::Deg() * 2);
     }
 

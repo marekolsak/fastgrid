@@ -14,10 +14,10 @@ static void calcWithConstDielectric(const InputData *input, const GridMap &elecM
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
             //  Get reciprocal of the distance from current grid point to this receptor atom (1 / |gridPos - receptorAtomCoord|)
-            double invR = (input->receptorAtomCoord[ia] - gridPos).RMagnitude();
+            double invR = (input->receptorAtomCoord[ia] - gridPos).MagnitudeInv();
 
             // Both the constant dielectric and the estat forcefield coefficient/weight are premultiplied
-            energy += input->charge_mul_coeffEstat_mulIfContDiel_invDielCal[ia] * Mathd::Min(invR, 2);
+            energy += input->charge_mul_coeffEstat_mulIfConstDiel_invDielCal[ia] * Mathd::Min(invR, 2);
         }
 
         // Round to 3 decimal places
@@ -42,9 +42,8 @@ static void calcWithDistDepDielectric(const InputData *input, const GridMap &ele
             //  Get the distance from current grid point to this receptor atom (|gridPos - receptorAtomCoord|)
             double r = (input->receptorAtomCoord[ia] - gridPos).Magnitude();
 
-            // Distance-dependent dielectric...
             // The estat forcefield coefficient/weight is premultiplied
-            energy += input->charge_mul_coeffEstat_mulIfContDiel_invDielCal[ia] * Mathd::Min(1 / r, 2) * input->epsilon[lookup(r)];
+            energy += input->charge_mul_coeffEstat_mulIfConstDiel_invDielCal[ia] * Mathd::Min(1 / r, 2) * input->epsilon[lookup(r)];
         }
 
         // Round to 3 decimal places

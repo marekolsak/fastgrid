@@ -154,7 +154,7 @@ namespace Rune
     template<typename T>
     RUNEMATH_API T Vec3<T>::Angle(const Vec3<T> &a, const Vec3<T> &b)
     {
-        return Math<T>::Acos(Dot(a, b)*a.RMagnitude()*b.RMagnitude());
+        return Math<T>::Acos(Dot(a, b)*a.MagnitudeInv()*b.MagnitudeInv());
     }
 
     template RUNEMATH_API float Vec3<float>::Angle(const Vec3<float> &a, const Vec3<float> &b);

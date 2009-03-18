@@ -84,11 +84,11 @@ namespace Rune
 
         Vec3 GetVec3() const                            { return Vec3(x, y, z); }
         Vec4 GetAbs() const                             { return Vec4(Math<T>::Abs(x), Math<T>::Abs(y), Math<T>::Abs(z), Math<T>::Abs(w)); }
-        Vec4 GetNormalized() const                      { T f = RMagnitude(); return Vec4(x*f, y*f, z*f, w*f); }
+        Vec4 GetNormalized() const                      { T f = MagnitudeInv(); return Vec4(x*f, y*f, z*f, w*f); }
         T Magnitude() const                             { return Math<T>::Sqrt(MagnitudeSqr()); }
-        T RMagnitude() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
+        T MagnitudeInv() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
         T MagnitudeSqr() const                          { return x*x + y*y + z*z + w*w; }
-        void Normalize()                                { operator *=(RMagnitude()); }
+        void Normalize()                                { operator *=(MagnitudeInv()); }
         bool IsEmpty() const                            { return x == 0 && y == 0 && z == 0 && w == 0; }
         void PackTo01()                                 { operator *=(0.5f); operator +=(0.5f); }
         void PackBack()                                 { operator -=(0.5f); operator *=(2); }

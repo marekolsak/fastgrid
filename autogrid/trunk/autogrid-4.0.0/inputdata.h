@@ -51,7 +51,7 @@ struct InputData
     int numReceptorAtoms;
 
     double charge[AG_MAX_ATOMS];
-    double charge_mul_coeffEstat_mulIfContDiel_invDielCal[AG_MAX_ATOMS]; // = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
+    double charge_mul_coeffEstat_mulIfConstDiel_invDielCal[AG_MAX_ATOMS]; // = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
     double vol[AG_MAX_ATOMS];
     double solpar[AG_MAX_ATOMS];
     int atomType[AG_MAX_ATOMS];

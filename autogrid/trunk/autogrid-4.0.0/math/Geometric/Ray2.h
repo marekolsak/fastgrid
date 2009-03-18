@@ -42,8 +42,8 @@ namespace Rune
 
         void Set(const Vec2<T> &Normal, const Vec2<T> &point)   { normal = Normal; c = -Vec2<T>::Dot(Normal, point); }
         void Set(const Vec2<T> &Normal, T C)                    { normal = Normal; c = C; }
-        void Normalize()                                        { *this *= normal.RMagnitude(); }
-        Ray2 GetNormalized() const                              { return *this * normal.RMagnitude(); }
+        void Normalize()                                        { *this *= normal.MagnitudeInv(); }
+        Ray2 GetNormalized() const                              { return *this * normal.MagnitudeInv(); }
         T GetDistance(const Vec2<T> &point) const               { return Vec2<T>::Dot(normal, point) + c; }
         Vec2<T> GetMirroredPoint(const Vec2<T> &point) const    { return point + normal*GetDistance(point)*-2; }
         Vec2<T> GetMirroredVector(const Vec2<T> &vec) const     { return vec + normal*Vec2<T>::Dot(normal, vec)*-2; }

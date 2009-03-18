@@ -727,11 +727,11 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     // apply the estat forcefield coefficient/weight here
     if (distDepDiel)
         for (int ia = 0; ia < numReceptorAtoms; ia++)
-            charge_mul_coeffEstat_mulIfContDiel_invDielCal[ia] = charge[ia] * parameterLibrary.coeff_estat;
+            charge_mul_coeffEstat_mulIfConstDiel_invDielCal[ia] = charge[ia] * parameterLibrary.coeff_estat;
     else
         // apply the constant dielectric
         for (int ia = 0; ia < numReceptorAtoms; ia++)
-            charge_mul_coeffEstat_mulIfContDiel_invDielCal[ia] = charge[ia] * parameterLibrary.coeff_estat * invDielCal;
+            charge_mul_coeffEstat_mulIfConstDiel_invDielCal[ia] = charge[ia] * parameterLibrary.coeff_estat * invDielCal;
 }
 
 int InputDataLoader::parseGPFLine(const char *line)
