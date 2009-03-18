@@ -64,7 +64,7 @@ namespace Rune
     RUNEMATH_API bool Intersect(const Line2<T> &line, const Ray2<T> &ray, Vec2<T> &point)
     {
         if (Intersect(line.ray, ray, point))
-            if (Vec2<T>::GetDistanceSqr(line.origin, point) <= line.extent*line.extent) return true;
+            if (Vec2<T>::DistanceSqr(line.origin, point) <= line.extent*line.extent) return true;
         return false;
     }
 
@@ -91,8 +91,8 @@ namespace Rune
     RUNEMATH_API bool Intersect(const Line2<T> &line1, const Line2<T> &line2, Vec2<T> &point)
     {
         if (Intersect(line1.ray, line2.ray, point))
-            if (Vec2<T>::GetDistanceSqr(line1.origin, point) <= line1.extent*line1.extent &&
-                Vec2<T>::GetDistanceSqr(line2.origin, point) <= line2.extent*line2.extent) return true;
+            if (Vec2<T>::DistanceSqr(line1.origin, point) <= line1.extent*line1.extent &&
+                Vec2<T>::DistanceSqr(line2.origin, point) <= line2.extent*line2.extent) return true;
         return false;
     }
 
@@ -150,7 +150,7 @@ namespace Rune
     template<typename T>
     RUNEMATH_API bool Intersect(const Circle2<T> &s, const Vec2<T> &point)
     {
-        return Vec2<T>::GetDistanceSqr(s.pos, point) < s.radius*s.radius;
+        return Vec2<T>::DistanceSqr(s.pos, point) < s.radius*s.radius;
     }
 
     template RUNEMATH_API bool Intersect(const Circle2<float> &s, const Vec2<float> &point);

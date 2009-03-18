@@ -57,7 +57,7 @@ namespace Rune
         void Normalize()                                { v.Normalize(); }
         void Conjugate()                                { v.Set(-v.x, -v.y, -v.z, v.w); }
         void Inverse()                                  { Conjugate(); operator *=(1 / v.MagnitudeSqr()); }
-        Quaternion GetInverse() const                   { Quaternion q = *this; q.Inverse(); return q; }
+        Quaternion GetInverted() const                   { Quaternion q = *this; q.Inverse(); return q; }
         void LoadIdentity()                             { v.Set(0, 0, 0, 1); }
         void SetRotated(const Vec3<T> &v, T angle)      { SetRotated(v.x, v.y, v.z, angle); }
         void Rotate(const Vec3<T> &v, T angle)          { Rotate(v.x, v.y, v.z, angle); }

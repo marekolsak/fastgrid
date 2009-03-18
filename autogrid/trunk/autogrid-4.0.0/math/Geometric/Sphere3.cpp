@@ -87,7 +87,7 @@ namespace Rune
     {
         AxisAlignedBox3<T> box;
         box.Approximate(vertices, count);
-        return Vec3<T>::GetCenter(box.min, box.max);
+        return Vec3<T>::Center(box.min, box.max);
     }
 
     template<typename T>
@@ -110,11 +110,11 @@ namespace Rune
         for (it = vertices; it != last; ++it)
             for (it2 = it; it2 != last; ++it2)
             {
-                T dist = Vec3<T>::GetDistanceSqr(*it, *it2);
+                T dist = Vec3<T>::DistanceSqr(*it, *it2);
                 if (dist > maxDist)
                 {
                     maxDist = dist;
-                    result = Vec3<T>::GetCenter(*it, *it2);
+                    result = Vec3<T>::Center(*it, *it2);
                 }
             }
         return result;
@@ -127,7 +127,7 @@ namespace Rune
         const Vec3<T> *it, *last = vertices+count;
         for (it = vertices; it != last; ++it)
         {
-            T radius = Vec3<T>::GetDistanceSqr(*it, center);
+            T radius = Vec3<T>::DistanceSqr(*it, center);
             if (radius > maxRadius) maxRadius = radius;
         }
         return Math<T>::Sqrt(maxRadius);

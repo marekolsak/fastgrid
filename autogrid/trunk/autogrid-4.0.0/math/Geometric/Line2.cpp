@@ -29,9 +29,9 @@ namespace Rune
     template<typename T>
     void Line2<T>::SetPoints(const Vec2<T> &p1, const Vec2<T> &p2)
     {
-        origin = Vec2<T>::GetCenter(p1, p2);
+        origin = Vec2<T>::Center(p1, p2);
         ray.Set((p2-p1).GetNormalized().GetNormal(), origin);
-        extent = Vec2<T>::GetDistance(origin, p1);
+        extent = Vec2<T>::Distance(origin, p1);
     }
 
     template void Line2<float>::SetPoints(const Vec2<float> &p1, const Vec2<float> &p2);

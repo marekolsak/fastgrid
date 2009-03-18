@@ -188,7 +188,7 @@ namespace Rune
     template<typename T>
     void Matrix4<T>::SetMatrixToFaceSpace(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2)
     {
-        Vec3<T> normal(Vec3<T>::GetNormal(v0, v1, v2));
+        Vec3<T> normal(Vec3<T>::CalculateNormal(v0, v1, v2));
         Vec3<T> axis(Vec3<T>::Cross(normal, Vec3<T>(0, 0, 1)));
         axis.Normalize();
         SetRotated(axis, Math<T>::Acos(Vec3<T>::Dot(normal, Vec3<T>(0, 0, 1))) * Math<T>::Deg());

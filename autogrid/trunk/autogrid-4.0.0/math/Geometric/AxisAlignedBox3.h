@@ -35,7 +35,7 @@ namespace Rune
         AxisAlignedBox3() {}
         AxisAlignedBox3(const Vec3<T> &Min, const Vec3<T> &Max): min(Min), max(Max) {}
 
-        Vec3<T> GetCenter() const   { return Vec3<T>::GetCenter(min, max); }
+        Vec3<T> GetCenter() const   { return Vec3<T>::Center(min, max); }
         Vec3<T> GetExtents() const  { return (max - min) * T(0.5); }
 
         RUNEMATH_API void GetVertices(Vec3<T> *vertices) const;

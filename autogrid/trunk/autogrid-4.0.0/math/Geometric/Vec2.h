@@ -87,11 +87,12 @@ namespace Rune
         operator T* ()                                  { return &x; }
         operator const T* () const                      { return &x; }
 
-        static T Dot(const Vec2 &v1, const Vec2 &v2)                { return v1.x*v2.x + v1.y*v2.y; }
-        static T GetDistanceSqr(const Vec2 &v1, const Vec2 &v2)     { return (v1 - v2).MagnitudeSqr(); }
-        static T GetDistance(const Vec2 &v1, const Vec2 &v2)        { return Math<T>::Sqrt(GetDistanceSqr(v1, v2)); }
-        static T GetAngle(const Vec2 &a, const Vec2 &b)             { return Math<T>::Acos(Dot(a, b)*a.RMagnitude()*b.RMagnitude()); }
-        static Vec2 GetCenter(const Vec2 &min, const Vec2 &max)     { return (min + max) / 2; }
+        static T Dot(const Vec2 &v1, const Vec2 &v2)            { return v1.x*v2.x + v1.y*v2.y; }
+        static T DistanceSqr(const Vec2 &v1, const Vec2 &v2)    { return (v1 - v2).MagnitudeSqr(); }
+        static T Distance(const Vec2 &v1, const Vec2 &v2)       { return Math<T>::Sqrt(DistanceSqr(v1, v2)); }
+        static T Angle(const Vec2 &a, const Vec2 &b)            { return Math<T>::Acos(Dot(a, b)*a.RMagnitude()*b.RMagnitude()); }
+        static T AngleUN(const Vec2 &a, const Vec2 &b)          { return Math<T>::Acos(Dot(a, b)); }
+        static Vec2 Center(const Vec2 &min, const Vec2 &max) { return (min + max) / 2; }
         static Vec2 Reflect(const Vec2 &impact, const Vec2 &normal) { return impact - 2*Dot(normal, impact)*normal; }
     };
 

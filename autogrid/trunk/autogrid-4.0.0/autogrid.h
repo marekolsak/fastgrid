@@ -73,14 +73,15 @@ inline double angstrom(T i)
 template<typename T>
 inline int lookup(T r)
 {
-    return int(r * A_DIVISOR);
+    // make sure lookup index is in the table
+    return Mathi::Min(int(r * A_DIVISOR), MAX_DIST-1);
 }
 
 inline double roundOutput(double a)
 {
     if (fabs(a) < 0.0005)
         return 0;
-    return round3dp(a);
+    return Mathd::Round(a * 1000) / 1000; // round to 3 decimal places
 }
 
 // Useful macros - loop over all grid points

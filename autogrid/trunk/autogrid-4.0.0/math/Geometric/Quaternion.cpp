@@ -153,7 +153,7 @@ namespace Rune
     template<typename T>
     RUNEMATH_API Vec3<T> operator *(const Quaternion<T> &q, const Vec3<T> &v)
     {
-        Vec4<T> v4 = (q * Quaternion<T>(v.x, v.y, v.z, 1) * q.GetInverse()).v;
+        Vec4<T> v4 = (q * Quaternion<T>(v.x, v.y, v.z, 1) * q.GetInverted()).v;
         return v4.GetVec3() / v4.w;
     }
 
@@ -168,7 +168,7 @@ namespace Rune
     template<typename T>
     RUNEMATH_API Vec3<T> operator *(const Vec3<T> &v, const Quaternion<T> &q)
     {
-        Vec4<T> v4 = (q.GetInverse() * Quaternion<T>(v.x, v.y, v.z, 1) * q).v;
+        Vec4<T> v4 = (q.GetInverted() * Quaternion<T>(v.x, v.y, v.z, 1) * q).v;
         return v4.GetVec3() / v4.w;
     }
 

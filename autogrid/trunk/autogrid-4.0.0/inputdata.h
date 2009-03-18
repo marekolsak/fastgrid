@@ -38,9 +38,9 @@ struct InputData
     // Grid
     int numGridPointsPerMap;    // for the entire grid
     Vec3i numGridPoints;        // in one axis
-    int numGridPointsDiv2[XYZ]; // in one axis
-    double gridCornerMin[XYZ];  // corner of the grid (minimal coordinates)
-    double gridCenter[XYZ];     // center of mass where the grid is centered on
+    Vec3i numGridPointsDiv2;    // in one axis
+    Vec3d gridCornerMin;        // corner of the grid (minimal coordinates)
+    Vec3d gridCenter;           // center of mass where the grid is centered on
     double gridSpacing;         // One quarter of a C-C bond length.
 
     // variables for RECEPTOR:
@@ -51,6 +51,7 @@ struct InputData
     int numReceptorAtoms;
 
     double charge[AG_MAX_ATOMS];
+    double charge_mul_coeffEstat_mulIfContDiel_invDielCal[AG_MAX_ATOMS]; // = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
     double vol[AG_MAX_ATOMS];
     double solpar[AG_MAX_ATOMS];
     int atomType[AG_MAX_ATOMS];
@@ -65,7 +66,7 @@ struct InputData
     double rSmooth;
     double covHalfWidthSquaredInv;
     double covBarrier;
-    double covalentPoint[XYZ];         // Cartesian-coordinate of covalent affinity well.
+    Vec3d covalentPoint;         // Cartesian-coordinate of covalent affinity well.
 
     bool distDepDiel, disorderH;
 };

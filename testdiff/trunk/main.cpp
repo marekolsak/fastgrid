@@ -122,6 +122,10 @@ bool FileDiff::ExamineChanges(std::ostream &output, double &absErrorMax, double 
 
 bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &absErrorMax, double &relErrorMax)
 {
+    // do not care about comments
+    if (*s1.c_str() == '#' && *s2.c_str() == '#')
+        return true;
+
     // do not care about execution times
     if (s1.find("Real") != std::string::npos && s2.find("Real") != std::string::npos &&
         s1.find("CPU") != std::string::npos && s2.find("CPU") != std::string::npos &&

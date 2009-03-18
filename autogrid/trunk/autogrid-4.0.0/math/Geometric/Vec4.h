@@ -66,7 +66,7 @@ namespace Rune
         void operator -=(T f)                           { x -= f; y -= f; z -= f; w -= f; }
         void operator *=(const Vec4 &v)                 { x *= v.x; y *= v.y; z *= v.z; w *= v.w; }
         void operator *=(T f)                           { x *= f; y *= f; z *= f; w *= f; }
-        void operator /=(T f)                           { f = 1/f; x *= f; y *= f; z *= f; w *= f; }
+        void operator /=(T f)                           { x /= f; y /= f; z /= f; w /= f; }
 
         Vec4 operator +(const Vec4 &v) const            { return Vec4(x+v.x, y+v.y, z+v.z, w+v.w); }
         Vec4 operator +(T f) const                      { return Vec4(x+f, y+f, z+f, w+f); }
@@ -74,7 +74,7 @@ namespace Rune
         Vec4 operator -(T f) const                      { return Vec4(x-f, y-f, z-f, w-f); }
         Vec4 operator *(const Vec4 &v) const            { return Vec4(x*v.x, y*v.y, z*v.z, w*v.w); }
         Vec4 operator *(T f) const                      { return Vec4(x*f, y*f, z*f, w*f); }
-        Vec4 operator /(T f) const                      { f = 1/f; return Vec4(x*f, y*f, z*f, w*f); }
+        Vec4 operator /(T f) const                      { return Vec4(x/f, y/f, z/f, w/f); }
         Vec4 operator -() const                         { return Vec4(-x, -y, -z, -w); }
         T& operator[] (int i)                           { return (&x)[i]; }
         T operator[] (int i) const                      { return (&x)[i]; }

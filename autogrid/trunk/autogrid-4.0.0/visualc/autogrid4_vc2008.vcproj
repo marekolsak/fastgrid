@@ -678,22 +678,6 @@
 				</Filter>
 			</Filter>
 		</Filter>
-		<Filter
-			Name="autodock"
-			>
-			<File
-				RelativePath="..\..\autodock-4.0.1\autocomm.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\autodock-4.0.1\default_parameters.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\autodock-4.0.1\typedefs.h"
-				>
-			</File>
-		</Filter>
 	</Files>
 	<Globals>
 	</Globals>

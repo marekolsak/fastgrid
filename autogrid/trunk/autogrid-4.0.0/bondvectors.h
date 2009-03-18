@@ -31,8 +31,8 @@ class BondVectors
 public:
     bool disorder[AG_MAX_ATOMS];
     int rexp[AG_MAX_ATOMS];
-    double rvector[AG_MAX_ATOMS][XYZ];
-    double rvector2[AG_MAX_ATOMS][XYZ];
+    Vec3d rvector[AG_MAX_ATOMS];
+    Vec3d rvector2[AG_MAX_ATOMS];
 
     BondVectors(LogFile *logFile);
     void calculate(const InputData *input, const ParameterLibrary &parameterLibrary);

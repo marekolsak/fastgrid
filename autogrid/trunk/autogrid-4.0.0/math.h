@@ -23,7 +23,6 @@
 */
 
 #pragma once
-// we do not want to have a redefinition of the following macros max,min
 #ifdef _WIN32
     #undef min
     #undef max
@@ -43,13 +42,6 @@ template<typename T>
 inline T lengthSquared(T x, T y, T z)
 {
     return x*x + y*y + z*z;
-}
-
-// Round to 3 decimal places
-template<typename T>
-inline T round3dp(T x)
-{
-    return Math<T>::Round(x * T(1000)) / T(1000);
 }
 
 // Dot product

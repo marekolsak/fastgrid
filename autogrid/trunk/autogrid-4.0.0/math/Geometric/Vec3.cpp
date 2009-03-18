@@ -107,94 +107,103 @@ namespace Rune
     template RUNEMATH_API Vec3<double> Vec3<double>::Cross(const Vec3<double> &v1, const Vec3<double> &v2);
 
     template<typename T>
-    RUNEMATH_API T Vec3<T>::GetDistanceSqr(const Vec3<T> &v1, const Vec3<T> &v2)
+    RUNEMATH_API T Vec3<T>::DistanceSqr(const Vec3<T> &v1, const Vec3<T> &v2)
     {
         return (v1 - v2).MagnitudeSqr();
     }
 
-    template RUNEMATH_API float Vec3<float>::GetDistanceSqr(const Vec3<float> &v1, const Vec3<float> &v2);
-    template RUNEMATH_API double Vec3<double>::GetDistanceSqr(const Vec3<double> &v1, const Vec3<double> &v2);
+    template RUNEMATH_API float Vec3<float>::DistanceSqr(const Vec3<float> &v1, const Vec3<float> &v2);
+    template RUNEMATH_API double Vec3<double>::DistanceSqr(const Vec3<double> &v1, const Vec3<double> &v2);
 
     template<typename T>
-    RUNEMATH_API T Vec3<T>::GetDistance(const Vec3<T> &v1, const Vec3<T> &v2)
+    RUNEMATH_API T Vec3<T>::Distance(const Vec3<T> &v1, const Vec3<T> &v2)
     {
-        return Math<T>::Sqrt(GetDistanceSqr(v1, v2));
+        return Math<T>::Sqrt(DistanceSqr(v1, v2));
     }
 
-    template RUNEMATH_API float Vec3<float>::GetDistance(const Vec3<float> &v1, const Vec3<float> &v2);
-    template RUNEMATH_API double Vec3<double>::GetDistance(const Vec3<double> &v1, const Vec3<double> &v2);
+    template RUNEMATH_API float Vec3<float>::Distance(const Vec3<float> &v1, const Vec3<float> &v2);
+    template RUNEMATH_API double Vec3<double>::Distance(const Vec3<double> &v1, const Vec3<double> &v2);
 
     template<typename T>
-    RUNEMATH_API Vec3<T> Vec3<T>::GetNormal(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2)
+    RUNEMATH_API Vec3<T> Vec3<T>::CalculateNormal(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2)
     {
-        return GetNormalUN(v0, v1, v2).GetNormalized();
+        return CalculateNormalUnnorm(v0, v1, v2).GetNormalized();
     }
 
-    template RUNEMATH_API Vec3<float> Vec3<float>::GetNormal(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2);
-    template RUNEMATH_API Vec3<double> Vec3<double>::GetNormal(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2);
+    template RUNEMATH_API Vec3<float> Vec3<float>::CalculateNormal(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2);
+    template RUNEMATH_API Vec3<double> Vec3<double>::CalculateNormal(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2);
 
     template<typename T>
-    RUNEMATH_API Vec3<T> Vec3<T>::GetNormalUN(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2)
+    RUNEMATH_API Vec3<T> Vec3<T>::CalculateNormalUnnorm(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2)
     {
         return Cross(v2-v1, v0-v2);
     }
 
-    template RUNEMATH_API Vec3<float> Vec3<float>::GetNormalUN(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2);
-    template RUNEMATH_API Vec3<double> Vec3<double>::GetNormalUN(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2);
+    template RUNEMATH_API Vec3<float> Vec3<float>::CalculateNormalUnnorm(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2);
+    template RUNEMATH_API Vec3<double> Vec3<double>::CalculateNormalUnnorm(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2);
 
     template<typename T>
-    RUNEMATH_API Vec3<T> Vec3<T>::GetCenter(const Vec3<T> &min, const Vec3<T> &max)
+    RUNEMATH_API Vec3<T> Vec3<T>::Center(const Vec3<T> &min, const Vec3<T> &max)
     {
         return (min + max) * T(0.5);
     }
 
-    template RUNEMATH_API Vec3<float> Vec3<float>::GetCenter(const Vec3<float> &min, const Vec3<float> &max);
-    template RUNEMATH_API Vec3<double> Vec3<double>::GetCenter(const Vec3<double> &min, const Vec3<double> &max);
+    template RUNEMATH_API Vec3<float> Vec3<float>::Center(const Vec3<float> &min, const Vec3<float> &max);
+    template RUNEMATH_API Vec3<double> Vec3<double>::Center(const Vec3<double> &min, const Vec3<double> &max);
 
     template<typename T>
-    RUNEMATH_API T Vec3<T>::GetAngle(const Vec3<T> &a, const Vec3<T> &b)
+    RUNEMATH_API T Vec3<T>::Angle(const Vec3<T> &a, const Vec3<T> &b)
     {
         return Math<T>::Acos(Dot(a, b)*a.RMagnitude()*b.RMagnitude());
     }
 
-    template RUNEMATH_API float Vec3<float>::GetAngle(const Vec3<float> &a, const Vec3<float> &b);
-    template RUNEMATH_API double Vec3<double>::GetAngle(const Vec3<double> &a, const Vec3<double> &b);
+    template RUNEMATH_API float Vec3<float>::Angle(const Vec3<float> &a, const Vec3<float> &b);
+    template RUNEMATH_API double Vec3<double>::Angle(const Vec3<double> &a, const Vec3<double> &b);
+
+    template<typename T>
+    RUNEMATH_API T Vec3<T>::AngleUnnorm(const Vec3<T> &a, const Vec3<T> &b)
+    {
+        return Math<T>::Acos(Dot(a, b));
+    }
+
+    template RUNEMATH_API float Vec3<float>::AngleUnnorm(const Vec3<float> &a, const Vec3<float> &b);
+    template RUNEMATH_API double Vec3<double>::AngleUnnorm(const Vec3<double> &a, const Vec3<double> &b);
 
     /**
         Vraci tangent vektor (vektor mapovani textury pro normalmapping), vstupem jsou vertexy
         trojuhelniku a jeho texturove koordinaty
     **************************************************************************************************/
     template<typename T>
-    RUNEMATH_API Vec3<T> Vec3<T>::GetTangent(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
+    RUNEMATH_API Vec3<T> Vec3<T>::CalculateTangent(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
     {
         return ((v1 - v0) * (t2.y - t0.y) + (v2 - v0) * (t0.y - t1.y)).GetNormalized();
     }
 
-    template RUNEMATH_API Vec3<float> Vec3<float>::GetTangent(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
-    template RUNEMATH_API Vec3<double> Vec3<double>::GetTangent(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
+    template RUNEMATH_API Vec3<float> Vec3<float>::CalculateTangent(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
+    template RUNEMATH_API Vec3<double> Vec3<double>::CalculateTangent(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
 
     /**
         Vraci bitangent vektor (vektor mapovani textury pro normalmapping), vstupem jsou vertexy
         trojuhelniku a jeho texturove koordinaty
     **************************************************************************************************/
     template<typename T>
-    RUNEMATH_API Vec3<T> Vec3<T>::GetBitangent(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
+    RUNEMATH_API Vec3<T> Vec3<T>::CalculateBitangent(const Vec3<T> &v0, const Vec3<T> &v1, const Vec3<T> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
     {
         return ((v1 - v0) * (t2.x - t0.x) + (v2 - v0) * (t0.x - t1.x)).GetNormalized();
     }
 
-    template RUNEMATH_API Vec3<float> Vec3<float>::GetBitangent(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
-    template RUNEMATH_API Vec3<double> Vec3<double>::GetBitangent(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
+    template RUNEMATH_API Vec3<float> Vec3<float>::CalculateBitangent(const Vec3<float> &v0, const Vec3<float> &v1, const Vec3<float> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
+    template RUNEMATH_API Vec3<double> Vec3<double>::CalculateBitangent(const Vec3<double> &v0, const Vec3<double> &v1, const Vec3<double> &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
 
     /**
         Vraci obsah trojuhelniku
     **************************************************************************************************/
     template<typename T>
-    RUNEMATH_API T Vec3<T>::GetArea(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c)
+    RUNEMATH_API T Vec3<T>::CalculateAreaOfTriangle(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c)
     {
         return Cross(b - a, c - a).Magnitude() * T(0.5);
     }
 
-    template RUNEMATH_API float Vec3<float>::GetArea(const Vec3<float> &a, const Vec3<float> &b, const Vec3<float> &c);
-    template RUNEMATH_API double Vec3<double>::GetArea(const Vec3<double> &a, const Vec3<double> &b, const Vec3<double> &c);
+    template RUNEMATH_API float Vec3<float>::CalculateAreaOfTriangle(const Vec3<float> &a, const Vec3<float> &b, const Vec3<float> &c);
+    template RUNEMATH_API double Vec3<double>::CalculateAreaOfTriangle(const Vec3<double> &a, const Vec3<double> &b, const Vec3<double> &c);
 }

@@ -90,7 +90,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
     Hramp = 1;   // Hramp ramps in Hbond acceptor probes
 
     //  cosTheta = distance dot bondVectors->rvector == cos(angle) subtended.
-    double cosTheta = -dotProduct((const double*)distance, bondVectors->rvector[ia]);
+    double cosTheta = -Vec3d::Dot(distance, bondVectors->rvector[ia]);
 
     // Calculate racc/rdon/Hramp
     if (input->hbond[ia] == D1)
@@ -121,7 +121,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
             // NEW2 calculate dot product of bond vector with bond vector of best input->hbond
             if (ia != closestH)
             {
-                double theta = angle(bondVectors->rvector[closestH], bondVectors->rvector[ia]);
+                double theta = Vec3d::AngleUnnorm(bondVectors->rvector[closestH], bondVectors->rvector[ia]);
                 Hramp = 0.5 - 0.5 * cos(theta * (120.0 / 90.0));
             }   // ia test
             // END NEW2 calculate dot product of bond vector with bond vector of best input->hbond
@@ -173,14 +173,13 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
                 // vector between the lone pairs,
                 // calculated as (grid vector CROSS lone pair plane normal)
                 // DOT C=O vector - 90 deg
-                double cross[XYZ];
-                crossProduct(cross, (const double*)distance, bondVectors->rvector2[ia]);
-                double rd2 = lengthSquared(cross[0], cross[1], cross[2]);
+                Vec3d cross = Vec3d::Cross(distance, bondVectors->rvector2[ia]);
+                double rd2 = cross.MagnitudeSqr();
                 if (rd2 < APPROX_ZERO)
                     rd2 = APPROX_ZERO;
                 double inv_rd = Mathd::Rsqrt(rd2);
 
-                double ti = fabs(Mathd::Acos(inv_rd * dotProduct(cross, bondVectors->rvector[ia])) - (PI / 2));
+                double ti = fabs(Mathd::Acos(inv_rd * Vec3d::Dot(cross, bondVectors->rvector[ia])) - (PI / 2));
                 // the 2.0*ti can be replaced by (ti + ti) in: rdon = (0.9 + 0.1*sin(2.0*ti))*cos(t0);
                 rdon = 0.9 + 0.1 * sin(ti + ti);
                 // 0.34202 = cos (100 deg)
@@ -191,7 +190,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
             // t0 is the angle out of the lone pair plane, calculated
             // as 90 deg - acos (vector to grid point DOT lone pair
             // plane normal)
-            double t0 = (PI / 2) - angle((const double*)distance, bondVectors->rvector2[ia]);
+            double t0 = (PI / 2) - Vec3d::AngleUnnorm(distance, bondVectors->rvector2[ia]);
             rdon *= cos(t0);
 
             // endif input->atomType == oxygen, not disordered
@@ -279,7 +278,7 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
 #if defined(USE_NNS)
     // Create a tree for finding the closest H
     beginTimer(6);
-    int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating the H index into the receptor atom index
+    int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating a H index into a receptor atom index
     NearestNeighborSearch3d hsearch;
     initHSearch(input, hsearch, indicesHtoA);
     endTimer(6);
@@ -337,7 +336,7 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
             double invR = Mathd::Rsqrt(rSq);
             distance *= invR;
 
-            int indexR = Mathi::Min(lookup(1 / invR), MAX_DIST-1); // make sure lookup index is in the table
+            int indexR = lookup(1 / invR);
 
             double racc, rdon, Hramp;
             getHBondAngularFunction(input, bondVectors, ia, closestH, distance, racc, rdon, Hramp);
@@ -366,5 +365,7 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
     END_FOR();
     endTimer(3);
 
+#if defined(USE_NNS)
     delete [] indicesHtoA;
+#endif
 }

@@ -32,8 +32,8 @@ BondVectors::BondVectors(LogFile *logFile): logFile(logFile)
 
 void BondVectors::calculate(const InputData *input, const ParameterLibrary &parameterLibrary)
 {
-    double d[XYZ];
-    double dc[XYZ];
+    Vec3d d;
+    Vec3d dc;
     double rdot;
     int from, to;
     int nbond;
@@ -80,8 +80,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
 
                     // Calculate the square of the N-H or O-H bond distance, rd2,
                     //                            ib-ia  ib-ia
-                    for (int i = 0; i < XYZ; i++)
-                        d[i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
+                    d = input->receptorAtomCoord[ia] - input->receptorAtomCoord[ib];
                     rd2 = lengthSquared(d[X], d[Y], d[Z]);
                     // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
                     if (rd2 < 1.90)
@@ -112,8 +111,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         }
 
                         // Normalize the vector from ib to ia, N->H or O->H...
-                        for (int i = 0; i < XYZ; i++)
-                            rvector[ia][i] = d[i] * inv_rd;
+                        rvector[ia] = d * inv_rd;
 
                         // First O-H/N-H H-bond-donor found; Go on to next atom,
                         break;
@@ -135,13 +133,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
             for (; ib <= to; ib++)
                 if (ib != ia)
                 {
-                    rd2 = 0;
-
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        dc[i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                        rd2 += Mathd::Sqr(dc[i]);
-                    }
+                    dc = input->receptorAtomCoord[ia] - input->receptorAtomCoord[ib];
+                    rd2 = dc.MagnitudeSqr();
 
                     if (((rd2 < 3.61) && ((input->atomType[ib] != hydrogen) && (input->atomType[ib] != nonHB_hydrogen))) ||
                         ((rd2 < 1.69) && ((input->atomType[ib] == hydrogen) || (input->atomType[ib] == nonHB_hydrogen))))
@@ -169,12 +162,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
             if (nbond == 1)
             {
                 // calculate normalized carbonyl bond vector rvector[ia][]
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[i1][i];
-                    rd2 += Mathd::Sqr(rvector[ia][i]);
-                }
+                rvector[ia] = input->receptorAtomCoord[ia] - input->receptorAtomCoord[i1];
+                rd2 = rvector[ia].MagnitudeSqr();
                 if (rd2 < APPROX_ZERO)
                 {
                     if ((rd2 == 0) && !warned)
@@ -185,29 +174,20 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = Mathd::Rsqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
+                rvector[ia] *= inv_rd;
 
                 // find a second atom (i2) bonded to carbonyl carbon (i1)
                 for (int i2 = from; i2 <= to; i2++)
                     if ((i2 != i1) && (i2 != ia))
                     {
-                        rd2 = 0;
-                        for (int i = 0; i < XYZ; i++)
-                        {
-                            dc[i] = input->receptorAtomCoord[i1][i] - input->receptorAtomCoord[i2][i];
-                            /*NEW*/ rd2 += Mathd::Sqr(dc[i]);
-                        }
+                        dc = input->receptorAtomCoord[i1] - input->receptorAtomCoord[i2];
+                        rd2 = dc.MagnitudeSqr();
                         if (((rd2 < 2.89) && (input->atomType[i2] != hydrogen)) || ((rd2 < 1.69) && (input->atomType[i2] == hydrogen)))
                         {
                             // found one
                             // d[i] vector from carbon to second atom
-                            rd2 = 0;
-                            for (int i = 0; i < XYZ; i++)
-                            {
-                                d[i] = input->receptorAtomCoord[i2][i] - input->receptorAtomCoord[i1][i];
-                                rd2 += Mathd::Sqr(d[i]);
-                            }
+                            d = input->receptorAtomCoord[i2] - input->receptorAtomCoord[i1];
+                            rd2 = d.MagnitudeSqr();
                             if (rd2 < APPROX_ZERO)
                             {
                                 if ((rd2 == 0) && !warned)
@@ -218,16 +198,11 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                 rd2 = APPROX_ZERO;
                             }
                             inv_rd = Mathd::Rsqrt(rd2);
-                            for (int i = 0; i < XYZ; i++)
-                                d[i] *= inv_rd;
+                            d *= inv_rd;
 
                             // C=O cross C-X gives the lone pair plane normal
-                            rvector2[ia][0] = rvector[ia][1] * d[2] - rvector[ia][2] * d[1];
-                            rvector2[ia][1] = rvector[ia][2] * d[0] - rvector[ia][0] * d[2];
-                            rvector2[ia][2] = rvector[ia][0] * d[1] - rvector[ia][1] * d[0];
-                            rd2 = 0;
-                            for (int i = 0; i < XYZ; i++)
-                                rd2 += Mathd::Sqr(rvector2[ia][i]);
+                            rvector2[ia] = Vec3d::Cross(rvector[ia], d);
+                            rd2 = rvector2[ia].MagnitudeSqr();
                             if (rd2 < APPROX_ZERO)
                             {
                                 if ((rd2 == 0) && !warned)
@@ -238,8 +213,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                                 rd2 = APPROX_ZERO;
                             }
                             inv_rd = Mathd::Rsqrt(rd2);
-                            for (int i = 0; i < XYZ; i++)
-                                rvector2[ia][i] *= inv_rd;
+                            rvector2[ia] *= inv_rd;
                         }
                     }
             }                   // endif nbond==1
@@ -254,12 +228,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     if ((input->atomType[i2] == carbon) || (input->atomType[i1] == arom_carbon))
                         ib = i2;
                     disorder[ia] = true;
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        rvector[ia][i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                        rd2 += Mathd::Sqr(rvector[ia][i]);
-                    }
+                    rvector[ia] = input->receptorAtomCoord[ia] - input->receptorAtomCoord[ib];
+                    rd2 = rvector[ia].MagnitudeSqr();
                     if (rd2 < APPROX_ZERO)
                     {
                         if ((rd2 == 0) && !warned)
@@ -270,19 +240,14 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         rd2 = APPROX_ZERO;
                     }
                     inv_rd = Mathd::Rsqrt(rd2);
-                    for (int i = 0; i < XYZ; i++)
-                        rvector[ia][i] *= inv_rd;
+                    rvector[ia] *= inv_rd;
                 }
                 else
                 {
                     // not a disordered hydroxyl
                     // normalized X1 to X2 vector, defines lone pair plane
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        rvector2[ia][i] = input->receptorAtomCoord[i2][i] - input->receptorAtomCoord[i1][i];
-                        rd2 += Mathd::Sqr(rvector2[ia][i]);
-                    }
+                    rvector2[ia] = input->receptorAtomCoord[i2] - input->receptorAtomCoord[i1];
+                    rd2 = rvector2[ia].MagnitudeSqr();
                     if (rd2 < APPROX_ZERO)
                     {
                         if ((rd2 == 0) && !warned)
@@ -293,23 +258,16 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         rd2 = APPROX_ZERO;
                     }
                     inv_rd = Mathd::Rsqrt(rd2);
-                    for (int i = 0; i < XYZ; i++)
-                        rvector2[ia][i] *= inv_rd;
+                    rvector2[ia] *= inv_rd;
 
                     // vector pointing between the lone pairs:
                     // front of the vector is the oxygen atom,
                     // X1->O vector dotted with normalized X1->X2 vector plus
                     // coords of X1 gives the point on the X1-X2 line for the
                     // back of the vector.
-                    rdot = 0;
-                    for (int i = 0; i < XYZ; i++)
-                        rdot += (input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[i1][i]) * rvector2[ia][i];
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        rvector[ia][i] = input->receptorAtomCoord[ia][i] - ((rdot * rvector2[ia][i]) + input->receptorAtomCoord[i1][i]);
-                        rd2 += Mathd::Sqr(rvector[ia][i]);
-                    }
+                    rdot = Vec3d::Dot(input->receptorAtomCoord[ia] - input->receptorAtomCoord[i1], rvector2[ia]);
+                    rvector[ia] = input->receptorAtomCoord[ia] - (rvector2[ia]*rdot + input->receptorAtomCoord[i1]);
+                    rd2 = rvector[ia].MagnitudeSqr();
                     if (rd2 < APPROX_ZERO)
                     {
                         if ((rd2 == 0) && !warned)
@@ -320,8 +278,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                         rd2 = APPROX_ZERO;
                     }
                     inv_rd = Mathd::Rsqrt(rd2);
-                    for (int i = 0; i < XYZ; i++)
-                        rvector[ia][i] *= inv_rd;
+                    rvector[ia] *= inv_rd;
                 }               // end disordered hydroxyl
         }
         else if (input->hbond[ia] == A1)
@@ -334,12 +291,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
             for (; ib <= to; ib++)
                 if (ib != ia)
                 {
-                    rd2 = 0;
-                    for (int i = 0; i < XYZ; i++)
-                    {
-                        dc[i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[ib][i];
-                        rd2 += Mathd::Sqr(dc[i]);
-                    }
+                    dc = input->receptorAtomCoord[ia] - input->receptorAtomCoord[ib];
+                    rd2 = dc.MagnitudeSqr();
 
                     if (((rd2 < 2.89) && ((input->atomType[ib] != hydrogen) && (input->atomType[ib] != nonHB_hydrogen))) ||
                         ((rd2 < 1.69) && ((input->atomType[ib] == hydrogen) || (input->atomType[ib] == nonHB_hydrogen))))
@@ -370,12 +323,8 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
             if (nbond == 1)
             {
                 // calculate normalized N=C bond vector rvector[ia][]
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->receptorAtomCoord[ia][i] - input->receptorAtomCoord[i1][i];
-                    rd2 += Mathd::Sqr(rvector[ia][i]);
-                }
+                rvector[ia] = input->receptorAtomCoord[ia] - input->receptorAtomCoord[i1];
+                rd2 = rvector[ia].MagnitudeSqr();
                 if (rd2 < APPROX_ZERO)
                 {
                     if ((rd2 == 0) && !warned)
@@ -386,20 +335,15 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = Mathd::Rsqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
+                rvector[ia] *= inv_rd;
             }                   // endif nbond==1
 
             // two bonds: X1-N=X2
             if (nbond == 2)
             {
                 // normalized vector from Nitrogen to midpoint between X1 and X2
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->receptorAtomCoord[ia][i] - (input->receptorAtomCoord[i2][i] + input->receptorAtomCoord[i1][i]) / 2;
-                    rd2 += Mathd::Sqr(rvector[ia][i]);
-                }
+                rvector[ia] = input->receptorAtomCoord[ia] - (input->receptorAtomCoord[i2] + input->receptorAtomCoord[i1]) / 2;
+                rd2 = rvector[ia].MagnitudeSqr();
                 if (rd2 < APPROX_ZERO)
                 {
                     if ((rd2 == 0) && !warned)
@@ -410,20 +354,15 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = Mathd::Rsqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
+                rvector[ia] *= inv_rd;
             }                   // end two bonds for nitrogen
 
             // three bonds: X1,X2,X3
             if (nbond == 3)
             {
                 // normalized vector from Nitrogen to midpoint between X1, X2, and X3
-                rd2 = 0;
-                for (int i = 0; i < XYZ; i++)
-                {
-                    rvector[ia][i] = input->receptorAtomCoord[ia][i] - (input->receptorAtomCoord[i1][i] + input->receptorAtomCoord[i2][i] + input->receptorAtomCoord[i3][i]) / 3;
-                    rd2 += Mathd::Sqr(rvector[ia][i]);
-                }
+                rvector[ia] = input->receptorAtomCoord[ia] - (input->receptorAtomCoord[i1] + input->receptorAtomCoord[i2] + input->receptorAtomCoord[i3]) / 3;
+                rd2 = rvector[ia].MagnitudeSqr();
                 if (rd2 < APPROX_ZERO)
                 {
                     if ((rd2 == 0) && !warned)
@@ -434,9 +373,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     rd2 = APPROX_ZERO;
                 }
                 inv_rd = Mathd::Rsqrt(rd2);
-                for (int i = 0; i < XYZ; i++)
-                    rvector[ia][i] *= inv_rd;
-
+                rvector[ia] *= inv_rd;
             }                   // end three bonds for Nitrogen
             // endNEW directional N Acceptor
         }                       // end test for atom type

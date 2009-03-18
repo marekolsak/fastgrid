@@ -37,7 +37,7 @@ namespace Rune
         Plane3(const Vec3<T> &in_normal, const Vec3<T> &point): normal(in_normal), d(-Vec3<T>::Dot(normal, point)) {}
         Plane3(const Vec3<T> &in_normal, T D): normal(in_normal), d(D) {}
         Plane3(T a, T b, T c, T D): normal(a, b, c), d(D) {}
-        Plane3(const Vec3<T> &p1, const Vec3<T> &p2, const Vec3<T> &p3): normal(Vec3<T>::GetNormal(p1, p2, p3)), d(-Vec3<T>::Dot(normal, p1)) {}
+        Plane3(const Vec3<T> &p1, const Vec3<T> &p2, const Vec3<T> &p3): normal(Vec3<T>::CalculateNormal(p1, p2, p3)), d(-Vec3<T>::Dot(normal, p1)) {}
 
         void operator *=(T f)                               { normal *= f; d *= f; }
         Plane3 operator *(T f) const                        { return Plane3(normal * f, d * f); }

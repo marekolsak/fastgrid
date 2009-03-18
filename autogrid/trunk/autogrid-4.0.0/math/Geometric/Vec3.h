@@ -63,7 +63,7 @@ namespace Rune
         void operator -=(const Vec3 &v)                 { x -= v.x; y -= v.y; z -= v.z; }
         void operator -=(T f)                           { x -= f; y -= f; z -= f; }
         void operator *=(T f)                           { x *= f; y *= f; z *= f; }
-        void operator /=(T f)                           { f = 1/f; x *= f; y *= f; z *= f; }
+        void operator /=(T f)                           { x /= f; y /= f; z /= f; }
 
         Vec3 operator +(const Vec3 &v) const            { return Vec3(x+v.x, y+v.y, z+v.z); }
         Vec3 operator +(T f) const                      { return Vec3(x+f, y+f, z+f); }
@@ -72,7 +72,7 @@ namespace Rune
         Vec3 operator *(const Vec3 &v) const            { return Vec3(x*v.x, y*v.y, z*v.z); }
         Vec3 operator *(T f) const                      { return Vec3(x*f, y*f, z*f); }
         Vec3 operator /(const Vec3 &v) const            { return Vec3(x/v.x, y/v.y, z/v.z); }
-        Vec3 operator /(T f) const                      { f = 1/f; return Vec3(x*f, y*f, z*f); }
+        Vec3 operator /(T f) const                      { return Vec3(x/f, y/f, z/f); }
         Vec3 operator -() const                         { return Vec3(-x, -y, -z); }
         T& operator [](int i)                           { return (&x)[i]; }
         T operator [](int i) const                      { return (&x)[i]; }
@@ -103,17 +103,19 @@ namespace Rune
         RUNEMATH_API void RotateX(T angle);
         RUNEMATH_API void RotateY(T angle);
         RUNEMATH_API void RotateZ(T angle);
+
         RUNEMATH_API static T Dot(const Vec3 &v1, const Vec3 &v2);
         RUNEMATH_API static Vec3 Cross(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static T GetDistanceSqr(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static T GetDistance(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 GetNormal(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 GetNormalUN(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 GetCenter(const Vec3 &min, const Vec3 &max);
-        RUNEMATH_API static T GetAngle(const Vec3 &a, const Vec3 &b);
-        RUNEMATH_API static Vec3 GetTangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
-        RUNEMATH_API static Vec3 GetBitangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
-        RUNEMATH_API static T GetArea(const Vec3 &a, const Vec3 &b, const Vec3 &c);
+        RUNEMATH_API static T DistanceSqr(const Vec3 &v1, const Vec3 &v2);
+        RUNEMATH_API static T Distance(const Vec3 &v1, const Vec3 &v2);
+        RUNEMATH_API static Vec3 CalculateNormal(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2);
+        RUNEMATH_API static Vec3 CalculateNormalUnnorm(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2);
+        RUNEMATH_API static Vec3 Center(const Vec3 &min, const Vec3 &max);
+        RUNEMATH_API static T Angle(const Vec3 &a, const Vec3 &b);
+        RUNEMATH_API static T AngleUnnorm(const Vec3 &a, const Vec3 &b);
+        RUNEMATH_API static Vec3 CalculateTangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
+        RUNEMATH_API static Vec3 CalculateBitangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
+        RUNEMATH_API static T CalculateAreaOfTriangle(const Vec3 &a, const Vec3 &b, const Vec3 &c);
     };
 
     template<typename T>

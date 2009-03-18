@@ -90,11 +90,16 @@ namespace Rune
             return union_cast<double>(0x5fe6ec85e7de30daLL - (union_cast<int64>(a) >> 1));
         }*/
 
+#if 1
+        // 1 / Sqrt(f).
+        static T Rsqrt(T a)
+        {
+            return 1 / Sqrt(a);
+        }
+#else
         // Fast approximation of 1 / Sqrt(f).
         static T Rsqrt(T a, int iterations = 4)
         {
-            return 1 / Sqrt(a);
-
             T g = T(RsqrtApprox(float(a)));
 
             // Improve the accuracy using Newton's method
@@ -104,6 +109,7 @@ namespace Rune
 
             return g;
         }
+#endif
     };
 
     typedef Math<float> Mathf;
