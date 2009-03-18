@@ -298,6 +298,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\calculateelecmap.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\calculateelecmap.h"
+				>
+			</File>
+			<File
 				RelativePath="..\calculategridmaps.cpp"
 				>
 			</File>

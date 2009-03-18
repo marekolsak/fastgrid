@@ -23,7 +23,6 @@
 */
 
 #pragma once
-#include "inputdata.h"
 #include "pairwiseinteractionenergies.h"
 #include "desolvexpfunc.h"
 #include "bondvectors.h"

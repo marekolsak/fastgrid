@@ -27,6 +27,7 @@
 #include "inputdataloader.h"
 #include "utils.h"
 #include "calculategridmaps.h"
+#include "calculateelecmap.h"
 #include <new>
 
 void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
@@ -49,68 +50,6 @@ void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
                 gridmaps[m].energies[outputIndex] = energy;
             }
             END_FOR();
-}
-
-void calculateElectrostaticMap(const InputData *input, const GridMapList &gridmaps)
-{
-    // TODO: rewrite this function using NVIDIA CUDA
-    fprintf(stderr, "distDepDiel: %i\n", input->distDepDiel);
-
-    if (input->distDepDiel)
-    {
-        // Distance-dependent dielectric...
-
-        #if defined(AG_OPENMP)
-            #pragma AG_OPENMP_PARALLEL_FOR
-        #endif
-        FOR_EACH_GRID_POINT(gridPos, outputIndex)
-        {
-            double energy = gridmaps.getElectrostaticMap().energies[outputIndex];
-
-            //  Do all Receptor (protein, DNA, etc.) atoms...
-            for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-            {
-                //  Get the distance from current grid point to this receptor atom (|gridPos - receptorAtomCoord|)
-                double r = (input->receptorAtomCoord[ia] - gridPos).Magnitude();
-                if (r < APPROX_ZERO)
-                    r = APPROX_ZERO;
-
-                // Distance-dependent dielectric...
-                // The estat forcefield coefficient/weight is premultiplied
-                energy += input->charge_mul_coeffEstat_mulIfContDiel_invDielCal[ia] * Mathd::Min(1 / r, 2) * input->epsilon[lookup(r)];
-            }
-
-            // Round to 3 decimal places
-            gridmaps.getElectrostaticMap().energies[outputIndex] = roundOutput(energy);
-        }
-        END_FOR();
-    }
-    else
-    {
-        // Constant dielectric...
-
-        #if defined(AG_OPENMP)
-            #pragma AG_OPENMP_PARALLEL_FOR
-        #endif
-        FOR_EACH_GRID_POINT(gridPos, outputIndex)
-        {
-            double energy = gridmaps.getElectrostaticMap().energies[outputIndex];
-
-            //  Do all Receptor (protein, DNA, etc.) atoms...
-            for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-            {
-                //  Get reciprocal of the distance from current grid point to this receptor atom (1 / |gridPos - receptorAtomCoord|)
-                double invR = (input->receptorAtomCoord[ia] - gridPos).RMagnitude();
-
-                // Both the constant dielectric and the estat forcefield coefficient/weight are premultiplied
-                energy += input->charge_mul_coeffEstat_mulIfContDiel_invDielCal[ia] * Mathd::Min(invR, 2);
-            }
-
-            // Round to 3 decimal places
-            gridmaps.getElectrostaticMap().energies[outputIndex] = roundOutput(energy);
-        }
-        END_FOR();
-    }
 }
 
 void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
@@ -266,7 +205,7 @@ void autogridMain(int argc, char **argv)
 
     beginTimer(2);
     // Calculation of the electrostatic map
-    calculateElectrostaticMap(input, gridmaps);
+    calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
     endTimer(2);
 
     // Calculate the so-called "floating grid"

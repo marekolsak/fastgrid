@@ -42,9 +42,13 @@
 #include <cfloat>
 #include "math.h"
 
-// OpenMP configuration
+// Options (what to use)
 
 #define AG_OPENMP
+#define AG_CUDA
+
+// OpenMP configuration
+
 #define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
 
 // Macros

@@ -63,7 +63,7 @@ struct HBondInfo
     }
 };
 
-inline int findClosestHBond(const InputData *input, const Vec3d &gridPos)
+static inline int findClosestHBond(const InputData *input, const Vec3d &gridPos)
 {
     int closestH = 0;
     double rminSq = Mathd::Sqr(999999.0);
@@ -82,7 +82,7 @@ inline int findClosestHBond(const InputData *input, const Vec3d &gridPos)
     return closestH;
 }
 
-inline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, const Vec3d &distance,
+static inline void getHBondAngularFunction(const InputData *input, const BondVectors *bondVectors, int ia, int closestH, const Vec3d &distance,
                              double &racc, double &rdon, double &Hramp) // output
 {
     racc = 1;
@@ -198,7 +198,7 @@ inline void getHBondAngularFunction(const InputData *input, const BondVectors *b
     }
 }
 
-inline void sumPairwiseInteractions(const InputData *input, const GridMapList &gridmaps, const PairwiseInteractionEnergies &energyLookup,
+static inline void sumPairwiseInteractions(const InputData *input, const GridMapList &gridmaps, const PairwiseInteractionEnergies &energyLookup,
                              const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors, HBondInfo &hbond,
                              int outputIndex, int m, int ia, int indexR, int hydrogen, double racc, double rdon, double Hramp)
 {
@@ -237,7 +237,7 @@ inline void sumPairwiseInteractions(const InputData *input, const GridMapList &g
         (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
 }
 
-void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGrid)
+static void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGrid)
 {
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
     double cellSize = NBCUTOFF / 4.0;
@@ -248,7 +248,7 @@ void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGrid)
         cutoffGrid.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
 }
 
-void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *&indicesHtoA)
+static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *&indicesHtoA)
 {
     int numH = 0;
     Vec3d *hcoord = new Vec3d[input->numReceptorAtoms];

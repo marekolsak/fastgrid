@@ -81,7 +81,7 @@ void BondVectors::calculate(const InputData *input, const ParameterLibrary &para
                     // Calculate the square of the N-H or O-H bond distance, rd2,
                     //                            ib-ia  ib-ia
                     d = input->receptorAtomCoord[ia] - input->receptorAtomCoord[ib];
-                    rd2 = lengthSquared(d[X], d[Y], d[Z]);
+                    rd2 = d.MagnitudeSqr();
                     // If ia & ib are less than 1.3 A apart -- they are covalently bonded,
                     if (rd2 < 1.90)
                     {
