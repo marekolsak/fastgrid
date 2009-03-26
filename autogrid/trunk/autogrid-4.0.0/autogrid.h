@@ -42,10 +42,14 @@
 #include <cfloat>
 #include "math.h"
 
-// Options (what to use)
+// Options
+// Do not uncomment these! Specify them in the command-line arguments of your compiler (G++, CMake) or in the project settings (VC++)
 
-#define AG_OPENMP
-#define AG_CUDA
+// Enables the OpenMP support
+//#define AG_OPENMP
+
+// Enables the NVIDIA CUDA support
+//#define AG_CUDA
 
 // OpenMP configuration
 

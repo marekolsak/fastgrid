@@ -1,5 +1,5 @@
 /*
-    Auxiliary Math library
+    Linear Algebra / Math library
 
     Copyright (C) 2003-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
     Copyright (C) 2003-2005, Tomas Pastorek (tomas@tomaspastorek.cz), All Rights Reserved.

@@ -68,7 +68,7 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
             //  Get distance^2 from current grid point to this receptor atom
-            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
+            Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
             double distSq = distance.MagnitudeSqr();
             if (distSq < minDistSq)
                 minDistSq = distSq;

@@ -22,7 +22,13 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#pragma once
-#include "gridmap.h"
+#include "calculateelecmap_cuda.h"
 
-void calculateElectrostaticMap(const InputData *input, GridMap &elecMap);
+extern "C" __host__ void cuCalculateElectrostaticMap(
+                         /* Output          */       float *outEnergies,
+                         /* Grid parameters */       dim3 numGridPoints, dim3 numGridPointsDiv2, float gridSpacing,
+                         /* Receptor atoms  */       int numReceptorAtoms, const float *receptorAtomCoord,
+                         /* Charge          */       const float *premultipliedCharge,
+                         /* Dist-dep dielec.*/       int distDepDiel, const float *epsilon)
+{
+}

@@ -48,7 +48,7 @@ public:
         coords = points;
         pointarray = new ANNpoint[num];
         for (int i = 0; i < num; i++)
-            pointarray[i] = const_cast<double*>(static_cast<const double*>(coords[i]));
+            pointarray[i] = const_cast<double*>(&coords[i].x);
 
         tree = new ANNkd_tree(pointarray, num, 3);
     }
@@ -57,7 +57,7 @@ public:
     {
         int result;
         double d;
-        tree->annkSearch(const_cast<double*>(static_cast<const double*>(point)), 1, &result, &d, 0);
+        tree->annkSearch(const_cast<double*>(&point.x), 1, &result, &d, 0);
         return result;
     }
 

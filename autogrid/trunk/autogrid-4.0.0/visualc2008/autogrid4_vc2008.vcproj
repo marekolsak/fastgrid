@@ -14,6 +14,9 @@
 		/>
 	</Platforms>
 	<ToolFiles>
+		<ToolFile
+			RelativePath="..\..\..\..\..\..\..\..\All Users\Application Data\NVIDIA Corporation\NVIDIA CUDA SDK\common\Cuda.rules"
+		/>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
@@ -30,6 +33,11 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
+				Name="CUDA Build Rule"
+				Debug="true"
+				Emulation="true"
+			/>
+			<Tool
 				Name="VCXMLDataGeneratorTool"
 			/>
 			<Tool
@@ -42,7 +50,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP"
 				Optimization="0"
-				AdditionalIncludeDirectories=""
+				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
@@ -64,9 +72,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="ws2_32.lib"
+				AdditionalDependencies="ws2_32.lib cuda.lib cudart.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories=""
+				AdditionalLibraryDirectories="$(CUDA_LIB_PATH)"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				StackReserveSize="4000000"
@@ -112,6 +120,10 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
+				Name="CUDA Build Rule"
+				Emulation="true"
+			/>
+			<Tool
 				Name="VCXMLDataGeneratorTool"
 			/>
 			<Tool
@@ -129,8 +141,8 @@
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
 				EnableFiberSafeOptimizations="true"
-				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
@@ -154,9 +166,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="ws2_32.lib"
+				AdditionalDependencies="ws2_32.lib cuda.lib cudart.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories=""
+				AdditionalLibraryDirectories="$(CUDA_LIB_PATH)"
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
 				SubSystem="1"
@@ -207,6 +219,9 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
+				Name="CUDA Build Rule"
+			/>
+			<Tool
 				Name="VCXMLDataGeneratorTool"
 			/>
 			<Tool
@@ -220,7 +235,7 @@
 				AdditionalOptions="/MP"
 				Optimization="0"
 				InlineFunctionExpansion="0"
-				AdditionalIncludeDirectories=""
+				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				OpenMP="true"
@@ -243,7 +258,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="ws2_32.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories=""
+				AdditionalLibraryDirectories="$(CUDA_LIB_PATH)"
 				GenerateManifest="false"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -298,11 +313,23 @@
 				>
 			</File>
 			<File
-				RelativePath="..\calculateelecmap.cpp"
+				RelativePath="..\calculateelecmap.h"
 				>
 			</File>
 			<File
-				RelativePath="..\calculateelecmap.h"
+				RelativePath="..\calculateelecmap_cpu.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\calculateelecmap_cuda.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\calculateelecmap_cuda.cu"
+				>
+			</File>
+			<File
+				RelativePath="..\calculateelecmap_cuda.h"
 				>
 			</File>
 			<File
@@ -548,11 +575,15 @@
 						>
 					</File>
 					<File
-						RelativePath="..\math\Geometric\Vec3.cpp"
+						RelativePath="..\math\Geometric\Vec2Content.h"
 						>
 					</File>
 					<File
 						RelativePath="..\math\Geometric\Vec3.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec3Content.h"
 						>
 					</File>
 					<File
@@ -561,6 +592,10 @@
 					</File>
 					<File
 						RelativePath="..\math\Geometric\Vec4.h"
+						>
+					</File>
+					<File
+						RelativePath="..\math\Geometric\Vec4Content.h"
 						>
 					</File>
 					<File

@@ -1,5 +1,5 @@
 /*
-    Auxiliary Math library
+    Linear Algebra / Math library
 
     Copyright (C) 2003-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
     Copyright (C) 2003-2005, Tomas Pastorek (tomas@tomaspastorek.cz), All Rights Reserved.
@@ -26,22 +26,23 @@ namespace Rune
     /**
         Trirozmerny vektor
     **************************************************************************************************/
-    template<typename T>
-    class Vec3
+    template<typename T, int spaceXY = 0, int spaceYZ = 0>
+    class Vec3 : public Vec3Content<T, spaceXY, spaceYZ>
     {
     public:
-        T x,y,z;
-
         typedef Rune::Vec2<T> Vec2;
 
         Vec3() {}
-        Vec3(T f): x(f), y(f), z(f) {}
-        Vec3(const Vec2 &v, T Z): x(v.x), y(v.y), z(Z) {}
-        Vec3(T X, const Vec2 &v): x(X), y(v.x), z(v.y) {}
-        Vec3(T X, T Y, T Z): x(X), y(Y), z(Z) {}
+        Vec3(T f) { x = f; y = f; z = f; }
+        Vec3(const Vec2 &v, T Z) { xy = v; z = Z; }
+        Vec3(T X, const Vec2 &v) { x = X; yz = v; }
+        Vec3(T X, T Y, T Z) { x = X; y = Y; z = Z; }
 
-        template<typename U>
-        explicit Vec3(const Vec3<U> &v): x(T(v.x)), y(T(v.y)), z(T(v.z)) {}
+        template<int xspaceXY, int xspaceYZ>
+        Vec3(const Vec3<T, xspaceXY, xspaceYZ> &v) { x = v.x; y = v.y; z = v.z; }
+
+        template<typename U, int xspaceXY, int xspaceYZ>
+        explicit Vec3(const Vec3<U, xspaceXY, xspaceYZ> &v) { x = T(v.x); y = T(v.y); z = T(v.z); }
 
         bool operator ==(const Vec3 &v) const           { return x == v.x && y == v.y && z == v.z; }
         bool operator !=(const Vec3 &v) const           { return x != v.x && y != v.y && z != v.z; }
@@ -77,15 +78,12 @@ namespace Rune
         T& operator [](int i)                           { return (&x)[i]; }
         T operator [](int i) const                      { return (&x)[i]; }
 
-        operator T* ()                                  { return &x; }
-        operator const T* () const                      { return &x; }
-
         Vec2 GetVec2() const                            { return Vec2(x, y); }
         T GetMax() const                                { return Math<T>::Max(Math<T>::Max(x, y), z); }
         Vec3 GetAbs() const                             { return Vec3(Math<T>::Abs(x), Math<T>::Abs(y), Math<T>::Abs(z)); }
         Vec3 GetNormalized() const                      { T f = MagnitudeInv(); return Vec3(x*f, y*f, z*f); }
         T Magnitude() const                             { return Math<T>::Sqrt(MagnitudeSqr()); }
-        T MagnitudeInv() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
+        T MagnitudeInv() const                          { return Math<T>::Rsqrt(MagnitudeSqr()); }
         T MagnitudeSqr() const                          { return x*x + y*y + z*z; }
         Vec3 Reflect(const Vec3 &normal) const          { return *this - 2*Dot(normal, *this)*normal; }
         Vec3 Project(const Vec3 &v) const               { return *this * Dot(v, *this)/MagnitudeSqr(); }
@@ -98,24 +96,121 @@ namespace Rune
         void Inverse()                                  { x = 1/x; y = 1/y; z = 1/z; }
         Vec3 Frac() const                               { return Vec3(Math<T>::Frac(x), Math<T>::Frac(y), Math<T>::Frac(z)); }
 
-        RUNEMATH_API bool SafeIsEqual(const Vec3 &v) const;
-        RUNEMATH_API void Rotate(T x, T y, T z, T angle);
-        RUNEMATH_API void RotateX(T angle);
-        RUNEMATH_API void RotateY(T angle);
-        RUNEMATH_API void RotateZ(T angle);
+        RUNEMATH_API bool SafeIsEqual(const Vec3 &v) const
+        {
+            return Math<T>::SafeIsEqual(x, v.x) && Math<T>::SafeIsEqual(y, v.y) && Math<T>::SafeIsEqual(z, v.z);
+        }
 
-        RUNEMATH_API static T Dot(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 Cross(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static T DistanceSqr(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static T Distance(const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 CalculateNormal(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 CalculateNormalUnnorm(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2);
-        RUNEMATH_API static Vec3 Center(const Vec3 &min, const Vec3 &max);
-        RUNEMATH_API static T Angle(const Vec3 &a, const Vec3 &b);
-        RUNEMATH_API static T AngleUnnorm(const Vec3 &a, const Vec3 &b);
-        RUNEMATH_API static Vec3 CalculateTangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
-        RUNEMATH_API static Vec3 CalculateBitangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2);
-        RUNEMATH_API static T CalculateAreaOfTriangle(const Vec3 &a, const Vec3 &b, const Vec3 &c);
+        /**
+            Rotuje vektor kolem rotacni osy (x,y,z) uhlem angle
+        **************************************************************************************************/
+        RUNEMATH_API void Rotate(T x, T y, T z, T angle)
+        {
+            T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
+            T cr = 1-c, xx = x*x, xy = x*y, xz = x*z, yy = y*y, yz = y*z, zz = z*z, sx = s*x, sy = s*y, sz = s*z;
+            Vec3<T> r1(xx+c*(1-xx), xy*cr-sz,    xz*cr+sy);
+            Vec3<T> r2(xy*cr+sz,    yy+c*(1-yy), yz*cr-sx);
+            Vec3<T> r3(xz*cr-sy,    yz*cr+sx,    zz+c*(1-zz));
+            Set(Dot(*this, r1), Dot(*this, r2), Dot(*this, r3));
+        }
+
+        /**
+            Rotuje vektor kolem osy X uhlem angle
+        **************************************************************************************************/
+        RUNEMATH_API void RotateX(T angle)
+        {
+            T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
+            Set(x, y*c-z*s, y*s+z*c);
+        }
+
+        /**
+            Rotuje vektor kolem osy Y uhlem angle
+        **************************************************************************************************/
+        RUNEMATH_API void RotateY(T angle)
+        {
+            T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
+            Set(x*c+z*s, y, -x*s+z*c);
+        }
+
+        /**
+            Rotuje vektor kolem osy Z uhlem angle
+        **************************************************************************************************/
+        RUNEMATH_API void RotateZ(T angle)
+        {
+            T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
+            Set(x*c-y*s, x*s+y*c, z);
+        }
+
+        RUNEMATH_API static T Dot(const Vec3 &v1, const Vec3 &v2)
+        {
+            return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
+        }
+
+        RUNEMATH_API static Vec3 Cross(const Vec3 &v1, const Vec3 &v2)
+        {
+            return Vec3<T>(v1.y*v2.z - v1.z*v2.y, v1.z*v2.x - v1.x*v2.z, v1.x*v2.y - v1.y*v2.x);
+        }
+
+        RUNEMATH_API static T DistanceSqr(const Vec3 &v1, const Vec3 &v2)
+        {
+            return (v1 - v2).MagnitudeSqr();
+        }
+
+        RUNEMATH_API static T Distance(const Vec3 &v1, const Vec3 &v2)
+        {
+            return Math<T>::Sqrt(DistanceSqr(v1, v2));
+        }
+
+        RUNEMATH_API static Vec3 CalculateNormal(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2)
+        {
+            return CalculateNormalUnnorm(v0, v1, v2).GetNormalized();
+        }
+
+        RUNEMATH_API static Vec3 CalculateNormalUnnorm(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2)
+        {
+            return Cross(v2-v1, v0-v2);
+        }
+
+        RUNEMATH_API static Vec3 Center(const Vec3 &min, const Vec3 &max)
+        {
+            return (min + max) * T(0.5);
+        }
+
+        RUNEMATH_API static T Angle(const Vec3 &a, const Vec3 &b)
+        {
+            return Math<T>::Acos(Dot(a, b)*a.MagnitudeInv()*b.MagnitudeInv());
+        }
+
+        RUNEMATH_API static T AngleUnnorm(const Vec3 &a, const Vec3 &b)
+        {
+            return Math<T>::Acos(Dot(a, b));
+        }
+
+        /**
+            Vraci tangent vektor (vektor mapovani textury pro normalmapping), vstupem jsou vertexy
+            trojuhelniku a jeho texturove koordinaty
+        **************************************************************************************************/
+        RUNEMATH_API static Vec3 CalculateTangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
+        {
+            return ((v1 - v0) * (t2.y - t0.y) + (v2 - v0) * (t0.y - t1.y)).GetNormalized();
+        }
+
+        /**
+            Vraci bitangent vektor (vektor mapovani textury pro normalmapping), vstupem jsou vertexy
+            trojuhelniku a jeho texturove koordinaty
+        **************************************************************************************************/
+        RUNEMATH_API static Vec3 CalculateBitangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
+        {
+            return ((v1 - v0) * (t2.x - t0.x) + (v2 - v0) * (t0.x - t1.x)).GetNormalized();
+        }
+
+        /**
+            Vraci obsah trojuhelniku
+        **************************************************************************************************/
+        RUNEMATH_API static T CalculateAreaOfTriangle(const Vec3 &a, const Vec3 &b, const Vec3 &c)
+        {
+            return Cross(b - a, c - a).Magnitude() * T(0.5);
+        }
     };
 
     template<typename T>

@@ -1,5 +1,5 @@
 /*
-    Auxiliary Math library
+    Linear Algebra / Math library
 
     Copyright (C) 2003-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
     Copyright (C) 2003-2005, Tomas Pastorek (tomas@tomaspastorek.cz), All Rights Reserved.
@@ -26,15 +26,19 @@ namespace Rune
     /**
         Dvourozmerny vektor
     **************************************************************************************************/
-    template<typename T>
-    class Vec2
+    template<typename T, int space1 = 0, int order = 0>
+    class Vec2 : public Vec2Content<T, space1, order>  
     {
     public:
-        T x,y;
-
         Vec2() {}
-        Vec2(T f): x(f), y(f) {}
-        Vec2(T X, T Y): x(X), y(Y) {}
+        Vec2(T f) { x = f; y = f; }
+        Vec2(T X, T Y) { x = X; y = Y; }
+
+        template<int xspace1, int xorder>
+        Vec2(const Vec2<T, xspace1, xorder> &v) { x = v.x; y = v.y; }
+
+        template<typename U, int xspace1, int xorder>
+        explicit Vec2(const Vec2<U, xspace1, xorder> &v) { x = T(v.x); y = T(v.y); }
 
         bool operator ==(const Vec2 &v) const           { return x == v.x && y == v.y; }
         bool operator !=(const Vec2 &v) const           { return x != v.x && y != v.y; }
@@ -74,7 +78,7 @@ namespace Rune
         Vec2 GetNormalized() const                      { T f = MagnitudeInv(); return Vec2(x*f, y*f); }
         Vec2 GetNormal() const                          { return Vec2(-y, x); }
         T Magnitude() const                             { return Math<T>::Sqrt(MagnitudeSqr()); }
-        T MagnitudeInv() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
+        T MagnitudeInv() const                          { return Math<T>::Rsqrt(MagnitudeSqr()); }
         T MagnitudeSqr() const                          { return x*x + y*y; }
         void Normalize()                                { operator *=(MagnitudeInv()); }
         bool IsEmpty() const                            { return x == 0 && y == 0; }

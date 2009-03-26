@@ -71,7 +71,7 @@ static inline int findClosestHBond(const InputData *input, const Vec3d &gridPos)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
             // DS or D1
-            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
+            Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
             double rSq = distance.MagnitudeSqr();
             if (rSq < rminSq)
             {
@@ -244,11 +244,12 @@ static void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGr
 
     cutoffGrid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
 
+    // TODO: make this parallelized, idea: foreach(bucket) { foreach(sphere) ...
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-        cutoffGrid.insertSphere(Sphere3d(input->receptorAtomCoord[ia], NBCUTOFF), uint16(ia));
+        cutoffGrid.insertSphere(Sphere3d(input->receptorAtomCoord[ia].xyz, NBCUTOFF), uint16(ia));
 }
 
-static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *&indicesHtoA)
+static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *indicesHtoA)
 {
     int numH = 0;
     Vec3d *hcoord = new Vec3d[input->numReceptorAtoms];
@@ -256,7 +257,7 @@ static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
-            hcoord[numH] = input->receptorAtomCoord[ia];
+            hcoord[numH] = input->receptorAtomCoord[ia].xyz;
             indicesHtoA[numH] = ia;
             ++numH;
         }
@@ -264,7 +265,7 @@ static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch
     hsearch.create(hcoord, numH, true);
 }
 
-void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
 #if defined(USE_SPATIAL_GRID)
@@ -319,8 +320,8 @@ void calculateGridmaps(const InputData *input, const GridMapList &gridmaps, cons
             //   just continue to next atom...
 
             //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
-            //  Get distance, r, from current grid point, c, to this receptor atom, input->receptorAtomCoord,
-            Vec3d distance = input->receptorAtomCoord[ia] - gridPos;
+            //  Get distance from current grid point to this receptor atom
+            Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
 
             // rSq = |distance|^2
             double rSq = distance.MagnitudeSqr();

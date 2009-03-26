@@ -68,7 +68,7 @@ InputDataLoader::InputDataLoader(LogFile *logFile): logFile(logFile)
     numReceptorTypes = 0;
     numGridPointsPerMap = INIT_NUM_GRID_PTS;
     numReceptorAtoms = 0;
-    memset(covalentPoint, 0, sizeof(covalentPoint));
+    covalentPoint = 0;
 
     // for NEW3 desolvation terms
     solparQ = .01097;   // unweighted value restored 3:9:05
@@ -282,7 +282,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                             cmax[i] = Mathd::Max(cmax[i], receptorAtomCoord[ia][i]);
                             cmin[i] = Mathd::Min(cmin[i], receptorAtomCoord[ia][i]);
                         }
-                        csum += receptorAtomCoord[ia];
+                        csum += receptorAtomCoord[ia].xyz;
                         // Total up the partial charges as we go...
                         q_tot += charge[ia];
 
@@ -426,7 +426,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             }
             // centering stuff...
             for (int ia = 0; ia < numReceptorAtoms; ia++)
-                receptorAtomCoord[ia] -= gridCenter;  // transform to center of gridmaps
+                receptorAtomCoord[ia].xyz -= gridCenter;  // transform to center of gridmaps
             gridExtent = Vec3d(numGridPointsDiv2) * gridSpacing;
             gridCornerMax = gridCenter + gridExtent;
             gridCornerMin = gridCenter - gridExtent;
@@ -727,11 +727,11 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     // apply the estat forcefield coefficient/weight here
     if (distDepDiel)
         for (int ia = 0; ia < numReceptorAtoms; ia++)
-            charge_mul_coeffEstat_mulIfConstDiel_invDielCal[ia] = charge[ia] * parameterLibrary.coeff_estat;
+            receptorAtomCoord[ia].w = charge[ia] * parameterLibrary.coeff_estat;
     else
         // apply the constant dielectric
         for (int ia = 0; ia < numReceptorAtoms; ia++)
-            charge_mul_coeffEstat_mulIfConstDiel_invDielCal[ia] = charge[ia] * parameterLibrary.coeff_estat * invDielCal;
+            receptorAtomCoord[ia].w = charge[ia] * parameterLibrary.coeff_estat * invDielCal;
 }
 
 int InputDataLoader::parseGPFLine(const char *line)

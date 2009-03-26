@@ -1,5 +1,5 @@
 /*
-    Auxiliary Math library
+    Linear Algebra / Math library
 
     Copyright (C) 2003-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
     Copyright (C) 2003-2005, Tomas Pastorek (tomas@tomaspastorek.cz), All Rights Reserved.
@@ -37,6 +37,10 @@
     #define RUNEMATH_API
 //#endif
 
+#if defined(_MSC_VER)
+    #pragma warning (disable: 4201)
+#endif
+
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -48,8 +52,11 @@
 #include "Math.h"
 
 // Vektory
+#include "Geometric/Vec2Content.h"
 #include "Geometric/Vec2.h"
+#include "Geometric/Vec3Content.h"
 #include "Geometric/Vec3.h"
+#include "Geometric/Vec4Content.h"
 #include "Geometric/Vec4.h"
 
 // 2D

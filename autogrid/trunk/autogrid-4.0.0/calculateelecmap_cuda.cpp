@@ -1,0 +1,115 @@
+/*
+    AutoGrid
+
+    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
+    All Rights Reserved.
+    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+
+    AutoGrid is a Trade Mark of The Scripps Research Institute.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
+#if defined(AG_CUDA)
+#include "calculateelecmap.h"
+#include "calculateelecmap_cuda.h"
+#include "exceptions.h"
+#include <algorithm>
+
+template<typename TDst, typename TSrc>
+static TDst typecast(TSrc a)
+{
+    return TDst(a);
+}
+
+// Same as cudaMemcpy with the exception that:
+// - if cudaMemcpyHostToDevice is specified, the TSrc type is converted to the TDst type before the actual copy
+// - if cudaMemcpyDeviceToHost is specified, the TSrc type is converted to the TDst type after the actual copy
+// Useful for uploading an array of doubles as floats etc.
+template<typename TDst, typename TSrc>
+static void myCudaMemcpy(TDst *dst, const TSrc *src, size_t numElements, cudaMemcpyKind kind)
+{
+    switch (kind)
+    {
+    case cudaMemcpyHostToDevice:
+        {
+            TDst *inter = new TDst[numElements];
+            std::transform(src, src + numElements, inter, typecast<TDst, TSrc>);
+            cudaMemcpy(dst, inter, numElements * sizeof(TDst), kind);
+            delete [] inter;
+        }
+        break;
+
+    case cudaMemcpyDeviceToHost:
+        {
+            TSrc *inter = new TSrc[numElements];
+            cudaMemcpy(inter, src, numElements * sizeof(TSrc), kind);
+            std::transform(inter, inter + numElements, dst, typecast<TDst, TSrc>);
+            delete [] inter;
+        }
+        break;
+
+    default:
+        if (typeid(TDst) != typeid(TSrc))
+            throw ExitProgram(0xbad);
+
+        cudaMemcpy(dst, src, numElements * sizeof(TDst), kind);
+    }
+}
+
+void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
+{
+    float *outEnergies = 0;
+    float *receptorAtomCoord = 0;
+    float *premultipliedCharge = 0;
+    float *epsilon = 0;
+
+    // Allocate device memory
+    cudaMalloc((void**)&outEnergies,         sizeof(float) * input->numGridPointsPerMap);
+    cudaMalloc((void**)&receptorAtomCoord,   sizeof(float) * input->numReceptorAtoms * 3);
+    cudaMalloc((void**)&premultipliedCharge, sizeof(float) * input->numReceptorAtoms);
+    if (input->distDepDiel)
+        cudaMalloc((void**)&epsilon,         sizeof(float) * MAX_DIST);
+
+    // Copy all data from host to device
+    myCudaMemcpy<float, double>(outEnergies,         elecMap.energies,            input->numGridPointsPerMap,  cudaMemcpyHostToDevice);
+    myCudaMemcpy<float, double>(receptorAtomCoord,   input->receptorAtomCoord[0], input->numReceptorAtoms * 3, cudaMemcpyHostToDevice);
+    myCudaMemcpy<float, double>(premultipliedCharge, input->premultipliedCharge,  input->numReceptorAtoms,     cudaMemcpyHostToDevice);
+    if (input->distDepDiel)
+        myCudaMemcpy<float, double>(epsilon,         input->epsilon,              MAX_DIST,                    cudaMemcpyHostToDevice);
+
+    dim3 numGridPoints(input->numGridPoints.x, input->numGridPoints.y, input->numGridPoints.z);
+    dim3 numGridPointsDiv2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y, input->numGridPointsDiv2.z);
+
+    // Calculate electrostatic map on device
+    cuCalculateElectrostaticMap(
+    /* Output          */       outEnergies,
+    /* Grid parameters */       numGridPoints, numGridPointsDiv2, float(input->gridSpacing),
+    /* Receptor atoms  */       input->numReceptorAtoms, receptorAtomCoord,
+    /* Charge          */       premultipliedCharge,
+    /* Dist-dep dielec.*/       input->distDepDiel, epsilon);
+
+    // Copy output energies from device to host
+    myCudaMemcpy<double, float>(elecMap.energies, outEnergies, input->numGridPointsPerMap, cudaMemcpyDeviceToHost);
+
+    // Free device memory
+    cudaFree(outEnergies);
+    cudaFree(receptorAtomCoord);
+    cudaFree(premultipliedCharge);
+    if (input->distDepDiel)
+        cudaFree(epsilon);
+}
+
+#endif
