@@ -160,63 +160,74 @@ FILE *boincOpenFile(const char *path, const char *mode)
     return filep;
 }
 
-class Timer
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static Timer timers[256];
+
+struct Timer::Private
 {
-public:
-    Timer(): real(0), user(0), sys(0) {}
-
-    void start()
-    {
-        tms t;
-        realStart = times(&t);
-        userStart = t.tms_utime;
-        sysStart = t.tms_stime;
-    }
-
-    void stop()
-    {
-        tms t;
-        real += times(&t) - realStart;
-        user += t.tms_utime - userStart;
-        sys += t.tms_stime - sysStart;
-    }
-
-    void log() const
-    {
-        int cps = getClocksPerSec() ;
-        fprintf(stderr, "Real: %i ms,\tCPU: %i ms,\tSys: %i ms\n", real * 1000 / cps, user * 1000 / cps, sys * 1000 / cps);
-    }
-
-    bool started() const
-    {
-        return real != 0;
-    }
-
 private:
+    friend class Timer;
+
+    const char *name;
     clock_t real, user, sys;
     clock_t realStart, userStart, sysStart;
 };
 
-static Timer timers[256];
-
-void beginTimer(int id)
+Timer *Timer::startNew(const char *name, bool start)
 {
-    timers[id].start();
+    static int i = 0;
+    Timer *t = &timers[i++];
+    t->p->name = name;
+    if (start)
+        t->start();
+    return t;
 }
 
-void endTimer(int id)
+Timer::Timer()
 {
-    timers[id].stop();
+    p = new Private();
 }
 
-void logTimers()
+Timer::~Timer()
+{
+    delete p;
+}
+
+void Timer::start()
+{
+    tms t;
+    p->realStart = times(&t);
+    p->userStart = t.tms_utime;
+    p->sysStart = t.tms_stime;
+}
+
+void Timer::stop()
+{
+    tms t;
+    p->real += times(&t) - p->realStart;
+    p->user += t.tms_utime - p->userStart;
+    p->sys += t.tms_stime - p->sysStart;
+}
+
+void Timer::reset()
+{
+    p->real = 0;
+    p->user = 0;
+    p->sys = 0;
+}
+
+void Timer::log(FILE *file)
+{
+    int cps = getClocksPerSec() ;
+    fprintf(file, "%s:  Real: %i ms,\tCPU: %i ms,\tSys: %i ms\n", p->name, p->real * 1000 / cps, p->user * 1000 / cps, p->sys * 1000 / cps);
+}
+
+void Timer::logAll(FILE *file)
 {
     for (int i = 0; i < 256; i++)
-        if (timers[i].started())
-        {
-            fprintf(stderr, "Timer %i:\t", i);
-            timers[i].log();
-        }
+        if (timers[i].p->real != 0)
+            timers[i].log(file);
 }
 
 // Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.

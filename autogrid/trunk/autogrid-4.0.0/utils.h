@@ -35,6 +35,22 @@ void boincDone();
 FILE *boincOpenFile(const char *path, const char *mode);
 
 // Timer
-void beginTimer(int id);
-void endTimer(int id);
-void logTimers();
+class Timer
+{
+public:
+    // returns an unused timer, it's released automatically at the end of the program
+    static Timer *startNew(const char *name, bool start = true);
+
+    Timer();
+    ~Timer();
+    void start();
+    void stop();
+    void reset();
+    void log(FILE *file);
+
+    static void logAll(FILE *file);
+
+private:
+    struct Private;
+    Private *p;
+};

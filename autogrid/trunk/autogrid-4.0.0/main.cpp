@@ -153,7 +153,7 @@ void autogridMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
-    beginTimer(0);
+    Timer *t0 = Timer::startNew("PRECALC");
 
     // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies energyLookup;
@@ -166,7 +166,7 @@ void autogridMain(int argc, char **argv)
     BondVectors *bondVectors = new BondVectors(&logFile);
     bondVectors->calculate(input, parameterLibrary);
 
-    endTimer(0);
+    t0->stop();
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
@@ -195,25 +195,25 @@ void autogridMain(int argc, char **argv)
         }
     */
 
-    beginTimer(1);
+    Timer *t1 = Timer::startNew("COVALEN");
     // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
     initCovalentMaps(input, gridmaps);
-    endTimer(1);
+    t1->stop();
 
     // Calculation of the atom maps and the desolvation map
     calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
 
-    beginTimer(2);
+    Timer *t2 = Timer::startNew("ELECTRO");
     // Calculation of the electrostatic map
     calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
-    endTimer(2);
+    t2->stop();
 
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())
     {
-        beginTimer(4);
+        Timer *t3 = Timer::startNew("FLOATGR");
         calculateFloatingGrid(input, gridmaps);
-        beginTimer(4);
+        t3->stop();
     }
 
     delete bondVectors;
@@ -249,7 +249,7 @@ int main(int argc, char **argv)
         // This should not return if used
         boincDone();
 
-        logTimers();
+        Timer::logAll(stderr);
         return 0;
     }
     catch (ExitProgram &e)  // the ExitProgram exception is a replacement for C's exit function (we need destructors)

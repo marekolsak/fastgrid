@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <cmath>
+#include <limits>
 
 #define implication(x, y) (!(x) || (y))
 
@@ -172,6 +173,8 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &a
         {
             absError = fabs(x - y);
             relError = fabs((x - y) / y);
+            if (relError == std::numeric_limits<double>::infinity())
+                std::cerr << "Warning: RE = |(" << x << " - " << y << ") / " << y << "| = infinity\n";
         }
 
         absErrorMax = max(absErrorMax, absError);
@@ -181,7 +184,7 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &a
                 // take the absolute error into account
                 || (absError < 0.05)
                 // take the relative error into account
-                || (relError < 0.08)
+                || (relError < 0.05)
             ))
             return false;
     }

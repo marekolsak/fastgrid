@@ -21,21 +21,28 @@
 
 #pragma once
 
+// TODO: finish implementation of the swizzle operator
 namespace Rune
 {
     enum
     {
-        VEC2CONTENT_ORDER_XY = 0,
-        VEC2CONTENT_ORDER_YX
+        VEC2CONTENT_ORDER_XY = 1,
+        VEC2CONTENT_ORDER_YX = -1
     };
 
     template<typename T, int space1, int order>
     class Vec2Content
     {
     public:
-        T x;
-        T __unused[space1];
-        T y;
+        union
+        {
+            struct
+            {
+                T x;
+                T __unused[space1];
+                T y;
+            };
+        };
     };
 
     template<typename T, int order>

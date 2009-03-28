@@ -242,9 +242,10 @@ static void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGr
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
     double cellSize = NBCUTOFF / 4.0;
 
+    // TODO: reduce the bucket size (maxElementsInCell) according to a density of atoms
     cutoffGrid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
 
-    // TODO: make this parallelized, idea: foreach(bucket) { foreach(sphere) ...
+    // TODO: parallelize this, idea: foreach(bucket) { foreach(sphere) ...
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         cutoffGrid.insertSphere(Sphere3d(input->receptorAtomCoord[ia].xyz, NBCUTOFF), uint16(ia));
 }
@@ -269,25 +270,25 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
 #if defined(USE_SPATIAL_GRID)
-    // Create a grid for the cutoff of distant receptor atoms
-    beginTimer(5);
+    // Create a grid for a cutoff of distant receptor atoms
+    Timer *t0 = Timer::startNew("CUTOFFG");
     SpatialGrid<uint16> cutoffGrid;
     initCutoffGrid(input, cutoffGrid);
-    endTimer(5);
+    t0->stop();
 #endif
 
 #if defined(USE_NNS)
     // Create a tree for finding the closest H
-    beginTimer(6);
+    Timer *t1 = Timer::startNew("HYD_TREE");
     int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating a H index into a receptor atom index
     NearestNeighborSearch3d hsearch;
     initHSearch(input, hsearch, indicesHtoA);
-    endTimer(6);
+    t1->stop();
 #endif
 
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
 
-    beginTimer(3);
+    Timer *t2 = Timer::startNew("ATOM_DES");
 #if defined(AG_OPENMP)
     #pragma AG_OPENMP_PARALLEL_FOR
 #endif
@@ -332,8 +333,8 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
                 continue;   // onto the next atom...
 
             // Normalize the distance vector
-            if (rSq < Mathd::Sqr(APPROX_ZERO))
-                rSq = Mathd::Sqr(APPROX_ZERO);
+            if (rSq < Mathd::Sqr(APPROX_ZERO*APPROX_ZERO))
+                rSq = Mathd::Sqr(APPROX_ZERO*APPROX_ZERO);
             double invR = Mathd::Rsqrt(rSq);
             distance *= invR;
 
@@ -364,7 +365,7 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
         e = roundOutput(e);
     }
     END_FOR();
-    endTimer(3);
+    t2->stop();
 
 #if defined(USE_NNS)
     delete [] indicesHtoA;
