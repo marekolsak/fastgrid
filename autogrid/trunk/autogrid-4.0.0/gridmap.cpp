@@ -165,7 +165,7 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
                 if (f == 0)
                     fwrite("0\n", 2, 1, file);
                 else
-                    fprintf(file, "%.3f\n", gridmaps[i].energies[j]);
+                    fprintf(file, "%.3f\n", f);
             }
 
             fclose(file);

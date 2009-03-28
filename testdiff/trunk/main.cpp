@@ -169,23 +169,25 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &a
         if (!converted)
             return false;
 
-        if (x != y)
-        {
-            absError = fabs(x - y);
-            relError = fabs((x - y) / y);
-            if (relError == std::numeric_limits<double>::infinity())
-                std::cerr << "Warning: RE = |(" << x << " - " << y << ") / " << y << "| = infinity\n";
-        }
+        if (x == y)
+            continue;
+
+        absError = fabs(x - y);
+        relError = fabs((x - y) / y);
+
+        bool absErrorPassed = absError < 0.05;
+        bool relErrorPassed = relError < 0.05;
 
         absErrorMax = max(absErrorMax, absError);
-        relErrorMax = max(relErrorMax, relError);
+        if (relError == std::numeric_limits<double>::infinity())
+        {
+            if (!absErrorPassed)
+                std::cerr << "Warning: Skipping evaluation. RE = |(" << x << " - " << y << ") / " << y << "| = infinity\n";
+        }
+        else
+            relErrorMax = max(relErrorMax, relError);
 
-        if (!(0
-                // take the absolute error into account
-                || (absError < 0.05)
-                // take the relative error into account
-                || (relError < 0.05)
-            ))
+        if (!(absErrorPassed || relErrorPassed))
             return false;
     }
     return true;
