@@ -170,10 +170,10 @@ void autogridMain(int argc, char **argv)
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
-                           "                    Percent   Estimated Time  Time/this plane\n"
+                           /*"                    Percent   Estimated Time  Time/this plane\n"
                            "XY-plane  Z-coord   Done      Remaining       Real, User, System\n"
                            "            /Ang              /sec            /sec\n"
-                           "________  ________  ________  ______________  __________________________\n\n",
+                           "________  ________  ________  ______________  __________________________\n\n"*/,
                            gridmaps.getNumMapsInclFloatingGrid(), input->numGridPointsPerMap, input->numReceptorAtoms);
 
     // TODO: rewrite writing out progress in percents
@@ -195,18 +195,18 @@ void autogridMain(int argc, char **argv)
         }
     */
 
-    Timer *t1 = Timer::startNew("INITCOVA");
     // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
+    Timer *t1 = Timer::startNew("INITCOVA");
     initCovalentMaps(input, gridmaps);
     t1->stopAndLog(stderr);
 
-    // Calculation of the atom maps and the desolvation map
-    calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
-
-    Timer *t2 = Timer::startNew("ESTATMAP");
     // Calculation of the electrostatic map
+    Timer *t2 = Timer::startNew("ESTATMAP");
     calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
     t2->stopAndLog(stderr);
+
+    // Calculation of the atom maps and the desolvation map
+    calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
 
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())
@@ -215,6 +215,9 @@ void autogridMain(int argc, char **argv)
         calculateFloatingGrid(input, gridmaps);
         t3->stopAndLog(stderr);
     }
+
+    // Wait for CUDA (if needed)
+    waitForCUDA();
 
     delete bondVectors;
 

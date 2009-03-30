@@ -24,9 +24,13 @@
 
 #include <cuda_runtime_api.h>
 
-extern "C" __host__ void cuCalculateElectrostaticMap(
+extern "C" __host__ void cuCalculateElectrostaticMapDDD( // Distance-dependent dielectric
                          /* Output          */       float *outEnergies,
                          /* Grid parameters */       dim3 numGridPoints, dim3 numGridPointsDiv2, float gridSpacing,
                          /* Receptor atoms  */       int numReceptorAtoms, const float *receptorAtomCoord,
-                         /* Charge          */       const float *premultipliedCharge,
-                         /* Dist-dep dielec.*/       int distDepDiel, const float *epsilon);
+                         /* Dist-dep dielec.*/       const float *epsilon);
+
+extern "C" __host__ void cuCalculateElectrostaticMapCD( // Constant dielectric
+                         /* Output          */       float *outEnergies,
+                         /* Grid parameters */       dim3 numGridPoints, dim3 numGridPointsDiv2, float gridSpacing,
+                         /* Receptor atoms  */       int numReceptorAtoms, const float *receptorAtomCoord);

@@ -25,7 +25,7 @@
 #include "calculateelecmap.h"
 
 // Constant dielectric...
-static void calcWithConstDielectric(const InputData *input, GridMap &elecMap)
+static void calculateElectrostaticMapCD(const InputData *input, GridMap &elecMap)
 {
     #if defined(AG_OPENMP)
         #pragma AG_OPENMP_PARALLEL_FOR
@@ -51,7 +51,7 @@ static void calcWithConstDielectric(const InputData *input, GridMap &elecMap)
 }
 
 // Distance-dependent dielectric...
-static void calcWithDistDepDielectric(const InputData *input, GridMap &elecMap)
+static void calculateElectrostaticMapDDD(const InputData *input, GridMap &elecMap)
 {
     #if defined(AG_OPENMP)
         #pragma AG_OPENMP_PARALLEL_FOR
@@ -77,14 +77,19 @@ static void calcWithDistDepDielectric(const InputData *input, GridMap &elecMap)
     END_FOR();
 }
 
+void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap)
+{
+    if (input->distDepDiel)
+        calculateElectrostaticMapDDD(input, elecMap);
+    else
+        calculateElectrostaticMapCD(input, elecMap);
+}
+
 #if !defined(AG_CUDA)
 
 void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
 {
-    if (input->distDepDiel)
-        calcWithDistDepDielectric(input, elecMap);
-    else
-        calcWithConstDielectric(input, elecMap);
+    calculateElectrostaticMapCPU(input, elecMap);
 }
 
 #endif

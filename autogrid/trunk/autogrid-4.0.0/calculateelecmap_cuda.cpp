@@ -37,7 +37,7 @@ static TDst typecast(TSrc a)
 // Same as cudaMemcpy with the exception that:
 // - if cudaMemcpyHostToDevice is specified, the TSrc type is converted to the TDst type before the actual copy
 // - if cudaMemcpyDeviceToHost is specified, the TSrc type is converted to the TDst type after the actual copy
-// Useful for uploading an array of doubles as floats etc.
+// In other words, it adds automatic conversion between types. Useful for uploading an array of doubles as floats etc.
 template<typename TDst, typename TSrc>
 static void myCudaMemcpy(TDst *dst, const TSrc *src, size_t numElements, cudaMemcpyKind kind)
 {
@@ -69,37 +69,39 @@ static void myCudaMemcpy(TDst *dst, const TSrc *src, size_t numElements, cudaMem
     }
 }
 
-void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
+void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
 {
-    float *outEnergies = 0;
-    float *receptorAtomCoord = 0;
-    float *premultipliedCharge = 0;
-    float *epsilon = 0;
-
-    // Allocate device memory
-    cudaMalloc((void**)&outEnergies,         sizeof(float) * input->numGridPointsPerMap);
-    cudaMalloc((void**)&receptorAtomCoord,   sizeof(float) * input->numReceptorAtoms * 3);
-    cudaMalloc((void**)&premultipliedCharge, sizeof(float) * input->numReceptorAtoms);
-    if (input->distDepDiel)
-        cudaMalloc((void**)&epsilon,         sizeof(float) * MAX_DIST);
-
-    // Copy all data from host to device
-    myCudaMemcpy<float, double>(outEnergies,         elecMap.energies,            input->numGridPointsPerMap,  cudaMemcpyHostToDevice);
-    myCudaMemcpy<float, double>(receptorAtomCoord,   input->receptorAtomCoord[0], input->numReceptorAtoms * 3, cudaMemcpyHostToDevice);
-    myCudaMemcpy<float, double>(premultipliedCharge, input->premultipliedCharge,  input->numReceptorAtoms,     cudaMemcpyHostToDevice);
-    if (input->distDepDiel)
-        myCudaMemcpy<float, double>(epsilon,         input->epsilon,              MAX_DIST,                    cudaMemcpyHostToDevice);
-
     dim3 numGridPoints(input->numGridPoints.x, input->numGridPoints.y, input->numGridPoints.z);
     dim3 numGridPointsDiv2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y, input->numGridPointsDiv2.z);
 
-    // Calculate electrostatic map on device
-    cuCalculateElectrostaticMap(
-    /* Output          */       outEnergies,
-    /* Grid parameters */       numGridPoints, numGridPointsDiv2, float(input->gridSpacing),
-    /* Receptor atoms  */       input->numReceptorAtoms, receptorAtomCoord,
-    /* Charge          */       premultipliedCharge,
-    /* Dist-dep dielec.*/       input->distDepDiel, epsilon);
+    float *outEnergies = 0;
+    float *receptorAtomCoord = 0;
+
+    // Allocate device memory
+    cudaMalloc((void**)&outEnergies,       sizeof(float) * input->numGridPointsPerMap);
+    cudaMalloc((void**)&receptorAtomCoord, sizeof(float) * input->numReceptorAtoms * 4);
+
+    // Copy all data from host to device
+    myCudaMemcpy<float, double>(outEnergies,       elecMap.energies,               input->numGridPointsPerMap,  cudaMemcpyHostToDevice);
+    myCudaMemcpy<float, double>(receptorAtomCoord, &input->receptorAtomCoord[0].x, input->numReceptorAtoms * 4, cudaMemcpyHostToDevice);
+
+    if (input->distDepDiel)
+    {
+        // Allocate and copy epsilon[] for distance-dependent dielectric
+        float *epsilon = 0;
+        cudaMalloc((void**)&epsilon, sizeof(float) * MAX_DIST);
+        myCudaMemcpy<float, double>(epsilon, input->epsilon, MAX_DIST, cudaMemcpyHostToDevice);
+
+        // Calculate electrostatic map (distance-dependent dielectric) on device 
+        cuCalculateElectrostaticMapDDD(outEnergies, numGridPoints, numGridPointsDiv2, float(input->gridSpacing),
+                                       input->numReceptorAtoms, receptorAtomCoord, epsilon);
+
+        cudaFree(epsilon);
+    }
+    else
+        // Calculate electrostatic map (constant dielectric) on device
+        cuCalculateElectrostaticMapCD(outEnergies, numGridPoints, numGridPointsDiv2, float(input->gridSpacing),
+                                      input->numReceptorAtoms, receptorAtomCoord);
 
     // Copy output energies from device to host
     myCudaMemcpy<double, float>(elecMap.energies, outEnergies, input->numGridPointsPerMap, cudaMemcpyDeviceToHost);
@@ -107,9 +109,28 @@ void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
     // Free device memory
     cudaFree(outEnergies);
     cudaFree(receptorAtomCoord);
-    cudaFree(premultipliedCharge);
-    if (input->distDepDiel)
-        cudaFree(epsilon);
+}
+
+void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
+{
+    // TODO: is there any cuda device?
+    if (1)
+    {
+        // TODO: divide the map to the num of devices
+        for (int i = 0; i < /* num of devices */ 1; i++)
+        {
+            // TODO: start a new thread and call this on the subgrid:
+            calculateElectrostaticMapCUDA(input, elecMap);
+        }
+    }
+    else
+        // CPU fallback
+        calculateElectrostaticMapCPU(input, elecMap);
+}
+
+void waitForCUDA()
+{
+    // TODO: wait for all CUDA threads
 }
 
 #endif

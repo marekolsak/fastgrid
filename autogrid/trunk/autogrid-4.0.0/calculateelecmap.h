@@ -26,3 +26,15 @@
 #include "gridmap.h"
 
 void calculateElectrostaticMap(const InputData *input, GridMap &elecMap);
+void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap);
+
+#if defined(AG_CUDA)
+
+void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap);
+void waitForCUDA();
+
+#else
+
+#define waitForCUDA()
+
+#endif
