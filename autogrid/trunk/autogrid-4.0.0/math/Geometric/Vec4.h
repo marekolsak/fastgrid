@@ -33,18 +33,20 @@ namespace Rune
         typedef Rune::Vec2<T> Vec2;
         typedef Rune::Vec3<T> Vec3;
 
-        Vec4() {}
-        Vec4(T f) { x = f; y = f; z = f; w = f; }
-        Vec4(T X, T Y, T Z, T W) { x = X; y = Y; z = Z; w = W; }
-        Vec4(T X, T Y, const Vec2 &v) { x = X; y = Y; zw = v; }
-        Vec4(T X, const Vec2 &v, T W) { x = X; yz = v; w = W; }
-        Vec4(const Vec2 &v, T Z, T W) { xy = v; z = Z; w = W; }
-        Vec4(const Vec2 &v1, const Vec2 &v2) { xy = v1; zw = v2; }
-        Vec4(const Vec3 &v, T W) { xyz = v; w = W; }
-        Vec4(T X, const Vec3 &v) { x = X; yzw = v; }
+        Vec4()                                          {}
+        Vec4(T f)                                       { x = f; y = f; z = f; w = f; }
+        Vec4(T X, T Y, T Z, T W)                        { x = X; y = Y; z = Z; w = W; }
+        Vec4(T X, T Y, const Vec2 &v)                   { x = X; y = Y; zw = v; }
+        Vec4(T X, const Vec2 &v, T W)                   { x = X; yz = v; w = W; }
+        Vec4(const Vec2 &v, T Z, T W)                   { xy = v; z = Z; w = W; }
+        Vec4(const Vec2 &v1, const Vec2 &v2)            { xy = v1; zw = v2; }
+        Vec4(const Vec3 &v, T W)                        { xyz = v; w = W; }
+        Vec4(T X, const Vec3 &v)                        { x = X; yzw = v; }
+
+        operator Vec3() const                           { return xyz; } // This implicit conversion should not be allowed!
 
         template<typename U>
-        explicit Vec4(const Vec4<U> &v) { x = T(v.x); y = T(v.y); z = T(v.z); w = T(v.w); }
+        explicit Vec4(const Vec4<U> &v)                 { x = T(v.x); y = T(v.y); z = T(v.z); w = T(v.w); }
 
         bool operator == (const Vec4 &v) const          { return x == v.x && y == v.y && z == v.z && w == v.w; }
         bool operator != (const Vec4 &v) const          { return x != v.x && y != v.y && z != v.z && w != v.w; }
@@ -80,11 +82,10 @@ namespace Rune
         T& operator[] (int i)                           { return (&x)[i]; }
         T operator[] (int i) const                      { return (&x)[i]; }
 
-        Vec3 GetVec3() const                            { return Vec3(x, y, z); }
         Vec4 GetAbs() const                             { return Vec4(Math<T>::Abs(x), Math<T>::Abs(y), Math<T>::Abs(z), Math<T>::Abs(w)); }
         Vec4 GetNormalized() const                      { T f = MagnitudeInv(); return Vec4(x*f, y*f, z*f, w*f); }
         T Magnitude() const                             { return Math<T>::Sqrt(MagnitudeSqr()); }
-        T MagnitudeInv() const                            { return Math<T>::Rsqrt(MagnitudeSqr()); }
+        T MagnitudeInv() const                          { return Math<T>::Rsqrt(MagnitudeSqr()); }
         T MagnitudeSqr() const                          { return x*x + y*y + z*z + w*w; }
         void Normalize()                                { operator *=(MagnitudeInv()); }
         bool IsEmpty() const                            { return x == 0 && y == 0 && z == 0 && w == 0; }

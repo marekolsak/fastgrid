@@ -46,7 +46,8 @@ public:
     void start();
     void stop();
     void reset();
-    void log(FILE *file);
+    void log(FILE *file, bool reset = true);
+    void stopAndLog(FILE *file, bool reset = true);
 
     static void logAll(FILE *file);
 

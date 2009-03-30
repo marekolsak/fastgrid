@@ -153,7 +153,7 @@ void autogridMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
-    Timer *t0 = Timer::startNew("PRECALC");
+    Timer *t0 = Timer::startNew("PRECALCU");
 
     // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies energyLookup;
@@ -166,7 +166,7 @@ void autogridMain(int argc, char **argv)
     BondVectors *bondVectors = new BondVectors(&logFile);
     bondVectors->calculate(input, parameterLibrary);
 
-    t0->stop();
+    t0->stopAndLog(stderr);
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
@@ -195,25 +195,25 @@ void autogridMain(int argc, char **argv)
         }
     */
 
-    Timer *t1 = Timer::startNew("COVALEN");
+    Timer *t1 = Timer::startNew("INITCOVA");
     // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
     initCovalentMaps(input, gridmaps);
-    t1->stop();
+    t1->stopAndLog(stderr);
 
     // Calculation of the atom maps and the desolvation map
     calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
 
-    Timer *t2 = Timer::startNew("ELECTRO");
+    Timer *t2 = Timer::startNew("ESTATMAP");
     // Calculation of the electrostatic map
     calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
-    t2->stop();
+    t2->stopAndLog(stderr);
 
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())
     {
-        Timer *t3 = Timer::startNew("FLOATGR");
+        Timer *t3 = Timer::startNew("FLOATGRD");
         calculateFloatingGrid(input, gridmaps);
-        t3->stop();
+        t3->stopAndLog(stderr);
     }
 
     delete bondVectors;

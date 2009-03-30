@@ -53,11 +53,11 @@ public:
         tree = new ANNkd_tree(pointarray, num, 3);
     }
 
-    int searchNearest(const Vec3<T> &point)
+    int searchNearest(const Vec3<T> &point) const
     {
         int result;
         double d;
-        tree->annkSearch(const_cast<double*>(&point.x), 1, &result, &d, 0);
+        const_cast<ANNkd_tree*>(tree)->annkSearch(const_cast<double*>(&point.x), 1, &result, &d, 0);
         return result;
     }
 

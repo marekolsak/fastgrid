@@ -217,10 +217,19 @@ void Timer::reset()
     p->sys = 0;
 }
 
-void Timer::log(FILE *file)
+void Timer::log(FILE *file, bool reset)
 {
     int cps = getClocksPerSec() ;
     fprintf(file, "%s:  Real: %i ms,\tCPU: %i ms,\tSys: %i ms\n", p->name, p->real * 1000 / cps, p->user * 1000 / cps, p->sys * 1000 / cps);
+    fflush(file);
+    if (reset)
+        this->reset();
+}
+
+void Timer::stopAndLog(FILE *file, bool reset)
+{
+    stop();
+    log(file, reset);
 }
 
 void Timer::logAll(FILE *file)

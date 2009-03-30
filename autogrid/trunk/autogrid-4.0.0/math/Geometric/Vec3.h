@@ -33,13 +33,13 @@ namespace Rune
         typedef Rune::Vec2<T> Vec2;
 
         Vec3() {}
-        Vec3(T f) { x = f; y = f; z = f; }
-        Vec3(const Vec2 &v, T Z) { xy = v; z = Z; }
-        Vec3(T X, const Vec2 &v) { x = X; yz = v; }
-        Vec3(T X, T Y, T Z) { x = X; y = Y; z = Z; }
+        Vec3(T f)                                       { x = f; y = f; z = f; }
+        Vec3(const Vec2 &v, T Z)                        { xy = v; z = Z; }
+        Vec3(T X, const Vec2 &v)                        { x = X; yz = v; }
+        Vec3(T X, T Y, T Z)                             { x = X; y = Y; z = Z; }
 
         template<int xspaceXY, int xspaceYZ>
-        Vec3(const Vec3<T, xspaceXY, xspaceYZ> &v) { x = v.x; y = v.y; z = v.z; }
+        Vec3(const Vec3<T, xspaceXY, xspaceYZ> &v)      { x = v.x; y = v.y; z = v.z; }
 
         template<typename U, int xspaceXY, int xspaceYZ>
         explicit Vec3(const Vec3<U, xspaceXY, xspaceYZ> &v) { x = T(v.x); y = T(v.y); z = T(v.z); }
@@ -78,7 +78,7 @@ namespace Rune
         T& operator [](int i)                           { return (&x)[i]; }
         T operator [](int i) const                      { return (&x)[i]; }
 
-        Vec2 GetVec2() const                            { return Vec2(x, y); }
+        T Cube() const                                  { return x*y*z; }
         T GetMax() const                                { return Math<T>::Max(Math<T>::Max(x, y), z); }
         Vec3 GetAbs() const                             { return Vec3(Math<T>::Abs(x), Math<T>::Abs(y), Math<T>::Abs(z)); }
         Vec3 GetNormalized() const                      { T f = MagnitudeInv(); return Vec3(x*f, y*f, z*f); }

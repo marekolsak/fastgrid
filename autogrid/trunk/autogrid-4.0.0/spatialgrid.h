@@ -27,10 +27,11 @@
 
 typedef void *SpatialCell;
 
-template<typename T>    // T should be an integer (short, int, ...)
 class SpatialGrid
 {
 public:
+    typedef int32 T;
+
     SpatialGrid(): grid(0) {}
     ~SpatialGrid() { if (grid) delete [] grid; }
 
@@ -85,20 +86,31 @@ public:
     }
 
     // Set indices to be in the valid range
-    void clampIndices(Vec3i &in)
+    void clampIndices(Vec3i &in) const
     {
         for (int i = 0; i < 3; i++)
             in[i] = Mathi::Clamp(in[i], 0, numCellsMinus1[i]);
     }
 
-    // Returns the internal cell ID, which is actually the pointer to the grid array
-    SpatialCell getCellByIndices(const Vec3i &indices)
+    // Returns an internal cell ID, which is actually a pointer to the grid array
+    SpatialCell getCellByIndices(const Vec3i &indices) const
     {
         Vec3i in = indices;
         clampIndices(in);
+        return getCellByClampedIndices(in);
+    }
 
-        int index = (numCells.x * (numCells.y * in.z + in.y) + in.x) * sizeofCell;
+    // Returns an internal cell ID, which is actually a pointer to the grid array
+    SpatialCell getCellByClampedIndices(const Vec3i &in) const
+    {
+        int index = getScalarIndexByIndices(in) * sizeofCell;
         return grid + index;
+    }
+
+    // Calculates a scalar index from 3D indices
+    int getScalarIndexByIndices(const Vec3i &in) const
+    {
+        return numCells.x * (numCells.y * in.z + in.y) + in.x;
     }
 
     // Returns indices of the cell at the given position
@@ -120,7 +132,7 @@ public:
     }
 
     // Returns the internal cell ID at the given position
-    SpatialCell getCellByPos(const Vec3d &pos)
+    SpatialCell getCellByPos(const Vec3d &pos) const
     {
         Vec3i ipos;
         getIndicesByPos(pos, ipos);
@@ -128,7 +140,7 @@ public:
     }
 
     // Returns the number of elements in the cell
-    int getNumElements(const SpatialCell cell) const
+    T getNumElements(const SpatialCell cell) const
     {
         return *(T*)cell;
     }
@@ -140,7 +152,7 @@ public:
     }
 
     // Inserts ID of your object to the cell, which occupies the given cell
-    void insertInCell(SpatialCell cell, T id)
+    void insertIntoCell(SpatialCell cell, T id)
     {
         // The first index represents the number of elements
         T &num = *(T*)cell;
@@ -157,13 +169,19 @@ public:
     // Inserts ID of your object to the cell at the given indices
     void insertAtIndices(const Vec3i &indices, T id)
     {
-        insertInCell(getCellByIndices(indices), id);
+        insertIntoCell(getCellByIndices(indices), id);
+    }
+
+    // Inserts ID of your object to the cell at the given indices
+    void insertAtClampedIndices(const Vec3i &indices, T id)
+    {
+        insertIntoCell(getCellByClampedIndices(indices), id);
     }
 
     // Inserts ID to the cell at the given position
     void insertPos(const Vec3d &pos, T id)
     {
-        insertInCell(getCellByPos(pos), id);
+        insertIntoCell(getCellByPos(pos), id);
     }
 
     // Returns the numCells vector of the grid
@@ -172,7 +190,7 @@ public:
         return numCells;
     }
 
-    // Inserts ID to all cells which are in the range of the sphere
+    // For each cell: if the cell is in range of the sphere, insert ID into the cell.
     void insertSphere(const Sphere3d &s, T id)
     {
         Vec3i indicesMin, indicesMax;
@@ -181,10 +199,7 @@ public:
         clampIndices(indicesMin);
         clampIndices(indicesMax);
 
-        // Commented out, because this is such a simple task (in our case) that using threads would rather slow it down.
-/*#if defined(AG_OPENMP)
-    #pragma AG_OPENMP_PARALLEL_FOR
-#endif*/
+        // Too simple to be parallelized
         for (int x = indicesMin.x; x <= indicesMax.x; x++)
             for (int y = indicesMin.y; y <= indicesMax.y; y++)
                 for (int z = indicesMin.z; z <= indicesMax.z; z++)
@@ -194,14 +209,85 @@ public:
                     getCellCornerPosByIndices(indices, cellPos);
 
                     if (Intersect(AxisAlignedBox3d(cellPos, cellPos + cellSize), s))
-                        insertAtIndices(indices, id);
+                        insertAtClampedIndices(indices, id);
                 }
+    }
+
+    // For each sphere, for each cell: if the cell is in range of the sphere, insert its index into the cell.
+    template<typename Vec> // Restriction: Typecasting Vec -> Vec3d must be possible (e.g. allows using a Vec4d array)
+    void insertSpheres(int num, const Vec *pos, double radius)
+    {
+        // For each cell, precalculate a box representing the cell in Euclidean space
+        AxisAlignedBox3d *boxes = new AxisAlignedBox3d[numCells.Cube()];
+#if defined(AG_OPENMP)
+    #pragma omp parallel for schedule(dynamic, 4)
+#endif
+        for (int x = 0; x < numCells.x; x++)
+            for (int y = 0; y < numCells.y; y++)
+                for (int z = 0; z < numCells.z; z++)
+                {
+                    Vec3i indices(x, y, z);
+                    Vec3d cellPos;
+                    getCellCornerPosByIndices(indices, cellPos);
+                    boxes[getScalarIndexByIndices(indices)] = AxisAlignedBox3d(cellPos, cellPos + cellSize);
+                }
+
+        // For each sphere, precalculate a range of possible indices of cells the sphere might intersect with
+        Vec3i *sphereIndicesRange = new Vec3i[num*2];
+#if defined(AG_OPENMP)
+    #pragma omp parallel for schedule(dynamic, 1024)
+#endif
+        for (int s = 0; s < num; s++)
+        {
+            int sindex = s*2;
+            getIndicesByPos(Vec3d(pos[s]) - radius, sphereIndicesRange[sindex]);
+            getIndicesByPos(Vec3d(pos[s]) + radius, sphereIndicesRange[sindex+1]);
+            clampIndices(sphereIndicesRange[sindex]);
+            clampIndices(sphereIndicesRange[sindex+1]);
+        }
+
+        // Divide the X axis up to 4*CPUs segments to balance fluctuating density of spheres
+        int segments = omp_get_num_procs() * 4;
+        int numCellsXPerSegment = Mathi::Max(1, int(Mathd::Ceil(double(numCells.x) / segments)));
+        // The reason we do this is that iterating through all X elements concurrently and then through all the spheres
+        // would be waste of computational time since not all spheres intersect the particular X coordinate, so we divide
+        // the X axis to a reasonable number of segments and iterate only the ones which might really intersect the sphere.
+
+#if defined(AG_OPENMP)
+    #pragma omp parallel for schedule(dynamic, 1)
+#endif
+        // For each segment and each sphere
+        for (int i = 0; i < segments; i++)
+            for (int s = 0; s < num; s++)
+            {
+                // Get the range of indices for this sphere
+                int sindex = s*2;
+                Vec3i indicesMin = sphereIndicesRange[sindex];
+                Vec3i indicesMax = sphereIndicesRange[sindex+1];
+
+                // Adjust indices in the X axis for them to be in this segment
+                indicesMin.x = Mathi::Max(i * numCellsXPerSegment, indicesMin.x);
+                indicesMax.x = Mathi::Min((i+1) * numCellsXPerSegment - 1, indicesMax.x);
+
+                // For each cell, insert the sphere if intersecting
+                for (int x = indicesMin.x; x <= indicesMax.x; x++)
+                    for (int y = indicesMin.y; y <= indicesMax.y; y++)
+                        for (int z = indicesMin.z; z <= indicesMax.z; z++)
+                        {
+                            int index = getScalarIndexByIndices(Vec3i(x, y, z));
+                            if (Intersect(boxes[index], Sphere3d(Vec3d(pos[s]), radius)))
+                                insertIntoCell(grid + (index * sizeofCell), T(s));
+                        }
+            }
+
+        delete [] sphereIndicesRange;
+        delete [] boxes;
     }
 
 private:
     T *grid;
     Vec3i numCells, numCellsMinus1;
-    int maxElementsInCell, sizeofCell;
+    T maxElementsInCell, sizeofCell;
     Vec3d cellSize, cellSizeHalf, cellSizeInv;
     Vec3d cornerPosMin, cornerCellPosMin;
     double cellDiagonalHalf;

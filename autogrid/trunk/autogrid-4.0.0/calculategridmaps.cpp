@@ -237,17 +237,89 @@ static inline void sumPairwiseInteractions(const InputData *input, const GridMap
         (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
 }
 
-static void initCutoffGrid(const InputData *input, SpatialGrid<uint16> &cutoffGrid)
+static inline void calculateGridPoint(const InputData *input, GridMapList &gridmaps, int hydrogen,
+                       const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
+                       const SpatialGrid &cutoffGrid, const int *indicesHtoA, const NearestNeighborSearch3d &hsearch,
+                       const Vec3d &gridPos, int outputIndex)
+{
+    HBondInfo hbond(gridmaps.getNumAtomMaps());
+
+#if defined(USE_NNS)
+    int closestH = indicesHtoA[hsearch.searchNearest(gridPos)];
+#else
+    int closestH = findClosestHBond(input, gridPos);
+#endif
+
+    //  Do all Receptor (protein, DNA, etc.) atoms...
+#if defined(USE_SPATIAL_GRID)
+    SpatialCell cell = cutoffGrid.getCellByPos(gridPos);
+    int num = cutoffGrid.getNumElements(cell);
+
+    for (int index = 0; index < num; index++)
+    {
+        int ia = cutoffGrid.getElement(cell, index);
+#else
+    int num = input->numReceptorAtoms;
+    for (int ia = 0; ia < num; ia++)
+    {
+#endif
+        // If distance from grid point to atom ia is too large,
+        // or if atom is a disordered hydrogen,
+        //   add nothing to the grid-point's non-bond energy;
+        //   just continue to next atom...
+
+        //  Get distance from current grid point to this receptor atom
+        Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
+
+        // rSq = |distance|^2
+        double rSq = distance.MagnitudeSqr();
+
+        if (rSq > Mathd::Sqr(NBCUTOFF))
+            continue;   // onto the next atom...
+        if (input->atomType[ia] == hydrogen && bondVectors->disorder[ia])
+            continue;   // onto the next atom...
+
+        // Normalize the distance vector
+        if (rSq < Mathd::Sqr(APPROX_ZERO*APPROX_ZERO))
+            rSq = Mathd::Sqr(APPROX_ZERO*APPROX_ZERO);
+        double invR = Mathd::Rsqrt(rSq);
+        distance *= invR;
+
+        int indexR = lookup(1 / invR);
+
+        double racc, rdon, Hramp;
+        getHBondAngularFunction(input, bondVectors, ia, closestH, distance, racc, rdon, Hramp);
+
+        // For each probe atom-type,
+        // Sum pairwise interactions between each probe
+        // at this grid point (gridPos[0:2])
+        // and the current receptor atom, ia...
+        for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
+            if (!gridmaps[m].isCovalent)
+                sumPairwiseInteractions(input, gridmaps, energyLookup, desolvExpFunc, bondVectors, hbond, outputIndex, m, ia, indexR, hydrogen, racc, rdon, Hramp);
+
+        gridmaps.getDesolvationMap().energies[outputIndex] += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
+    } // ia loop, over all receptor atoms...
+
+    for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
+    {
+        double &e = gridmaps[m].energies[outputIndex];
+        if (hbond[m].flag)
+            e += hbond[m].min + hbond[m].max;
+        e = roundOutput(e);
+    }
+    double &e = gridmaps.getDesolvationMap().energies[outputIndex];
+    e = roundOutput(e);
+}
+
+static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 {
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
     double cellSize = NBCUTOFF / 4.0;
 
     // TODO: reduce the bucket size (maxElementsInCell) according to a density of atoms
     cutoffGrid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
-
-    // TODO: parallelize this, idea: foreach(bucket) { foreach(sphere) ...
-    for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-        cutoffGrid.insertSphere(Sphere3d(input->receptorAtomCoord[ia].xyz, NBCUTOFF), uint16(ia));
+    cutoffGrid.insertSpheres(input->numReceptorAtoms, &input->receptorAtomCoord[0], NBCUTOFF);
 }
 
 static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *indicesHtoA)
@@ -269,105 +341,37 @@ static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch
 void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
+    SpatialGrid cutoffGrid;
+    NearestNeighborSearch3d hsearch;
+    int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating a H index into a receptor atom index
+
 #if defined(USE_SPATIAL_GRID)
     // Create a grid for a cutoff of distant receptor atoms
-    Timer *t0 = Timer::startNew("CUTOFFG");
-    SpatialGrid<uint16> cutoffGrid;
+    Timer *t0 = Timer::startNew("SGRIDGEN");
     initCutoffGrid(input, cutoffGrid);
-    t0->stop();
+    t0->stopAndLog(stderr);
 #endif
 
 #if defined(USE_NNS)
     // Create a tree for finding the closest H
-    Timer *t1 = Timer::startNew("HYD_TREE");
-    int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating a H index into a receptor atom index
-    NearestNeighborSearch3d hsearch;
+    Timer *t1 = Timer::startNew("HTREEGEN");
     initHSearch(input, hsearch, indicesHtoA);
-    t1->stop();
+    t1->stopAndLog(stderr);
 #endif
 
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
 
-    Timer *t2 = Timer::startNew("ATOM_DES");
+    Timer *t2 = Timer::startNew("ATOMMAPS");
 #if defined(AG_OPENMP)
     #pragma AG_OPENMP_PARALLEL_FOR
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
-        HBondInfo hbond(gridmaps.getNumAtomMaps());
-
-#if defined(USE_NNS)
-        int closestH = indicesHtoA[hsearch.searchNearest(gridPos)];
-#else
-        int closestH = findClosestHBond(input, gridPos);
-#endif
-
-        //  Do all Receptor (protein, DNA, etc.) atoms...
-#if defined(USE_SPATIAL_GRID)
-        SpatialCell cell = cutoffGrid.getCellByPos(gridPos);
-        int num = cutoffGrid.getNumElements(cell);
-
-        for (int index = 0; index < num; index++)
-        {
-            int ia = cutoffGrid.getElement(cell, index);
-#else
-        int num = input->numReceptorAtoms;
-        for (int ia = 0; ia < num; ia++)
-        {
-#endif
-            // If distance from grid point to atom ia is too large,
-            // or if atom is a disordered hydrogen,
-            //   add nothing to the grid-point's non-bond energy;
-            //   just continue to next atom...
-
-            //  distance[] = Unit vector from current grid pt to ia_th m/m atom.
-            //  Get distance from current grid point to this receptor atom
-            Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
-
-            // rSq = |distance|^2
-            double rSq = distance.MagnitudeSqr();
-
-            if (rSq > Mathd::Sqr(NBCUTOFF))
-                continue;   // onto the next atom...
-            if (input->atomType[ia] == hydrogen && bondVectors->disorder[ia])
-                continue;   // onto the next atom...
-
-            // Normalize the distance vector
-            if (rSq < Mathd::Sqr(APPROX_ZERO*APPROX_ZERO))
-                rSq = Mathd::Sqr(APPROX_ZERO*APPROX_ZERO);
-            double invR = Mathd::Rsqrt(rSq);
-            distance *= invR;
-
-            int indexR = lookup(1 / invR);
-
-            double racc, rdon, Hramp;
-            getHBondAngularFunction(input, bondVectors, ia, closestH, distance, racc, rdon, Hramp);
-
-            // For each probe atom-type,
-            // Sum pairwise interactions between each probe
-            // at this grid point (gridPos[0:2])
-            // and the current receptor atom, ia...
-            for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
-                if (!gridmaps[m].isCovalent)
-                    sumPairwiseInteractions(input, gridmaps, energyLookup, desolvExpFunc, bondVectors, hbond, outputIndex, m, ia, indexR, hydrogen, racc, rdon, Hramp);
-
-            gridmaps.getDesolvationMap().energies[outputIndex] += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
-        } // ia loop, over all receptor atoms...
-
-        for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
-        {
-            double &e = gridmaps[m].energies[outputIndex];
-            if (hbond[m].flag)
-                e += hbond[m].min + hbond[m].max;
-            e = roundOutput(e);
-        }
-        double &e = gridmaps.getDesolvationMap().energies[outputIndex];
-        e = roundOutput(e);
+        calculateGridPoint(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors,
+                           cutoffGrid, indicesHtoA, hsearch, gridPos, outputIndex);
     }
     END_FOR();
-    t2->stop();
+    t2->stopAndLog(stderr);
 
-#if defined(USE_NNS)
     delete [] indicesHtoA;
-#endif
 }
