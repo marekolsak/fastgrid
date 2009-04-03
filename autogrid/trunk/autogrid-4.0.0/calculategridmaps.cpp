@@ -347,21 +347,21 @@ void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const Para
 
 #if defined(USE_SPATIAL_GRID)
     // Create a grid for a cutoff of distant receptor atoms
-    Timer *t0 = Timer::startNew("SGRIDGEN");
+    Timer *t0 = Timer::startNew("Cutoff grid            ");
     initCutoffGrid(input, cutoffGrid);
     t0->stopAndLog(stderr);
 #endif
 
 #if defined(USE_NNS)
     // Create a tree for finding the closest H
-    Timer *t1 = Timer::startNew("HTREEGEN");
+    Timer *t1 = Timer::startNew("KD-tree of hydrogens   ");
     initHSearch(input, hsearch, indicesHtoA);
     t1->stopAndLog(stderr);
 #endif
 
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
 
-    Timer *t2 = Timer::startNew("ATOMMAPS");
+    Timer *t2 = Timer::startNew("Atom & desolvation maps");
 #if defined(AG_OPENMP)
     #pragma AG_OPENMP_PARALLEL_FOR
 #endif

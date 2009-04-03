@@ -219,8 +219,8 @@ void Timer::reset()
 
 void Timer::log(FILE *file, bool reset)
 {
-    int cps = getClocksPerSec() ;
-    fprintf(file, "%s:  Real: %i ms,\tCPU: %i ms,\tSys: %i ms\n", p->name, p->real * 1000 / cps, p->user * 1000 / cps, p->sys * 1000 / cps);
+    int cps = getClocksPerSec();
+    fprintf(file, "%s  Real: %i ms,\tUser: %i ms,\tSys: %i ms\n", p->name, p->real * 1000 / cps, p->user * 1000 / cps, p->sys * 1000 / cps);
     fflush(file);
     if (reset)
         this->reset();
@@ -237,6 +237,21 @@ void Timer::logAll(FILE *file)
     for (int i = 0; i < 256; i++)
         if (timers[i].p->real != 0)
             timers[i].log(file);
+}
+
+clock_t Timer::getReal() const
+{
+    return p->real;
+}
+
+clock_t Timer::getUser() const
+{
+    return p->user;
+}
+
+clock_t Timer::getSys() const
+{
+    return p->sys;
 }
 
 // Dummy graphics API entry points.  This app does not do graphics, but it still must provide these callbacks.

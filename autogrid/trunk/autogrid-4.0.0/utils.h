@@ -48,6 +48,9 @@ public:
     void reset();
     void log(FILE *file, bool reset = true);
     void stopAndLog(FILE *file, bool reset = true);
+    clock_t getReal() const;
+    clock_t getUser() const;
+    clock_t getSys() const;
 
     static void logAll(FILE *file);
 

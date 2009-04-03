@@ -23,7 +23,7 @@
 */
 
 #pragma once
-#include "gridmap.h"
+#include "../gridmap.h"
 
 void calculateElectrostaticMap(const InputData *input, GridMap &elecMap);
 void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap);

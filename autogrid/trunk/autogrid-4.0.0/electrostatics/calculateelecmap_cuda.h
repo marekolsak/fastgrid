@@ -22,19 +22,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "calculateelecmap_cuda.h"
+#include <cuda_runtime_api.h>
 
-extern "C" __host__ void cuCalculateElectrostaticMapDDD( // Distance-dependent dielectric
+extern "C" __host__ void cuCalculateElectrostaticMap(
                          /* Output          */       float *outEnergies,
                          /* Grid parameters */       dim3 numGridPoints, dim3 numGridPointsDiv2, float gridSpacing,
                          /* Receptor atoms  */       int numReceptorAtoms, const float *receptorAtomCoord,
-                         /* Dist-dep dielec.*/       const float *epsilon)
-{
-}
-
-extern "C" __host__ void cuCalculateElectrostaticMapCD( // Constant dielectric
-                         /* Output          */       float *outEnergies,
-                         /* Grid parameters */       dim3 numGridPoints, dim3 numGridPointsDiv2, float gridSpacing,
-                         /* Receptor atoms  */       int numReceptorAtoms, const float *receptorAtomCoord)
-{
-}
+                         /* Dist-dep dielec.*/       const float *epsilon);

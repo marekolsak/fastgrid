@@ -27,7 +27,7 @@
 #include "inputdataloader.h"
 #include "utils.h"
 #include "calculategridmaps.h"
-#include "calculateelecmap.h"
+#include "electrostatics/calculateelecmap.h"
 #include <new>
 
 void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
@@ -153,7 +153,7 @@ void autogridMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
-    Timer *t0 = Timer::startNew("PRECALCU");
+    Timer *t0 = Timer::startNew("Precalculations        ");
 
     // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies energyLookup;
@@ -196,14 +196,19 @@ void autogridMain(int argc, char **argv)
     */
 
     // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
-    Timer *t1 = Timer::startNew("INITCOVA");
+    Timer *t1 = Timer::startNew("Covalent maps          ");
     initCovalentMaps(input, gridmaps);
     t1->stopAndLog(stderr);
 
     // Calculation of the electrostatic map
-    Timer *t2 = Timer::startNew("ESTATMAP");
+    Timer *t2 = Timer::startNew("Electrostatic map      ");
     calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
-    t2->stopAndLog(stderr);
+    t2->stopAndLog(stderr, false);
+
+    double seconds = t2->getReal() / double(getClocksPerSec());
+    double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
+    double atomsPerSec = atoms / seconds;
+    fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
 
     // Calculation of the atom maps and the desolvation map
     calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
@@ -211,7 +216,7 @@ void autogridMain(int argc, char **argv)
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())
     {
-        Timer *t3 = Timer::startNew("FLOATGRD");
+        Timer *t3 = Timer::startNew("Floating grid          ");
         calculateFloatingGrid(input, gridmaps);
         t3->stopAndLog(stderr);
     }
@@ -251,8 +256,6 @@ int main(int argc, char **argv)
 
         // This should not return if used
         boincDone();
-
-        Timer::logAll(stderr);
         return 0;
     }
     catch (ExitProgram &e)  // the ExitProgram exception is a replacement for C's exit function (we need destructors)

@@ -51,7 +51,7 @@
 				AdditionalOptions="/MP"
 				Optimization="0"
 				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;AG_CUDA"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -142,7 +142,7 @@
 				OmitFramePointers="true"
 				EnableFiberSafeOptimizations="true"
 				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP;AG_CUDA"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_CUDA"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
@@ -310,26 +310,6 @@
 			</File>
 			<File
 				RelativePath="..\bondvectors.h"
-				>
-			</File>
-			<File
-				RelativePath="..\calculateelecmap.h"
-				>
-			</File>
-			<File
-				RelativePath="..\calculateelecmap_cpu.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\calculateelecmap_cuda.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\calculateelecmap_cuda.cu"
-				>
-			</File>
-			<File
-				RelativePath="..\calculateelecmap_cuda.h"
 				>
 			</File>
 			<File
@@ -719,6 +699,34 @@
 						>
 					</File>
 				</Filter>
+			</Filter>
+			<Filter
+				Name="electrostatics"
+				>
+				<File
+					RelativePath="..\electrostatics\calculateelecmap.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\calculateelecmap_cpu.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\calculateelecmap_cuda.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\calculateelecmap_cuda.cu"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\calculateelecmap_cuda.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cuda_kernel.inl"
+					>
+				</File>
 			</Filter>
 		</Filter>
 	</Files>
