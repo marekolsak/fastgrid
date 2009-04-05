@@ -71,7 +71,7 @@ static inline int findClosestHBond(const InputData *input, const Vec3d &gridPos)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
             // DS or D1
-            Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
+            Vec3d distance = input->receptorAtom[ia].xyz - gridPos;
             double rSq = distance.MagnitudeSqr();
             if (rSq < rminSq)
             {
@@ -269,7 +269,7 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
         //   just continue to next atom...
 
         //  Get distance from current grid point to this receptor atom
-        Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
+        Vec3d distance = input->receptorAtom[ia].xyz - gridPos;
 
         // rSq = |distance|^2
         double rSq = distance.MagnitudeSqr();
@@ -319,7 +319,7 @@ static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 
     // TODO: reduce the bucket size (maxElementsInCell) according to a density of atoms
     cutoffGrid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
-    cutoffGrid.insertSpheres(input->numReceptorAtoms, &input->receptorAtomCoord[0], NBCUTOFF);
+    cutoffGrid.insertSpheres(input->numReceptorAtoms, &input->receptorAtom[0], NBCUTOFF);
 }
 
 static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *indicesHtoA)
@@ -330,7 +330,7 @@ static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
-            hcoord[numH] = input->receptorAtomCoord[ia].xyz;
+            hcoord[numH] = input->receptorAtom[ia].xyz;
             indicesHtoA[numH] = ia;
             ++numH;
         }

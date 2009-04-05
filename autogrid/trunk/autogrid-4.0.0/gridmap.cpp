@@ -142,8 +142,8 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
         "NELEMENTS %d %d %d\n"
         "CENTER %.3lf %.3lf %.3lf\n",
         gridParameterFilename, input->fldFilenameAVS, input->receptorFilename, input->gridSpacing,
-        input->numGridPoints[X]-1, input->numGridPoints[Y]-1, input->numGridPoints[Z]-1,
-        input->gridCenter[X], input->gridCenter[Y], input->gridCenter[Z]);
+        input->numGridPoints.x-1, input->numGridPoints.y-1, input->numGridPoints.z-1,
+        input->gridCenter.x, input->gridCenter.y, input->gridCenter.z);
 
     // Gridmaps
     for (int i = 0; i < numMaps; i++)

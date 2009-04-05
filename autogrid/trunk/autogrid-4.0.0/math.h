@@ -28,11 +28,5 @@
     #undef max
 #endif
 
-#undef X
-#undef Y
-#undef Z
 #include "math/All.h"
 using namespace Rune;
-#define X 0
-#define Y 1
-#define Z 2

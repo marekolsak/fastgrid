@@ -22,10 +22,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "calculateelecmap.h"
+#include "electrostatics.h"
 
-// Constant dielectric...
-static void calculateElectrostaticMapCD(const InputData *input, GridMap &elecMap)
+template<int DistanceDependentDielectric>
+static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &elecMap)
 {
     #if defined(AG_OPENMP)
         #pragma AG_OPENMP_PARALLEL_FOR
@@ -37,38 +37,16 @@ static void calculateElectrostaticMapCD(const InputData *input, GridMap &elecMap
         //  Do all Receptor (protein, DNA, etc.) atoms...
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
-            // Get reciprocal of the distance from current grid point to this receptor atom (1 / |receptorAtomCoord - gridPos|)
-            double invR = (input->receptorAtomCoord[ia].xyz - gridPos).MagnitudeInv();
-
-            // Both the constant dielectric and the estat forcefield coefficient/weight are premultiplied
-            energy += input->receptorAtomCoord[ia].w * Mathd::Min(invR, 2);
-        }
-
-        // Round to 3 decimal places
-        elecMap.energies[outputIndex] = roundOutput(energy);
-    }
-    END_FOR();
-}
-
-// Distance-dependent dielectric...
-static void calculateElectrostaticMapDDD(const InputData *input, GridMap &elecMap)
-{
-    #if defined(AG_OPENMP)
-        #pragma AG_OPENMP_PARALLEL_FOR
-    #endif
-    FOR_EACH_GRID_POINT(gridPos, outputIndex)
-    {
-        double energy = elecMap.energies[outputIndex];
-
-        //  Do all Receptor (protein, DNA, etc.) atoms...
-        for (int ia = 0; ia < input->numReceptorAtoms; ia++)
-        {
-            // Get the distance from current grid point to this receptor atom (|receptorAtomCoord - gridPos|)
-            double r = (input->receptorAtomCoord[ia].xyz - gridPos).Magnitude();
+            // Get reciprocal of the distance from current grid point to this receptor atom (1 / |receptorAtom - gridPos|)
+            double r = (input->receptorAtom[ia].xyz - gridPos).Magnitude();
             double invR = 1 / r;
 
-            // The estat forcefield coefficient/weight is premultiplied
-            energy += input->receptorAtomCoord[ia].w * Mathd::Min(invR, 2) * input->epsilon[lookup(r)];
+            if (DistanceDependentDielectric)
+                // The estat forcefield coefficient/weight is premultiplied
+                energy += input->receptorAtom[ia].w * Mathd::Min(invR, 2) * input->epsilon[lookup(r)];
+            else
+                // Both the constant dielectric and the estat forcefield coefficient/weight are premultiplied
+                energy += input->receptorAtom[ia].w * Mathd::Min(invR, 2);
         }
 
         // Round to 3 decimal places
@@ -80,9 +58,9 @@ static void calculateElectrostaticMapDDD(const InputData *input, GridMap &elecMa
 void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap)
 {
     if (input->distDepDiel)
-        calculateElectrostaticMapDDD(input, elecMap);
+        calculateElectrostaticMapGeneric<1>(input, elecMap);
     else
-        calculateElectrostaticMapCD(input, elecMap);
+        calculateElectrostaticMapGeneric<0>(input, elecMap);
 }
 
 #if !defined(AG_CUDA)

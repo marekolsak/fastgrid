@@ -22,10 +22,12 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#pragma once
 #include <cuda_runtime_api.h>
+#include <vector_functions.h>
 
-extern "C" __host__ void cuCalculateElectrostaticMap(
-                         /* Output          */       float *outEnergies,
-                         /* Grid parameters */       dim3 numGridPoints, dim3 numGridPointsDiv2, float gridSpacing,
-                         /* Receptor atoms  */       int numReceptorAtoms, const float *receptorAtomCoord,
-                         /* Dist-dep dielec.*/       const float *epsilon);
+#define NUM_ATOMS_PER_KERNEL 32
+
+void setGridMapParametersCUDA(int numGridPointsX, const int2 &numGridPointsDiv2, float gridSpacing);
+void setGridMapSliceParametersCUDA(int numAtoms, const float4 *atoms, int outputIndexZBase);
+void callKernelCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon);

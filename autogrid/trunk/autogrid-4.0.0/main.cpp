@@ -27,7 +27,7 @@
 #include "inputdataloader.h"
 #include "utils.h"
 #include "calculategridmaps.h"
-#include "electrostatics/calculateelecmap.h"
+#include "electrostatics/electrostatics.h"
 #include <new>
 
 void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
@@ -68,7 +68,7 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
             //  Get distance^2 from current grid point to this receptor atom
-            Vec3d distance = input->receptorAtomCoord[ia].xyz - gridPos;
+            Vec3d distance = input->receptorAtom[ia].xyz - gridPos;
             double distSq = distance.MagnitudeSqr();
             if (distSq < minDistSq)
                 minDistSq = distSq;
@@ -188,8 +188,8 @@ void autogridMain(int argc, char **argv)
 
             tms timerGridEnd;
             Clock gridEndTime = times(&timerGridEnd);
-            logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", gridCoordZ, input->gridCornerMin[Z] + gridPosZ, ((z+1) * 100.0) / input->numGridPoints[Z]);
-            logFile.printTimeInHMS((gridEndTime - gridStartTime) * (input->numGridPoints[Z] - z));
+            logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", gridCoordZ, input->gridCornerMin.z + gridPosZ, ((z+1) * 100.0) / input->numGridPoints.z);
+            logFile.printTimeInHMS((gridEndTime - gridStartTime) * (input->numGridPoints.z - z));
             logFile.print("  ");
             logFile.printExecutionTimes(gridStartTime, gridEndTime, &timesGridStart, &timerGridEnd);
         }
@@ -220,9 +220,6 @@ void autogridMain(int argc, char **argv)
         calculateFloatingGrid(input, gridmaps);
         t3->stopAndLog(stderr);
     }
-
-    // Wait for CUDA (if needed)
-    waitForCUDA();
 
     delete bondVectors;
 

@@ -24,6 +24,47 @@
 
 #pragma once
 
+#if !defined(__CUDACC__)
+
+    // Required for a successful compilation on Visual C++
+    #if defined(_MSC_VER)
+        // disable the warning: ' function ': was declared deprecated
+        #pragma warning (disable: 4996)
+
+        // Some functions in Visual C++ differ from those in the linux/unix environment
+        #define isnan _isnan
+        #define strncasecmp _strnicmp
+        #define snprintf _snprintf
+
+        #define inline __forceinline
+    #endif
+
+    #include "../autodock-4.0.1/autocomm.h"
+    #undef X
+    #undef Y
+    #undef Z
+    #undef XYZ
+
+    #include <cmath>
+    #include <cfloat>
+    #include <omp.h>
+    #include "math.h"
+
+    // Options
+    // Do not uncomment these! Specify them in the command-line arguments of your compiler (G++, CMake) or in the project settings (VC++)
+
+    // Enables the OpenMP support
+    //#define AG_OPENMP
+
+    // Enables the NVIDIA CUDA support
+    //#define AG_CUDA
+
+    // OpenMP configuration
+
+    #define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
+
+#endif
+
 // Macros
 
 // Using a greater value of MAX_DIST might increase precision a little,
@@ -35,85 +76,53 @@
 #define MAX_LEN_AUTOGRID_TYPE   7
 #define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???
 #define NUM_RECEPTOR_TYPES      NUM_ALL_TYPES
-#define INIT_NUM_GRID_PTS       -1
+#define INIT_NUM_GRID_PTS       UINT_MAX
 
 #if !defined(__CUDACC__)
 
-// Required for a successful compilation on Visual C++
-#if defined(_MSC_VER)
-    // disable the warning: ' function ': was declared deprecated
-    #pragma warning (disable: 4996)
+    // Functions
 
-    // Some functions in Visual C++ differ from those in the linux/unix environment
-    #define isnan _isnan
-    #define strncasecmp _strnicmp
-    #define snprintf _snprintf
+    template<typename T>
+    inline double angstrom(T i)
+    {
+        return double(i) / A_DIVISOR;
+    }
 
-    #define inline __forceinline
-#endif
+    template<typename T>
+    inline int lookup(T r)
+    {
+        // make sure lookup index is in the table
+        return Mathi::Min(int(r * A_DIVISOR), MAX_DIST-1);
+    }
 
-#include "../autodock-4.0.1/autocomm.h"
-#include <cmath>
-#include <cfloat>
-#include <omp.h>
-#include "math.h"
+    inline double roundOutput(double a)
+    {
+        return fabs(a) < 0.0005 ? 0 : Mathd::Round(a * 1000) * 0.001; // round to 3 decimal places
+    }
 
-// Options
-// Do not uncomment these! Specify them in the command-line arguments of your compiler (G++, CMake) or in the project settings (VC++)
+    // Useful macros - loop over all grid points
 
-// Enables the OpenMP support
-//#define AG_OPENMP
-
-// Enables the NVIDIA CUDA support
-//#define AG_CUDA
-
-// OpenMP configuration
-
-#define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
-
-// Functions
-
-template<typename T>
-inline double angstrom(T i)
-{
-    return double(i) / A_DIVISOR;
-}
-
-template<typename T>
-inline int lookup(T r)
-{
-    // make sure lookup index is in the table
-    return Mathi::Min(int(r * A_DIVISOR), MAX_DIST-1);
-}
-
-inline double roundOutput(double a)
-{
-    return fabs(a) < 0.0005 ? 0 : Mathd::Round(a * 1000) * 0.001; // round to 3 decimal places
-}
-
-// Useful macros - loop over all grid points
-
-#define FOR_EACH_GRID_POINT(gridPos, outputIndex) \
-    /* Z axis */ \
-    for (int z = 0; z < input->numGridPoints.z; z++) \
-    { \
-        /* gridPos contains the current grid point. */ \
-        Vec3d gridPos; \
-        gridPos.z = (z - input->numGridPointsDiv2.z) * input->gridSpacing; \
-        int outputIndexZBase = z * input->numGridPoints.x * input->numGridPoints.y; \
-\
-        /* Y axis */ \
-        for (int y = 0; y < input->numGridPoints.y; y++) \
+    #define FOR_EACH_GRID_POINT(gridPos, outputIndex) \
+        /* Z axis */ \
+        for (int z = 0; z < input->numGridPoints.z; z++) \
         { \
-            gridPos.y = (y - input->numGridPointsDiv2.y) * input->gridSpacing; \
-            int outputIndexZYBase = outputIndexZBase + y * input->numGridPoints.x; \
-\
-            /* X axis */ \
-            for (int x = 0; x < input->numGridPoints.x; x++) \
+            /* gridPos contains the current grid point. */ \
+            Vec3d gridPos; \
+            gridPos.z = (z - input->numGridPointsDiv2.z) * input->gridSpacing; \
+            int outputIndexZBase = z * input->numGridPoints.x * input->numGridPoints.y; \
+    \
+            /* Y axis */ \
+            for (int y = 0; y < input->numGridPoints.y; y++) \
             { \
-                gridPos.x = (x - input->numGridPointsDiv2.x) * input->gridSpacing; \
-                int outputIndex = outputIndexZYBase + x;
+                gridPos.y = (y - input->numGridPointsDiv2.y) * input->gridSpacing; \
+                int outputIndexZYBase = outputIndexZBase + y * input->numGridPoints.x; \
+    \
+                /* X axis */ \
+                for (int x = 0; x < input->numGridPoints.x; x++) \
+                { \
+                    gridPos.x = (x - input->numGridPointsDiv2.x) * input->gridSpacing; \
+                    int outputIndex = outputIndexZYBase + x;
 
-#define END_FOR() } } }
+    #define END_FOR() } } }
 
 #endif

@@ -26,6 +26,7 @@ namespace Rune
     template<typename T>
     class Vec4Content
     {
+    public:
         union
         {
             struct
@@ -68,12 +69,12 @@ namespace Rune
             };
             struct
             {
-                T __unusedX1;
+                T __unusedX12;
                 Vec2<T, 1> yw;
             };
             struct
             {
-                T __unusedX2;
+                T __unusedX22;
                 Vec2<T, 1, VEC2CONTENT_ORDER_YX> wy;
             };
             struct

@@ -211,12 +211,12 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         logFile->printFormatted("Atom no. %2d, \"%s\"", ia + 1, atom_name);
 
                         // Read in this receptor atom's coordinates,partial charges, and solvation parameters in PDBQS format...
-                        sscanf(&line[30], "%lf", &receptorAtomCoord[ia][X]);
-                        sscanf(&line[38], "%lf", &receptorAtomCoord[ia][Y]);
-                        sscanf(&line[46], "%lf", &receptorAtomCoord[ia][Z]);
+                        sscanf(&line[30], "%lf", &receptorAtom[ia].x);
+                        sscanf(&line[38], "%lf", &receptorAtom[ia].y);
+                        sscanf(&line[46], "%lf", &receptorAtom[ia].z);
 
                         // Output the coordinates of this atom...
-                        logFile->printFormatted(" at (%.3lf, %.3lf, %.3lf), ", receptorAtomCoord[ia][X], receptorAtomCoord[ia][Y], receptorAtomCoord[ia][Z]);
+                        logFile->printFormatted(" at (%.3lf, %.3lf, %.3lf), ", receptorAtom[ia].x, receptorAtom[ia].y, receptorAtom[ia].z);
 
                         // 1:CHANGE HERE: need to set up vol and solpar
                         sscanf(&line[70], "%lf", &charge[ia]);
@@ -277,12 +277,12 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         // ++receptor_atom_type_count[ atomType[ia] ];
 
                         // Keep track of the extents of the receptor
-                        for (int i = 0; i < XYZ; i++)
+                        for (int i = 0; i < 3; i++)
                         {
-                            cmax[i] = Mathd::Max(cmax[i], receptorAtomCoord[ia][i]);
-                            cmin[i] = Mathd::Min(cmin[i], receptorAtomCoord[ia][i]);
+                            cmax[i] = Mathd::Max(cmax[i], receptorAtom[ia][i]);
+                            cmin[i] = Mathd::Min(cmin[i], receptorAtom[ia][i]);
                         }
-                        csum += receptorAtomCoord[ia].xyz;
+                        csum += receptorAtom[ia].xyz;
                         // Total up the partial charges as we go...
                         q_tot += charge[ia];
 
@@ -353,9 +353,9 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                                        "\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n"
                                        "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n"
                                        "\n",
-                                       numReceptorAtoms, q_tot, cmax[X], cmax[Y], cmax[Z],
-                                       (cmax[X] + cmin[X]) / 2, (cmax[Y] + cmin[Y]) / 2, (cmax[Z] + cmin[Z]) / 2,
-                                       cmin[X], cmin[Y], cmin[Z], cmax[X], cmax[Y], cmax[Z], cmin[X], cmin[Y], cmin[Z]);
+                                       numReceptorAtoms, q_tot, cmax.x, cmax.y, cmax.z,
+                                       (cmax.x + cmin.x) / 2, (cmax.y + cmin.y) / 2, (cmax.z + cmin.z) / 2,
+                                       cmin.x, cmin.y, cmin.z, cmax.x, cmax.y, cmax.z, cmin.x, cmin.y, cmin.z);
 
                 cmean[0] = csum[0] / numReceptorAtoms;
                 cmean[1] = csum[1] / numReceptorAtoms;
@@ -389,10 +389,10 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
         case GPF_NPTS:
             {
                 Vec3i numGridPointsMinusOne;
-                sscanf(GPFLine, "%*s %d %d %d", &numGridPointsMinusOne[X], &numGridPointsMinusOne[Y], &numGridPointsMinusOne[Z]);
+                sscanf(GPFLine, "%*s %d %d %d", &numGridPointsMinusOne.x, &numGridPointsMinusOne.y, &numGridPointsMinusOne.z);
 
                 // numGridPointsMinusOne mustn't be negative, shouldn't be zero or larger than MAX_GRID_PTS and should be even
-                for (int i = 0; i < XYZ; i++)
+                for (int i = 0; i < 3; i++)
                     numGridPointsMinusOne[i] = checkSize(numGridPointsMinusOne[i], xyz[i]);
 
                 numGridPointsDiv2 = numGridPointsMinusOne / 2;
@@ -400,9 +400,9 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 logFile->printFormatted("\nNumber of grid points in x-direction:\t%d\n"
                                        "Number of grid points in y-direction:\t%d\n"
                                        "Number of grid points in z-direction:\t%d\n\n",
-                                       numGridPoints[X], numGridPoints[Y], numGridPoints[Z]);
+                                       numGridPoints.x, numGridPoints.y, numGridPoints.z);
 
-                numGridPointsPerMap = numGridPoints[X] * numGridPoints[Y] * numGridPoints[Z];
+                numGridPointsPerMap = numGridPoints.x * numGridPoints.y * numGridPoints.z;
             }
             break;
 
@@ -417,16 +417,16 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             {
                 gridCenter = cmean;
                 logFile->printFormatted("Grid maps will be centered on the center of mass.\n"
-                                       "Coordinates of center of mass : (%.3lf, %.3lf, %.3lf)\n", gridCenter[X], gridCenter[Y], gridCenter[Z]);
+                                       "Coordinates of center of mass : (%.3lf, %.3lf, %.3lf)\n", gridCenter.x, gridCenter.y, gridCenter.z);
             }
             else
             {
-                sscanf(GPFLine, "%*s %lf %lf %lf", &gridCenter[X], &gridCenter[Y], &gridCenter[Z]);
-                logFile->printFormatted("\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", gridCenter[X], gridCenter[Y], gridCenter[Z]);
+                sscanf(GPFLine, "%*s %lf %lf %lf", &gridCenter.x, &gridCenter.y, &gridCenter.z);
+                logFile->printFormatted("\nGrid maps will be centered on user-defined coordinates:\n\n\t\t(%.3lf, %.3lf, %.3lf)\n", gridCenter.x, gridCenter.y, gridCenter.z);
             }
             // centering stuff...
             for (int ia = 0; ia < numReceptorAtoms; ia++)
-                receptorAtomCoord[ia].xyz -= gridCenter;  // transform to center of gridmaps
+                receptorAtom[ia].xyz -= gridCenter;  // transform to center of gridmaps
             gridExtent = Vec3d(numGridPointsDiv2) * gridSpacing;
             gridCornerMax = gridCenter + gridExtent;
             gridCornerMin = gridCenter - gridExtent;
@@ -440,15 +440,15 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                                    "                |  /   |  /\n"
                                    "                | /    | /\n"
                                    "                |/_____|/\n"
-                                   "(%.1lf, %.1lf, %.1lf)      \n\n", gridCornerMax[X], gridCornerMax[Y], gridCornerMax[Z],
-                                   gridCenter[X], gridCenter[Y], gridCenter[Z], gridCornerMin[X], gridCornerMin[Y], gridCornerMin[Z]);
+                                   "(%.1lf, %.1lf, %.1lf)      \n\n", gridCornerMax.x, gridCornerMax.y, gridCornerMax.z,
+                                   gridCenter.x, gridCenter.y, gridCenter.z, gridCornerMin.x, gridCornerMin.y, gridCornerMin.z);
 
-            for (int i = 0; i < XYZ; i++)
+            for (int i = 0; i < 3; i++)
                 logFile->printFormatted("Grid map %c-dimension :\t\t%.1lf Angstroms\n", xyz[i], 2 * gridExtent[i]);
 
             logFile->printFormatted("\nMaximum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n"
-                                   "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", gridCornerMax[X], gridCornerMax[Y], gridCornerMax[Z], gridCornerMin[X], gridCornerMin[Y], gridCornerMin[Z]);
-            for (int i = 0; i < XYZ; i++)
+                                   "Minimum coordinates :\t\t(%.3lf, %.3lf, %.3lf)\n\n", gridCornerMax.x, gridCornerMax.y, gridCornerMax.z, gridCornerMin.x, gridCornerMin.y, gridCornerMin.z);
+            for (int i = 0; i < 3; i++)
                 fprintf(xyz_fileptr, "%.3lf %.3lf\n", gridCornerMin[i], gridCornerMax[i]);
             fclose(xyz_fileptr);
             break;
@@ -643,14 +643,14 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
         case GPF_COVALENTMAP:
             {
                 double covHalfWidth;
-                sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covalentPoint[X]), &(covalentPoint[Y]), &(covalentPoint[Z]));
+                sscanf(GPFLine, "%*s %lf %lf %lf %lf %lf", &covHalfWidth, &covBarrier, &(covalentPoint.x), &(covalentPoint.y), &(covalentPoint.z));
                 covHalfWidthSquaredInv = 1 / Mathd::Sqr(covHalfWidth);
 
                 logFile->printFormatted("\ncovalentmap <half-width in Angstroms> <barrier> <x> <y> <z>\n"
                                        "\nCovalent well's half-width in Angstroms:         %8.3f\n"
                                        "\nCovalent barrier energy in kcal/mol:             %8.3f\n"
                                        "\nCovalent attachment point will be positioned at: (%8.3f, %8.3f, %8.3f)\n\n",
-                                       covHalfWidth, covBarrier, covalentPoint[X], covalentPoint[Y], covalentPoint[Z]);
+                                       covHalfWidth, covBarrier, covalentPoint.x, covalentPoint.y, covalentPoint.z);
 
                 // center covalentPoint in the grid maps frame of reference,
                 covalentPoint -= gridCenter;
@@ -727,11 +727,11 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     // apply the estat forcefield coefficient/weight here
     if (distDepDiel)
         for (int ia = 0; ia < numReceptorAtoms; ia++)
-            receptorAtomCoord[ia].w = charge[ia] * parameterLibrary.coeff_estat;
+            receptorAtom[ia].w = charge[ia] * parameterLibrary.coeff_estat;
     else
         // apply the constant dielectric
         for (int ia = 0; ia < numReceptorAtoms; ia++)
-            receptorAtomCoord[ia].w = charge[ia] * parameterLibrary.coeff_estat * invDielCal;
+            receptorAtom[ia].w = charge[ia] * parameterLibrary.coeff_estat * invDielCal;
 }
 
 int InputDataLoader::parseGPFLine(const char *line)

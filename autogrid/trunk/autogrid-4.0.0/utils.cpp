@@ -61,19 +61,19 @@ void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, co
     fprintf(fldFileAVS, "# AutoDock Atomic Affinity and Electrostatic Grids\n#\n");
     fprintf(fldFileAVS, "# Created by %s.\n#\n", programParams.getProgramName());
     fprintf(fldFileAVS, "#SPACING %.3f\n", float(input->gridSpacing));
-    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->numGridPoints[X]-1, input->numGridPoints[Y]-1, input->numGridPoints[Z]-1);
-    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->gridCenter[X], input->gridCenter[Y], input->gridCenter[Z]);
+    fprintf(fldFileAVS, "#NELEMENTS %d %d %d\n", input->numGridPoints.x-1, input->numGridPoints.y-1, input->numGridPoints.z-1);
+    fprintf(fldFileAVS, "#CENTER %.3lf %.3lf %.3lf\n", input->gridCenter.x, input->gridCenter.y, input->gridCenter.z);
     fprintf(fldFileAVS, "#MACROMOLECULE %s\n", input->receptorFilename);
     fprintf(fldFileAVS, "#GRID_PARAMETER_FILE %s\n#\n", programParams.getGridParameterFilename());
     fprintf(fldFileAVS, "ndim=3\t\t\t# number of dimensions in the field\n");
-    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->numGridPoints[X]);
-    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->numGridPoints[Y]);
-    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->numGridPoints[Z]);
+    fprintf(fldFileAVS, "dim1=%d\t\t\t# number of x-elements\n", input->numGridPoints.x);
+    fprintf(fldFileAVS, "dim2=%d\t\t\t# number of y-elements\n", input->numGridPoints.y);
+    fprintf(fldFileAVS, "dim3=%d\t\t\t# number of z-elements\n", input->numGridPoints.z);
     fprintf(fldFileAVS, "nspace=3\t\t# number of physical coordinates per point\n");
     fprintf(fldFileAVS, "veclen=%d\t\t# number of affinity values at each point\n", numMaps);
     fprintf(fldFileAVS, "data=float\t\t# data type (byte, integer, float, double)\n");
     fprintf(fldFileAVS, "field=uniform\t\t# field type (uniform, rectilinear, irregular)\n");
-    for (int i = 0; i < XYZ; i++)
+    for (int i = 0; i < 3; i++)
         fprintf(fldFileAVS, "coord %d file=%s filetype=ascii offset=%d\n", (i + 1), input->xyzFilename, (i * 2));
     for (int i = 0; i < gridmaps.getNumAtomMaps(); i++)
         fprintf(fldFileAVS, "label=%s-affinity\t# component label for variable %d\n", gridmaps[i].type, (i + 1));

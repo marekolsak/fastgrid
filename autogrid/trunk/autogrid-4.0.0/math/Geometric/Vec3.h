@@ -96,7 +96,7 @@ namespace Rune
         void Inverse()                                  { x = 1/x; y = 1/y; z = 1/z; }
         Vec3 Frac() const                               { return Vec3(Math<T>::Frac(x), Math<T>::Frac(y), Math<T>::Frac(z)); }
 
-        RUNEMATH_API bool SafeIsEqual(const Vec3 &v) const
+        bool SafeIsEqual(const Vec3 &v) const
         {
             return Math<T>::SafeIsEqual(x, v.x) && Math<T>::SafeIsEqual(y, v.y) && Math<T>::SafeIsEqual(z, v.z);
         }
@@ -104,7 +104,7 @@ namespace Rune
         /**
             Rotuje vektor kolem rotacni osy (x,y,z) uhlem angle
         **************************************************************************************************/
-        RUNEMATH_API void Rotate(T x, T y, T z, T angle)
+        void Rotate(T x, T y, T z, T angle)
         {
             T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
             T cr = 1-c, xx = x*x, xy = x*y, xz = x*z, yy = y*y, yz = y*z, zz = z*z, sx = s*x, sy = s*y, sz = s*z;
@@ -117,7 +117,7 @@ namespace Rune
         /**
             Rotuje vektor kolem osy X uhlem angle
         **************************************************************************************************/
-        RUNEMATH_API void RotateX(T angle)
+        void RotateX(T angle)
         {
             T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
             Set(x, y*c-z*s, y*s+z*c);
@@ -126,7 +126,7 @@ namespace Rune
         /**
             Rotuje vektor kolem osy Y uhlem angle
         **************************************************************************************************/
-        RUNEMATH_API void RotateY(T angle)
+        void RotateY(T angle)
         {
             T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
             Set(x*c+z*s, y, -x*s+z*c);
@@ -135,53 +135,53 @@ namespace Rune
         /**
             Rotuje vektor kolem osy Z uhlem angle
         **************************************************************************************************/
-        RUNEMATH_API void RotateZ(T angle)
+        void RotateZ(T angle)
         {
             T s = Math<T>::SinDeg(angle), c = Math<T>::CosDeg(angle);
             Set(x*c-y*s, x*s+y*c, z);
         }
 
-        RUNEMATH_API static T Dot(const Vec3 &v1, const Vec3 &v2)
+        static T Dot(const Vec3 &v1, const Vec3 &v2)
         {
             return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
         }
 
-        RUNEMATH_API static Vec3 Cross(const Vec3 &v1, const Vec3 &v2)
+        static Vec3 Cross(const Vec3 &v1, const Vec3 &v2)
         {
             return Vec3<T>(v1.y*v2.z - v1.z*v2.y, v1.z*v2.x - v1.x*v2.z, v1.x*v2.y - v1.y*v2.x);
         }
 
-        RUNEMATH_API static T DistanceSqr(const Vec3 &v1, const Vec3 &v2)
+        static T DistanceSqr(const Vec3 &v1, const Vec3 &v2)
         {
             return (v1 - v2).MagnitudeSqr();
         }
 
-        RUNEMATH_API static T Distance(const Vec3 &v1, const Vec3 &v2)
+        static T Distance(const Vec3 &v1, const Vec3 &v2)
         {
             return Math<T>::Sqrt(DistanceSqr(v1, v2));
         }
 
-        RUNEMATH_API static Vec3 CalculateNormal(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2)
+        static Vec3 CalculateNormal(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2)
         {
             return CalculateNormalUnnorm(v0, v1, v2).GetNormalized();
         }
 
-        RUNEMATH_API static Vec3 CalculateNormalUnnorm(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2)
+        static Vec3 CalculateNormalUnnorm(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2)
         {
             return Cross(v2-v1, v0-v2);
         }
 
-        RUNEMATH_API static Vec3 Center(const Vec3 &min, const Vec3 &max)
+        static Vec3 Center(const Vec3 &min, const Vec3 &max)
         {
             return (min + max) * T(0.5);
         }
 
-        RUNEMATH_API static T Angle(const Vec3 &a, const Vec3 &b)
+        static T Angle(const Vec3 &a, const Vec3 &b)
         {
             return Math<T>::Acos(Dot(a, b)*a.MagnitudeInv()*b.MagnitudeInv());
         }
 
-        RUNEMATH_API static T AngleUnnorm(const Vec3 &a, const Vec3 &b)
+        static T AngleUnnorm(const Vec3 &a, const Vec3 &b)
         {
             return Math<T>::Acos(Dot(a, b));
         }
@@ -190,7 +190,7 @@ namespace Rune
             Vraci tangent vektor (vektor mapovani textury pro normalmapping), vstupem jsou vertexy
             trojuhelniku a jeho texturove koordinaty
         **************************************************************************************************/
-        RUNEMATH_API static Vec3 CalculateTangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
+        static Vec3 CalculateTangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
         {
             return ((v1 - v0) * (t2.y - t0.y) + (v2 - v0) * (t0.y - t1.y)).GetNormalized();
         }
@@ -199,7 +199,7 @@ namespace Rune
             Vraci bitangent vektor (vektor mapovani textury pro normalmapping), vstupem jsou vertexy
             trojuhelniku a jeho texturove koordinaty
         **************************************************************************************************/
-        RUNEMATH_API static Vec3 CalculateBitangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
+        static Vec3 CalculateBitangent(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, const Vec2 &t0, const Vec2 &t1, const Vec2 &t2)
         {
             return ((v1 - v0) * (t2.x - t0.x) + (v2 - v0) * (t0.x - t1.x)).GetNormalized();
         }
@@ -207,7 +207,7 @@ namespace Rune
         /**
             Vraci obsah trojuhelniku
         **************************************************************************************************/
-        RUNEMATH_API static T CalculateAreaOfTriangle(const Vec3 &a, const Vec3 &b, const Vec3 &c)
+        static T CalculateAreaOfTriangle(const Vec3 &a, const Vec3 &b, const Vec3 &c)
         {
             return Cross(b - a, c - a).Magnitude() * T(0.5);
         }
@@ -229,5 +229,6 @@ namespace Rune
     typedef Vec3<float> Vec3f;
     typedef Vec3<double> Vec3d;
     typedef Vec3<int32> Vec3i;
+    typedef Vec3<uint32> Vec3ui;
     typedef Vec3<bool> Vec3b;
 }

@@ -36,6 +36,9 @@
 				Name="CUDA Build Rule"
 				Debug="true"
 				Emulation="true"
+				PtxAsOptionV="false"
+				ExtraNvccOptions=""
+				Warning="3"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -51,7 +54,7 @@
 				AdditionalOptions="/MP"
 				Optimization="0"
 				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;AG_CUDA"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -122,6 +125,9 @@
 			<Tool
 				Name="CUDA Build Rule"
 				Emulation="true"
+				PtxAsOptionV="true"
+				Defines="WIN32"
+				Warning="3"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -142,7 +148,7 @@
 				OmitFramePointers="true"
 				EnableFiberSafeOptimizations="true"
 				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_CUDA"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP;AG_CUDA"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
@@ -220,6 +226,7 @@
 			/>
 			<Tool
 				Name="CUDA Build Rule"
+				Warning="3"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -704,27 +711,23 @@
 				Name="electrostatics"
 				>
 				<File
-					RelativePath="..\electrostatics\calculateelecmap.h"
+					RelativePath="..\electrostatics\cpu.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\calculateelecmap_cpu.cpp"
+					RelativePath="..\electrostatics\cuda.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\calculateelecmap_cuda.cpp"
+					RelativePath="..\electrostatics\cuda_internal.cu"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\calculateelecmap_cuda.cu"
+					RelativePath="..\electrostatics\cuda_internal.h"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\calculateelecmap_cuda.h"
-					>
-				</File>
-				<File
-					RelativePath="..\electrostatics\cuda_kernel.inl"
+					RelativePath="..\electrostatics\electrostatics.h"
 					>
 				</File>
 			</Filter>

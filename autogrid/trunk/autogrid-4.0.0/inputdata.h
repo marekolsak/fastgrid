@@ -55,7 +55,7 @@ struct InputData
     double solpar[AG_MAX_ATOMS];
     int atomType[AG_MAX_ATOMS];
     HBondType hbond[AG_MAX_ATOMS];
-    Vec4d receptorAtomCoord[AG_MAX_ATOMS]; // XYZ = coord, W = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
+    Vec4d receptorAtom[AG_MAX_ATOMS]; // XYZ = coord, W = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
 
     double epsilon[MAX_DIST];
 

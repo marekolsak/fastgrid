@@ -52,7 +52,7 @@ namespace Rune
             };
             struct
             {
-                T __unusedXY2[1+spaceXY];
+                T __unusedXY22[1+spaceXY];
                 Vec2<T, spaceYZ, VEC2CONTENT_ORDER_YX> zy;
             };
             struct
@@ -94,7 +94,7 @@ namespace Rune
             };
             struct
             {
-                T __unusedXY2[1+spaceXY];
+                T __unusedXY22[1+spaceXY];
                 Vec2<T, 0, VEC2CONTENT_ORDER_YX> zy;
             };
             struct
@@ -136,7 +136,7 @@ namespace Rune
             };
             struct
             {
-                T __unusedX;
+                T __unusedX2;
                 Vec2<T, spaceYZ, VEC2CONTENT_ORDER_YX> zy;
             };
             struct
@@ -177,7 +177,7 @@ namespace Rune
             };
             struct
             {
-                T __unusedX;
+                T __unusedX2;
                 Vec2<T, 0, VEC2CONTENT_ORDER_YX> zy;
             };
             struct
