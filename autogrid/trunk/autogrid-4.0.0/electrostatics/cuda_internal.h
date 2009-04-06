@@ -26,8 +26,12 @@
 #include <cuda_runtime_api.h>
 #include <vector_functions.h>
 
-#define NUM_ATOMS_PER_KERNEL 32
+#define NUM_ATOMS_PER_KERNEL 4000
+
+#define CUDA_SAFE_CALL(call) checkErrorCUDA(call, __FILE__, __LINE__, __FUNCTION__, #call)
+#define CUDA_SAFE_KERNEL(call) checkErrorCUDA((call, cudaGetLastError()), __FILE__, __LINE__, __FUNCTION__, #call)
 
 void setGridMapParametersCUDA(int numGridPointsX, const int2 &numGridPointsDiv2, float gridSpacing);
 void setGridMapSliceParametersCUDA(int numAtoms, const float4 *atoms, int outputIndexZBase);
 void callKernelCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon);
+void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code);

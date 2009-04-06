@@ -24,6 +24,7 @@
 
 #include "../autogrid.h"
 #include "cuda_internal.h"
+#include <cstdio>
 
 // Grid size and spacing
 static __constant__ int2 numGridPointsDiv2;
@@ -34,11 +35,12 @@ static __constant__ float gridSpacing;
 static __constant__ unsigned int outputIndexZBase, numAtoms;
 static __constant__ float4 atoms[NUM_ATOMS_PER_KERNEL]; // {x, y, (z-gridPosZ)^2, charge}
 
+// Generic kernel
 template<int DistanceDependentDielectric>
 static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
 {
-    int x = threadIdx.x;
-    int y = threadIdx.y;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
 
     float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
     float gridPosY = (y - numGridPointsDiv2.y) * gridSpacing;
@@ -63,28 +65,38 @@ static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
 
     // Round to 3 decimal places
     int outputIndex = outputIndexZBase + y * numGridPointsX + x;
-    outEnergies[outputIndex] += abs(energy) < 0.0005f ? 0.f : rint(energy * 1000.f) * 0.001f;
+    outEnergies[outputIndex] += energy;
 }
 
 void setGridMapParametersCUDA(int numGridPointsX, const int2 &numGridPointsDiv2, float gridSpacing)
 {
     // Set common variables
-    cudaMemcpyToSymbol("numGridPointsDiv2", &numGridPointsDiv2, sizeof(numGridPointsDiv2));
-    cudaMemcpyToSymbol("numGridPointsX", &numGridPointsX, sizeof(numGridPointsX));
-    cudaMemcpyToSymbol("gridSpacing", &gridSpacing, sizeof(gridSpacing));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol("numGridPointsDiv2", &numGridPointsDiv2, sizeof(numGridPointsDiv2)));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol("numGridPointsX", &numGridPointsX, sizeof(numGridPointsX)));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol("gridSpacing", &gridSpacing, sizeof(gridSpacing)));
 }
 
 void setGridMapSliceParametersCUDA(int numAtoms, const float4 *atoms, int outputIndexZBase)
 {
-    cudaMemcpyToSymbol("atoms", &atoms[0], sizeof(float4) * numAtoms);
-    cudaMemcpyToSymbol("numAtoms", &numAtoms, sizeof(numAtoms));
-    cudaMemcpyToSymbol("outputIndexZBase", &outputIndexZBase, sizeof(outputIndexZBase));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol("atoms", &atoms[0], sizeof(float4) * numAtoms));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol("numAtoms", &numAtoms, sizeof(numAtoms)));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol("outputIndexZBase", &outputIndexZBase, sizeof(outputIndexZBase)));
 }
 
 void callKernelCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon)
 {
     if (epsilon)
-        calcGridPoint<1><<<grid, block>>>(outEnergies, epsilon);
+        CUDA_SAFE_KERNEL((calcGridPoint<1><<<grid, block>>>(outEnergies, epsilon)));
     else
-        calcGridPoint<0><<<grid, block>>>(outEnergies, 0);
+        CUDA_SAFE_KERNEL((calcGridPoint<0><<<grid, block>>>(outEnergies, 0)));
+}
+
+void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code)
+{
+    if (e != cudaSuccess)
+        fprintf(stderr, "CUDA error: '%s'\n"
+                        "        in file '%s'\n"
+                        "        in line %i\n"
+                        "        in function '%s'\n"
+                        "        in code '%s'\n", cudaGetErrorString(e), file, line, func, code);
 }

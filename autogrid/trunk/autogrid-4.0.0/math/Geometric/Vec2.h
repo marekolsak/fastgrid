@@ -73,6 +73,7 @@ namespace Rune
         T& operator [](int i)                           { return (&x)[i]; }
         T operator [](int i) const                      { return (&x)[i]; }
 
+        T Square() const                                { return x*y; }
         bool SafeIsEqual(const Vec2 &v) const           { return Math<T>::SafeIsEqual(x, v.x) && Math<T>::SafeIsEqual(y, v.y); }
         Vec2 GetAbs() const                             { return Vec2(Math<T>::Abs(x), Math<T>::Abs(y)); }
         Vec2 GetNormalized() const                      { T f = MagnitudeInv(); return Vec2(x*f, y*f); }

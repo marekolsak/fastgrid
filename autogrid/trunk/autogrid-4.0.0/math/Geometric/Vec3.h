@@ -148,7 +148,13 @@ namespace Rune
 
         static Vec3 Cross(const Vec3 &v1, const Vec3 &v2)
         {
-            return Vec3<T>(v1.y*v2.z - v1.z*v2.y, v1.z*v2.x - v1.x*v2.z, v1.x*v2.y - v1.y*v2.x);
+            return Vec3(v1.y*v2.z - v1.z*v2.y, v1.z*v2.x - v1.x*v2.z, v1.x*v2.y - v1.y*v2.x);
+        }
+
+        template<typename Operator>
+        static Vec3 ScalarOperator(const Vec3 &v1, const Vec3 &v2, Operator &op)
+        {
+            return Vec3(op(v1.x, v2.x), op(v1.y, v2.y), op(v1.z, v2.z));
         }
 
         static T DistanceSqr(const Vec3 &v1, const Vec3 &v2)

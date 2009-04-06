@@ -27,7 +27,6 @@
 #include "cuda_internal.h"
 #include "../exceptions.h"
 #include <algorithm>
-#include <windows.h>
 
 template<typename TDst, typename TSrc>
 static TDst typecast(TSrc a)
@@ -36,77 +35,106 @@ static TDst typecast(TSrc a)
 }
 
 // Same as cudaMemcpy with the exception that:
-// - if cudaMemcpyHostToDevice is specified, the TSrc type is converted to the TDst type before the actual copy
-// - if cudaMemcpyDeviceToHost is specified, the TSrc type is converted to the TDst type after the actual copy
+// - If cudaMemcpyHostToDevice or cudaMemcpyHostToHost is specified, the TSrc type is converted to the TDst type before the actual copy
+// - If cudaMemcpyDeviceToHost is specified, the TSrc type is converted to the TDst type after the actual copy
+// - If cudaMemcpyDeviceToDevice is specified, the ExitProgram exception is thrown
 // In other words, it adds an automatic conversion between types. Useful for uploading an array of doubles as floats etc.
 template<typename TDst, typename TSrc>
-static void myCudaMemcpy(TDst *dst, const TSrc *src, size_t numElements, cudaMemcpyKind kind)
+static cudaError_t myCudaMemcpy(TDst *dst, const TSrc *src, size_t numElements, cudaMemcpyKind kind)
 {
     switch (kind)
     {
     case cudaMemcpyHostToDevice:
+    case cudaMemcpyHostToHost:
         {
             TDst *inter = new TDst[numElements];
             std::transform(src, src + numElements, inter, typecast<TDst, TSrc>);
-            cudaMemcpy(dst, inter, numElements * sizeof(TDst), kind);
+            cudaError_t e = cudaMemcpy(dst, inter, numElements * sizeof(TDst), kind);
             delete [] inter;
+            return e;
         }
-        break;
 
     case cudaMemcpyDeviceToHost:
         {
             TSrc *inter = new TSrc[numElements];
-            cudaMemcpy(inter, src, numElements * sizeof(TSrc), kind);
+            cudaError_t e = cudaMemcpy(inter, src, numElements * sizeof(TSrc), kind);
             std::transform(inter, inter + numElements, dst, typecast<TDst, TSrc>);
             delete [] inter;
+            return e;
         }
-        break;
 
     default:
-        if (typeid(TDst) != typeid(TSrc))
-            throw ExitProgram(0xbad);
+        throw ExitProgram(0xbad);
+    }
+}
 
-        cudaMemcpy(dst, src, numElements * sizeof(TDst), kind);
+template<typename TDst, typename TSrc>
+void myCudaCopyGridMapPadded(TDst *dst, const Vec3i &numGridPointsDst, const TSrc *src, const Vec3i &numGridPointsSrc, cudaMemcpyKind kind)
+{
+    Vec3i numGridPointsMin = Vec3i::ScalarOperator(numGridPointsDst, numGridPointsSrc, Mathi::Min);
+
+    for (int z = 0; z < numGridPointsMin.z; z++)
+    {
+        // Set the base of output indices from z
+        unsigned int outputIndexZBaseDst = z * numGridPointsDst.xy.Square();
+        unsigned int outputIndexZBaseSrc = z * numGridPointsSrc.xy.Square();
+
+        for (int y = 0; y < numGridPointsMin.y; y++)
+        {
+            // Set the base of output indices from (z,y)
+            unsigned int outputIndexZYBaseDst = outputIndexZBaseDst + y * numGridPointsDst.x;
+            unsigned int outputIndexZYBaseSrc = outputIndexZBaseSrc + y * numGridPointsSrc.x;
+
+            // Copy one row in the X axis
+            CUDA_SAFE_CALL((myCudaMemcpy<TDst, TSrc>(dst + outputIndexZYBaseDst, src + outputIndexZYBaseSrc,
+                                                        numGridPointsMin.x, kind)));
+        }
     }
 }
 
 void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
 {
-    // Convert the array of Vec4ds to Vec4fs
-    Vec4f *receptorAtom = new Vec4f[input->numReceptorAtoms];
-    std::transform(&input->receptorAtom[0], &input->receptorAtom[0] + input->numReceptorAtoms, receptorAtom, typecast<Vec4f, Vec4d>);
+    // Pad/align the grid to a size of the grid block
+    dim3 dimBlock(16, 16);
+    Vec3i numGridPointsPadded = input->numGridPoints;
+    numGridPointsPadded.x = ((numGridPointsPadded.x - 1) / dimBlock.x + 1) * dimBlock.x;
+    numGridPointsPadded.y = ((numGridPointsPadded.y - 1) / dimBlock.y + 1) * dimBlock.y;
+    int numGridPointsPerMapPadded = numGridPointsPadded.Cube();
+    dim3 dimGrid(numGridPointsPadded.x / dimBlock.x,
+                 numGridPointsPadded.y / dimBlock.y);
 
-    // Allocate the device memory for energies and initialize it
+    // Allocate the padded grid in a device memory
     float *outEnergies = 0;
-    cudaMalloc((void**)&outEnergies, sizeof(float) * input->numGridPointsPerMap);
-    myCudaMemcpy<float, double>(outEnergies, elecMap.energies, input->numGridPointsPerMap, cudaMemcpyHostToDevice);
+    CUDA_SAFE_CALL(cudaMalloc((void**)&outEnergies, sizeof(float) * numGridPointsPerMapPadded));
 
-    // Allocate and copy epsilon[] for a distance-dependent dielectric
+    // Copy the initial energies from the original grid to the padded one in the device memory
+    // Elements in the area of padding will be uninitialized
+    myCudaCopyGridMapPadded<float, double>(outEnergies, numGridPointsPadded, elecMap.energies, input->numGridPoints, cudaMemcpyHostToDevice);
+
+    // Allocate and copy the lookup table of epsilons for a distance-dependent dielectric
     float *epsilon = 0;
     if (input->distDepDiel)
     {
-        cudaMalloc((void**)&epsilon, sizeof(float) * MAX_DIST);
-        myCudaMemcpy<float, double>(epsilon, input->epsilon, MAX_DIST, cudaMemcpyHostToDevice);
+        CUDA_SAFE_CALL(cudaMalloc((void**)&epsilon, sizeof(float) * MAX_DIST));
+        CUDA_SAFE_CALL((myCudaMemcpy<float, double>(epsilon, input->epsilon, MAX_DIST, cudaMemcpyHostToDevice)));
     }
 
     // Set common variables
     float gridSpacing = float(input->gridSpacing);
-    setGridMapParametersCUDA(input->numGridPoints.x, make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y), gridSpacing);
-    OutputDebugString(cudaGetErrorString(cudaGetLastError()));
-    OutputDebugString("\n");
+    setGridMapParametersCUDA(numGridPointsPadded.x, make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y), gridSpacing);
 
-    // This list of atoms will be moved to a constant memory
+    // Convert the array of Vec4d's to Vec4f's
+    Vec4f *receptorAtom = new Vec4f[input->numReceptorAtoms];
+    std::transform(&input->receptorAtom[0], &input->receptorAtom[0] + input->numReceptorAtoms, receptorAtom, typecast<Vec4f, Vec4d>);
+
+    // Subset of atoms which will be moved to the constant memory
     Vec4f atomConstMem[NUM_ATOMS_PER_KERNEL];
-
-    // Execution configuration of a kernel
-    dim3 dimBlock(input->numGridPoints.x, input->numGridPoints.y);
-    dim3 dimGrid(1, 1);
 
     // For each Z
     for (int z = 0; z < input->numGridPoints.z; z++)
     {
         // Set the base of output index
-        unsigned int outputIndexZBase = z * input->numGridPoints.x * input->numGridPoints.y;
+        unsigned int outputIndexZBase = z * numGridPointsPadded.xy.Square();
 
         // Calculate the Z coord of this grid point
         float gridPosZ = (z - input->numGridPointsDiv2.z) * gridSpacing;
@@ -132,35 +160,44 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
 
             // Move atoms to the constant memory
             setGridMapSliceParametersCUDA(iaCount, (float4*)atomConstMem, outputIndexZBase);
-            OutputDebugString(cudaGetErrorString(cudaGetLastError()));
-            OutputDebugString("\n");
 
             // Calculate the slice of the grid for the given subset of atoms
             callKernelCUDA(dimGrid, dimBlock, outEnergies, epsilon);
-            OutputDebugString(cudaGetErrorString(cudaGetLastError()));
-            OutputDebugString("\n");
         }
     }
 
-    // Free the epsilon array on device
+    delete [] receptorAtom;
+
+    // Free the epsilon array on the device
     if (epsilon)
         cudaFree(epsilon);
 
-    // Copy output energies from device to host
-    myCudaMemcpy<double, float>(elecMap.energies, outEnergies, input->numGridPointsPerMap, cudaMemcpyDeviceToHost);
+    // Copy output energies from the device to the host
+    myCudaCopyGridMapPadded<double, float>(elecMap.energies, input->numGridPoints, outEnergies, numGridPointsPadded, cudaMemcpyDeviceToHost);
 
     // Free device memory
-    cudaFree(outEnergies);
-
-    delete [] receptorAtom;
+    CUDA_SAFE_CALL(cudaFree(outEnergies));
 }
 
 void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
 {
-    // TODO: is there any cuda device?
-    if (1)
+    // Get a device count
+    int deviceCount;
+    CUDA_SAFE_CALL(cudaGetDeviceCount(&deviceCount));
+
+    if (deviceCount)
     {
-        // TODO: divide the map to the num of devices
+        // Print a list of devices
+        cudaDeviceProp prop;
+        fprintf(stderr, "Found %i CUDA devices:\n", deviceCount);
+        for (int i = 0; i < deviceCount; i++)
+        {
+            cudaGetDeviceProperties(&prop, i);
+            fprintf(stderr, "%i. Name: %s, Capability: %i.%i, Total global mem: %i, Total const mem: %i\n", i+1,
+                            prop.name, prop.major, prop.minor, prop.totalGlobalMem, prop.totalConstMem);
+        }
+
+        // TODO: divide the map into the num of devices
         for (int i = 0; i < /* num of devices */ 1; i++)
         {
             // TODO: start a new thread and call this on the subgrid:
@@ -168,8 +205,12 @@ void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
         }
     }
     else
+    {
+        fprintf(stderr, "No CUDA device found. Switching to the CPU version.\n");
+
         // CPU fallback
         calculateElectrostaticMapCPU(input, elecMap);
+    }
 }
 
 #endif
