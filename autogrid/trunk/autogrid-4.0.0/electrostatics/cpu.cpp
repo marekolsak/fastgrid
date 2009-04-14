@@ -23,6 +23,7 @@
 */
 
 #include "electrostatics.h"
+#include "../utils.h"
 
 template<int DistanceDependentDielectric>
 static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &elecMap)
@@ -57,10 +58,19 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
 
 void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap)
 {
+    Timer *t2 = Timer::startNew("Electrostatic map      ");
+
     if (input->distDepDiel)
         calculateElectrostaticMapGeneric<1>(input, elecMap);
     else
         calculateElectrostaticMapGeneric<0>(input, elecMap);
+
+    t2->stopAndLog(stderr, false);
+
+    double seconds = t2->getReal() / double(getClocksPerSec());
+    double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
+    double atomsPerSec = atoms / seconds;
+    fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
 }
 
 #if !defined(AG_CUDA)

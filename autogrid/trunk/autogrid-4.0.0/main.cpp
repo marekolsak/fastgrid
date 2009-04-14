@@ -200,17 +200,10 @@ void autogridMain(int argc, char **argv)
     initCovalentMaps(input, gridmaps);
     t1->stopAndLog(stderr);
 
-    // Calculation of the electrostatic map
-    Timer *t2 = Timer::startNew("Electrostatic map      ");
+    // Calculate the electrostatic map
     calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
-    t2->stopAndLog(stderr, false);
 
-    double seconds = t2->getReal() / double(getClocksPerSec());
-    double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
-    double atomsPerSec = atoms / seconds;
-    fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
-
-    // Calculation of the atom maps and the desolvation map
+    // Calculate the atom maps and the desolvation map
     calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
 
     // Calculate the so-called "floating grid"

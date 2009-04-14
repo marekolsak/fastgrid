@@ -803,18 +803,7 @@ int InputDataLoader::parseGPFLine(const char *line)
 
 double InputDataLoader::calculateDDDMehlerSolmajer(double distance, double approx_zero)
 {
-    // Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
-    double epsilon = 1.0L;
-    double lambda = 0.003627L;
-    double epsilon0 = 78.4L;
-    double A = -8.5525L;
-    double B;
-    B = epsilon0 - A;
-    double rk= 7.7839L;
-    double lambda_B;
-    lambda_B = -lambda * B;
-
-    epsilon = A + B / (1 + rk*exp(lambda_B * distance));
+    double epsilon = DDD_FUNC(distance);
 
     if (epsilon < approx_zero)
         epsilon = 1;

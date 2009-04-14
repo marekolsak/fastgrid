@@ -32,7 +32,7 @@ static __constant__ int numGridPointsX;
 static __constant__ float gridSpacing;
 
 // Per-slice parameters
-static __constant__ unsigned int outputIndexZBase, numAtoms;
+static __constant__ int outputIndexZBase, numAtoms;
 static __constant__ float4 atoms[NUM_ATOMS_PER_KERNEL]; // {x, y, (z-gridPosZ)^2, charge}
 
 // Generic kernel
@@ -48,7 +48,7 @@ static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
     float energy = 0;
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
-    for (unsigned int ia = 0; ia < numAtoms; ia++)
+    for (int ia = 0; ia < numAtoms; ia++)
     {
         // Get the distance from current grid point to this receptor atom (|receptorAtom - gridPos|)
         float dx = atoms[ia].x - gridPosX;
@@ -68,27 +68,31 @@ static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
     outEnergies[outputIndex] += energy;
 }
 
-void setGridMapParametersCUDA(int numGridPointsX, const int2 &numGridPointsDiv2, float gridSpacing)
+void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY, const float *gridSpacing, cudaStream_t stream)
 {
     // Set common variables
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol("numGridPointsDiv2", &numGridPointsDiv2, sizeof(numGridPointsDiv2)));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol("numGridPointsX", &numGridPointsX, sizeof(numGridPointsX)));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol("gridSpacing", &gridSpacing, sizeof(gridSpacing)));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsDiv2", numGridPointsDiv2XY, sizeof(int2),  0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsX",    numGridPointsX,      sizeof(int),   0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacing",       gridSpacing,         sizeof(float), 0, cudaMemcpyHostToDevice, stream));
 }
 
-void setGridMapSliceParametersCUDA(int numAtoms, const float4 *atoms, int outputIndexZBase)
+void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream)
 {
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol("atoms", &atoms[0], sizeof(float4) * numAtoms));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol("numAtoms", &numAtoms, sizeof(numAtoms)));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol("outputIndexZBase", &outputIndexZBase, sizeof(outputIndexZBase)));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("outputIndexZBase", outputIndexZBase, sizeof(int), 0, cudaMemcpyHostToDevice, stream));
 }
 
-void callKernelCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon)
+void setGridMapKernelParametersAsyncCUDA(const int *numAtoms, const float4 *atoms, cudaStream_t stream)
+{
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("atoms",    atoms,    sizeof(float4) * *numAtoms, 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numAtoms", numAtoms, sizeof(int),                0, cudaMemcpyHostToDevice, stream));
+}
+
+void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon, cudaStream_t stream)
 {
     if (epsilon)
-        CUDA_SAFE_KERNEL((calcGridPoint<1><<<grid, block>>>(outEnergies, epsilon)));
+        CUDA_SAFE_KERNEL((calcGridPoint<1><<<grid, block, stream>>>(outEnergies, epsilon)));
     else
-        CUDA_SAFE_KERNEL((calcGridPoint<0><<<grid, block>>>(outEnergies, 0)));
+        CUDA_SAFE_KERNEL((calcGridPoint<0><<<grid, block, stream>>>(outEnergies, 0)));
 }
 
 void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code)

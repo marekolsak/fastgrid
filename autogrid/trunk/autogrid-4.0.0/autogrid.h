@@ -68,7 +68,7 @@
 // Macros
 
 // Using a greater value of MAX_DIST might increase precision a little,
-// but keep in mind the memory consumption increases linearly with respect to it
+// but keep in mind that a memory consumption increases linearly
 #define MAX_DIST                (1<<13) // 2^13 = 8192 = 81.92 Angstroms. Maximum distance in 100ths of an Angstrom.
 #define NBCUTOFF                8       // non-bond cutoff = 8 Angstroms.
 #define AG_MAX_ATOMS            (1<<15) // 2^15 = 32768. Maximum number of atoms in macromolecule. // TODO: fix the code so that the number of atoms can be arbitrary
@@ -77,6 +77,18 @@
 #define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???
 #define NUM_RECEPTOR_TYPES      NUM_ALL_TYPES
 #define INIT_NUM_GRID_PTS       UINT_MAX
+
+// Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
+#if !defined(DDD_TYPE)
+    #define DDD_TYPE double
+#endif
+#define DDD_LAMBDA      DDD_TYPE(0.003627)
+#define DDD_EPSILON0    DDD_TYPE(78.4)
+#define DDD_A           DDD_TYPE(-8.5525)
+#define DDD_B           (DDD_EPSILON0 - DDD_A)
+#define DDD_RK          DDD_TYPE(7.7839)
+#define DDD_LAMBDA_B    (-DDD_LAMBDA * DDD_B)
+#define DDD_FUNC(dist)  (DDD_A + DDD_B / (DDD_TYPE(1) + DDD_RK*exp(DDD_LAMBDA_B * (dist))))
 
 #if !defined(__CUDACC__)
 

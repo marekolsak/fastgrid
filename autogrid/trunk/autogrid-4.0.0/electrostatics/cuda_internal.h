@@ -28,10 +28,14 @@
 
 #define NUM_ATOMS_PER_KERNEL 4000
 
-#define CUDA_SAFE_CALL(call) checkErrorCUDA(call, __FILE__, __LINE__, __FUNCTION__, #call)
-#define CUDA_SAFE_KERNEL(call) checkErrorCUDA((call, cudaGetLastError()), __FILE__, __LINE__, __FUNCTION__, #call)
+void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY, const float *gridSpacing, cudaStream_t stream);
+void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream);
+void setGridMapKernelParametersAsyncCUDA(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
+void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon, cudaStream_t stream);
 
-void setGridMapParametersCUDA(int numGridPointsX, const int2 &numGridPointsDiv2, float gridSpacing);
-void setGridMapSliceParametersCUDA(int numAtoms, const float4 *atoms, int outputIndexZBase);
-void callKernelCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon);
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define CUDA_SAFE_CALL(call) checkErrorCUDA((call), __FILE__, __LINE__, __FUNCTION__, #call)
+#define CUDA_SAFE_KERNEL(call) checkErrorCUDA(((call), cudaGetLastError()), __FILE__, __LINE__, __FUNCTION__, #call)
+
 void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code);
