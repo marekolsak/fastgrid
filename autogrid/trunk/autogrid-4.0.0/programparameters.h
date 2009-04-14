@@ -29,16 +29,21 @@ class ProgramParameters
 {
 public:
     ProgramParameters(int argc, char **argv);
-    const char *getProgramName() const;
-    const char *getGridParameterFilename() const;
-    const char *getLogFilename() const;
-    int getDebugLevel() const;
+    const char *getProgramName() const              { return programName; }
+    const char *getGridParameterFilename() const    { return gridParameterFilename; }
+    const char *getLogFilename() const              { return logFilename; }
+    int getDebugLevel() const                       { return debug; }
+    bool benchmarkEnabled() const                   { return benchmark; }
+    bool useNNS() const                             { return nns; }
+    bool useCutoffGrid() const                      { return cutoffGrid; }
+    bool useCUDA() const                            { return cuda; }
 
 private:
     char programName[MAX_CHARS];
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
     int debug;
+    bool benchmark, nns, cutoffGrid, cuda;
 
-    int parse(int argc, char **argv);
+    void parse(int argc, char **argv);
 };

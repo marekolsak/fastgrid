@@ -237,6 +237,7 @@ static inline void sumPairwiseInteractions(const InputData *input, const GridMap
         (input->solpar[ia] + input->solparQ * fabs(input->charge[ia])) * gridmaps[m].volProbe * desolvExpFunc(indexR);
 }
 
+template<int UseNNS, int UseCutoffGrid>
 static inline void calculateGridPoint(const InputData *input, GridMapList &gridmaps, int hydrogen,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
                        const SpatialGrid &cutoffGrid, const int *indicesHtoA, const NearestNeighborSearch3d &hsearch,
@@ -244,25 +245,27 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
 {
     HBondInfo hbond(gridmaps.getNumAtomMaps());
 
-#if defined(USE_NNS)
-    int closestH = indicesHtoA[hsearch.searchNearest(gridPos)];
-#else
-    int closestH = findClosestHBond(input, gridPos);
-#endif
+    int closestH;
+    if (UseNNS)
+        closestH = indicesHtoA[hsearch.searchNearest(gridPos)];
+    else
+        closestH = findClosestHBond(input, gridPos);
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
-#if defined(USE_SPATIAL_GRID)
-    SpatialCell cell = cutoffGrid.getCellByPos(gridPos);
-    int num = cutoffGrid.getNumElements(cell);
+    int num;
+    SpatialCell cell = 0;
+    if (UseCutoffGrid)
+    {
+        cell = cutoffGrid.getCellByPos(gridPos);
+        num = cutoffGrid.getNumElements(cell);
+    }
+    else
+        num = input->numReceptorAtoms;
 
     for (int index = 0; index < num; index++)
     {
-        int ia = cutoffGrid.getElement(cell, index);
-#else
-    int num = input->numReceptorAtoms;
-    for (int ia = 0; ia < num; ia++)
-    {
-#endif
+        int ia = UseCutoffGrid ? cutoffGrid.getElement(cell, index) : index;
+
         // If distance from grid point to atom ia is too large,
         // or if atom is a disordered hydrogen,
         //   add nothing to the grid-point's non-bond energy;
@@ -312,6 +315,20 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
     e = roundOutput(e);
 }
 
+template<int UseNNS, int UseCutoffGrid>
+static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydrogen,
+                       const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors,
+                       const SpatialGrid &cutoffGrid, const int *indicesHtoA, const NearestNeighborSearch3d &hsearch)
+{
+#if defined(AG_OPENMP)
+    #pragma AG_OPENMP_PARALLEL_FOR
+#endif
+    FOR_EACH_GRID_POINT(gridPos, outputIndex)
+        calculateGridPoint<UseNNS, UseCutoffGrid>(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors,
+                                                  cutoffGrid, indicesHtoA, hsearch, gridPos, outputIndex);
+    END_FOR()
+}
+
 static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 {
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
@@ -338,40 +355,56 @@ static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch
     hsearch.create(hcoord, numH, true);
 }
 
-void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+void calculateGridmaps(const InputData *input, const ProgramParameters &programParams, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors)
 {
     SpatialGrid cutoffGrid;
     NearestNeighborSearch3d hsearch;
     int *indicesHtoA = new int[input->numReceptorAtoms]; // table for translating a H index into a receptor atom index
 
-#if defined(USE_SPATIAL_GRID)
-    // Create a grid for a cutoff of distant receptor atoms
-    Timer *t0 = Timer::startNew("Cutoff grid            ");
-    initCutoffGrid(input, cutoffGrid);
-    t0->stopAndLog(stderr);
-#endif
+    if (programParams.useCutoffGrid())
+    {
+        // Create a grid for a cutoff of distant receptor atoms
+        Timer *t0 = 0;
+        if (programParams.benchmarkEnabled())
+            t0 = Timer::startNew("Cutoff grid            ");
+        initCutoffGrid(input, cutoffGrid);
+        if (programParams.benchmarkEnabled())
+            t0->stopAndLog(stderr);
+    }
 
-#if defined(USE_NNS)
-    // Create a tree for finding the closest H
-    Timer *t1 = Timer::startNew("KD-tree of hydrogens   ");
-    initHSearch(input, hsearch, indicesHtoA);
-    t1->stopAndLog(stderr);
-#endif
+    if (programParams.useNNS())
+    {
+        // Create a tree for finding the closest H
+        Timer *t1 = 0;
+        if (programParams.benchmarkEnabled())
+            t1 = Timer::startNew("KD-tree of hydrogens   ");
+        initHSearch(input, hsearch, indicesHtoA);
+        if (programParams.benchmarkEnabled())
+            t1->stopAndLog(stderr);
+    }
 
     int hydrogen = parameterLibrary.getAtomParameterRecIndex("HD");
 
-    Timer *t2 = Timer::startNew("Atom & desolvation maps");
-#if defined(AG_OPENMP)
-    #pragma AG_OPENMP_PARALLEL_FOR
-#endif
-    FOR_EACH_GRID_POINT(gridPos, outputIndex)
-    {
-        calculateGridPoint(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors,
-                           cutoffGrid, indicesHtoA, hsearch, gridPos, outputIndex);
-    }
-    END_FOR();
-    t2->stopAndLog(stderr);
+    Timer *t2 = 0;
+    if (programParams.benchmarkEnabled())
+        t2 = Timer::startNew("Atom & desolvation maps");
+
+    // Determine which template parameter to use based on program parameters
+    // This enabled/disables the nearest neighbor search and the cutoff grid
+    if (programParams.useNNS())
+        if (programParams.useCutoffGrid())
+            LoopOverGrid<1, 1>(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors, cutoffGrid, indicesHtoA, hsearch);
+        else
+            LoopOverGrid<1, 0>(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors, cutoffGrid, indicesHtoA, hsearch);
+    else
+        if (programParams.useCutoffGrid())
+            LoopOverGrid<0, 1>(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors, cutoffGrid, indicesHtoA, hsearch);
+        else
+            LoopOverGrid<0, 0>(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors, cutoffGrid, indicesHtoA, hsearch);
+
+    if (programParams.benchmarkEnabled())
+        t2->stopAndLog(stderr);
 
     delete [] indicesHtoA;
 }

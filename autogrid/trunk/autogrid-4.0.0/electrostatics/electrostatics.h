@@ -24,10 +24,6 @@
 
 #pragma once
 #include "../gridmap.h"
+#include "../programparameters.h"
 
-void calculateElectrostaticMap(const InputData *input, GridMap &elecMap);
-void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap);
-
-#if defined(AG_CUDA)
-    void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap);
-#endif
+void calculateElectrostaticMap(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);

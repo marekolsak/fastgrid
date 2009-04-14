@@ -26,6 +26,7 @@
 #include "pairwiseinteractionenergies.h"
 #include "desolvexpfunc.h"
 #include "bondvectors.h"
+#include "programparameters.h"
 
-void calculateGridmaps(const InputData *input, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
+void calculateGridmaps(const InputData *input, const ProgramParameters &programParams, GridMapList &gridmaps, const ParameterLibrary &parameterLibrary,
                        const PairwiseInteractionEnergies &energyLookup, const DesolvExpFunc &desolvExpFunc, const BondVectors *bondVectors);

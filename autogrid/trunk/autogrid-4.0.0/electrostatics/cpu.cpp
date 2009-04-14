@@ -56,28 +56,33 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
     END_FOR();
 }
 
-void calculateElectrostaticMapCPU(const InputData *input, GridMap &elecMap)
+void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
-    Timer *t2 = Timer::startNew("Electrostatic map      ");
+    Timer *t2 = 0;
+    if (programParams.benchmarkEnabled())
+        t2 = Timer::startNew("Electrostatic map      ");
 
     if (input->distDepDiel)
         calculateElectrostaticMapGeneric<1>(input, elecMap);
     else
         calculateElectrostaticMapGeneric<0>(input, elecMap);
 
-    t2->stopAndLog(stderr, false);
+    if (programParams.benchmarkEnabled())
+    {
+        t2->stopAndLog(stderr, false);
 
-    double seconds = t2->getReal() / double(getClocksPerSec());
-    double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
-    double atomsPerSec = atoms / seconds;
-    fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
+        double seconds = t2->getReal() / double(getClocksPerSec());
+        double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
+        double atomsPerSec = atoms / seconds;
+        fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
+    }
 }
 
 #if !defined(AG_CUDA)
 
-void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
+void calculateElectrostaticMap(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
-    calculateElectrostaticMapCPU(input, elecMap);
+    calculateElectrostaticMapCPU(input, programParams, elecMap);
 }
 
 #endif

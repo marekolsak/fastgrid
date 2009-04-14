@@ -5,7 +5,7 @@ log_file=EXAMPLE7.glg
 if [ "$#" -eq 4 ]; then
     cd $2
     echo cmd: ../autogrid4 -p $input_file -l $log_file
-    ../autogrid4 -p $input_file -l $log_file
+    ../autogrid4 -p $input_file -l $log_file --benchmark
     result=$?
     if [ $result -eq 0 ]; then
         tail -n 1 $log_file

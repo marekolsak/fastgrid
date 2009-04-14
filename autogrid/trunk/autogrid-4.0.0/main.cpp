@@ -153,7 +153,9 @@ void autogridMain(int argc, char **argv)
     boinc_fraction_done(0.1);
 #endif
 
-    Timer *t0 = Timer::startNew("Precalculations        ");
+    Timer *t0 = 0;
+    if (programParams.benchmarkEnabled())
+        t0 = Timer::startNew("Precalculations        ");
 
     // Calculating the lookup table of the pairwise interaction energies
     PairwiseInteractionEnergies energyLookup;
@@ -166,7 +168,8 @@ void autogridMain(int argc, char **argv)
     BondVectors *bondVectors = new BondVectors(&logFile);
     bondVectors->calculate(input, parameterLibrary);
 
-    t0->stopAndLog(stderr);
+    if (programParams.benchmarkEnabled())
+        t0->stopAndLog(stderr);
 
     logFile.printFormatted("Beginning grid calculations.\n"
                            "\nCalculating %d grids over %d elements, around %d receptor atoms.\n\n"
@@ -196,22 +199,28 @@ void autogridMain(int argc, char **argv)
     */
 
     // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
-    Timer *t1 = Timer::startNew("Covalent maps          ");
+    Timer *t1 = 0;
+    if (programParams.benchmarkEnabled())
+        t1 = Timer::startNew("Covalent maps          ");
     initCovalentMaps(input, gridmaps);
-    t1->stopAndLog(stderr);
+    if (programParams.benchmarkEnabled())
+        t1->stopAndLog(stderr);
 
     // Calculate the electrostatic map
-    calculateElectrostaticMap(input, gridmaps.getElectrostaticMap());
+    calculateElectrostaticMap(input, programParams, gridmaps.getElectrostaticMap());
 
     // Calculate the atom maps and the desolvation map
-    calculateGridmaps(input, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
+    calculateGridmaps(input, programParams, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
 
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())
     {
-        Timer *t3 = Timer::startNew("Floating grid          ");
+        Timer *t3 = 0;
+        if (programParams.benchmarkEnabled())
+            t3 = Timer::startNew("Floating grid          ");
         calculateFloatingGrid(input, gridmaps);
-        t3->stopAndLog(stderr);
+        if (programParams.benchmarkEnabled())
+            t3->stopAndLog(stderr);
     }
 
     delete bondVectors;

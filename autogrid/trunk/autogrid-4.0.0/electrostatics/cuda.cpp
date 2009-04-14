@@ -69,7 +69,7 @@ static cudaError_t myCudaMemcpyAsync(TDst *dst, const TSrc *src, size_t numEleme
 }
 
 template<typename TDst, typename TSrc>
-void myCudaCopyGridMapPaddedAsync(TDst *dst, const Vec3i &numGridPointsDst, const TSrc *src, const Vec3i &numGridPointsSrc, cudaMemcpyKind kind, cudaStream_t stream)
+static void myCudaCopyGridMapPaddedAsync(TDst *dst, const Vec3i &numGridPointsDst, const TSrc *src, const Vec3i &numGridPointsSrc, cudaMemcpyKind kind, cudaStream_t stream)
 {
     Vec3i numGridPointsMin = Vec3i::ScalarOperator(numGridPointsDst, numGridPointsSrc, Mathi::Min);
     int numGridPointsDstXMulY = numGridPointsDst.xy.Square();
@@ -93,18 +93,21 @@ void myCudaCopyGridMapPaddedAsync(TDst *dst, const Vec3i &numGridPointsDst, cons
     }
 }
 
-void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
+static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
     // Create a CUDA stream and events
     cudaStream_t stream;
     CUDA_SAFE_CALL(cudaStreamCreate(&stream));
 
     // Create CUDA events
-    cudaEvent_t init, calc, finalize, end;
-    CUDA_SAFE_CALL(cudaEventCreate(&init));
-    CUDA_SAFE_CALL(cudaEventCreate(&calc));
-    CUDA_SAFE_CALL(cudaEventCreate(&finalize));
-    CUDA_SAFE_CALL(cudaEventCreate(&end));
+    cudaEvent_t init = 0, calc = 0, finalize = 0, end = 0;
+    if (programParams.benchmarkEnabled())
+    {
+        CUDA_SAFE_CALL(cudaEventCreate(&init));
+        CUDA_SAFE_CALL(cudaEventCreate(&calc));
+        CUDA_SAFE_CALL(cudaEventCreate(&finalize));
+        CUDA_SAFE_CALL(cudaEventCreate(&end));
+    }
 
     // Pad/align the grid to a size of the grid block
     dim3 dimBlock(16, 16);
@@ -116,7 +119,8 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
                  numGridPointsPadded.y / dimBlock.y);
 
     // Record the init event
-    CUDA_SAFE_CALL(cudaEventRecord(init, stream));
+    if (programParams.benchmarkEnabled())
+        CUDA_SAFE_CALL(cudaEventRecord(init, stream));
 
     // Allocate the padded grid in global memory
     float *outEnergies = 0;
@@ -140,7 +144,8 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
     int2 numGridPointsDiv2XY = make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y);
     setGridMapParametersAsyncCUDA(&numGridPointsPadded.x, &numGridPointsDiv2XY, &gridSpacing, stream);
 
-    // The number of subsets we divide atoms into. Each kernel invocation contains only a subset of atoms, which is limited by the size of constant memory.
+    // The number of subsets we divide atoms into. Each kernel invocation contains only a subset of atoms,
+    // which is limited by the size of constant memory.
     int numAtomSubsets = (input->numReceptorAtoms - 1) / NUM_ATOMS_PER_KERNEL + 1;
 
     // Reserve memory for each output index of a slice. We can't pass stack pointers to functions since the calls are asynchronous.
@@ -158,13 +163,14 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
     int numGridPointsPaddedXMulY = numGridPointsPadded.xy.Square();
 
     // Record the calc event
-    CUDA_SAFE_CALL(cudaEventRecord(calc, stream));
+    if (programParams.benchmarkEnabled())
+        CUDA_SAFE_CALL(cudaEventRecord(calc, stream));
 
     // For each Z
     for (int z = 0; z < input->numGridPoints.z; z++)
     {
         // Set the base of output index
-        int *outputIndexZBasePtr = outputIndexZBase+z;
+        int *outputIndexZBasePtr = outputIndexZBase + z;
         *outputIndexZBasePtr = z * numGridPointsPaddedXMulY;
         setGridMapSliceParametersAsyncCUDA(outputIndexZBasePtr, stream);
 
@@ -203,26 +209,39 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
     }
 
     // Record the finalize event
-    CUDA_SAFE_CALL(cudaEventRecord(finalize, stream));
+    if (programParams.benchmarkEnabled())
+        CUDA_SAFE_CALL(cudaEventRecord(finalize, stream));
 
     // Copy output energies from the device to the host
     myCudaCopyGridMapPaddedAsync<double, float>(elecMap.energies, input->numGridPoints, outEnergies, numGridPointsPadded, cudaMemcpyDeviceToHost, stream);
 
     // Record the end event, synchronize
-    CUDA_SAFE_CALL(cudaEventRecord(end, stream));
+    if (programParams.benchmarkEnabled())
+        CUDA_SAFE_CALL(cudaEventRecord(end, stream));
     CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
     // Calculate and print times
-    float initTime, calcTime, finalizeTime;
-    CUDA_SAFE_CALL(cudaEventElapsedTime(&initTime,     init,     calc));
-    CUDA_SAFE_CALL(cudaEventElapsedTime(&calcTime,     calc,     finalize));
-    CUDA_SAFE_CALL(cudaEventElapsedTime(&finalizeTime, finalize, end));
-    double seconds = double(calcTime) / 1000;
-    double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
-    double atomsPerSec = atoms / seconds;
-    fprintf(stderr, "CUDA init:  %i ms\nCUDA calc:  %i ms\nCUDA final: %i ms\n",
-            int(initTime), int(calcTime), int(finalizeTime), int(atomsPerSec / 1000000));
-    fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
+    if (programParams.benchmarkEnabled())
+    {
+        float initTime, calcTime, finalizeTime;
+        CUDA_SAFE_CALL(cudaEventElapsedTime(&initTime,     init,     calc));
+        CUDA_SAFE_CALL(cudaEventElapsedTime(&calcTime,     calc,     finalize));
+        CUDA_SAFE_CALL(cudaEventElapsedTime(&finalizeTime, finalize, end));
+        double seconds = double(calcTime) / 1000;
+        double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
+        double atomsPerSec = atoms / seconds;
+        fprintf(stderr, "CUDA Initialization: %i ms\n"
+                        "CUDA Kernels: %i ms\n"
+                        "CUDA Finalization: %i ms\n",
+                        int(initTime), int(calcTime), int(finalizeTime));
+        fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
+
+        // Destroy the events
+        CUDA_SAFE_CALL(cudaEventDestroy(init));
+        CUDA_SAFE_CALL(cudaEventDestroy(calc));
+        CUDA_SAFE_CALL(cudaEventDestroy(finalize));
+        CUDA_SAFE_CALL(cudaEventDestroy(end));
+    }
 
     // Free the epsilon array on the device
     if (epsilon)
@@ -231,12 +250,6 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
     // Free device memory
     CUDA_SAFE_CALL(cudaFree(outEnergies));
 
-    // Destroy the events
-    CUDA_SAFE_CALL(cudaEventDestroy(init));
-    CUDA_SAFE_CALL(cudaEventDestroy(calc));
-    CUDA_SAFE_CALL(cudaEventDestroy(finalize));
-    CUDA_SAFE_CALL(cudaEventDestroy(end));
-
     // Destroy the stream
     CUDA_SAFE_CALL(cudaStreamDestroy(stream));
 
@@ -244,25 +257,14 @@ void calculateElectrostaticMapCUDA(const InputData *input, GridMap &elecMap)
     delete [] outputIndexZBase;
 }
 
-void calculateElectrostaticMap(const InputData *input, GridMap &elecMap)
+void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
+
+void calculateElectrostaticMap(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
-    /*
-    // Get a device count
-    int deviceCount;
-    CUDA_SAFE_CALL(cudaGetDeviceCount(&deviceCount));
-
-    // Print a list of devices
-    cudaDeviceProp prop;
-    fprintf(stderr, "Found %i CUDA devices:\n", deviceCount);
-    for (int i = 0; i < deviceCount; i++)
-    {
-        cudaGetDeviceProperties(&prop, i);
-        fprintf(stderr, "%i. Name: %s, Capability: %i.%i, Total global mem: %i, Total const mem: %i\n", i+1,
-                        prop.name, prop.major, prop.minor, prop.totalGlobalMem, prop.totalConstMem);
-    }
-    */
-
-    calculateElectrostaticMapCUDA(input, elecMap);
+    if (programParams.useCUDA())
+        calculateElectrostaticMapCUDA(input, programParams, elecMap);
+    else
+        calculateElectrostaticMapCPU(input, programParams, elecMap);
 }
 
 #endif
