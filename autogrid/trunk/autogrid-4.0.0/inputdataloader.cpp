@@ -121,7 +121,6 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     double q_max = -BIG, q_min = BIG;
     double ri;
     double temp_vol, temp_solpar;
-    double factor = 332.0L;     // Used to convert between calories and SI units
 
     int GPF_keyword = -1;
     int indcom = 0;
@@ -679,21 +678,17 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             {
                 // negative...
                 distDepDiel = true;
-                // calculate ddd of Mehler & Solmajer
-                epsilon[0] = 1.0;
-                for (int indexR = 1; indexR < MAX_DIST; indexR++)
-                    epsilon[indexR] = calculateDDDMehlerSolmajer(angstrom(indexR), APPROX_ZERO);
+                // calculate inverted ddd of Mehler & Solmajer
+                for (int indexR = 0; indexR < MAX_DIST; indexR++)
+                    epsilon[indexR] = calculateDistDepDielInv(indexToAngstrom<double>(indexR));
                 logFile->print("\nUsing *distance-dependent* dielectric function of Mehler and Solmajer, Prot.Eng.4, 903-910.\n\n"
                               "  d   Dielectric\n ___  __________\n");
                 for (int i = 0; i <= 500; i += 10)
                 {
-                    ri = angstrom(i);
-                    logFile->printFormatted("%4.1lf%9.2lf\n", ri, epsilon[i]);
+                    ri = indexToAngstrom<double>(i);
+                    logFile->printFormatted("%4.1lf%9.2lf\n", ri, DDD_FACTOR / epsilon[i]);
                 }
                 logFile->print("\n");
-                // convert epsilon to 1 / epsilon
-                for (int i = 1; i < MAX_DIST; i++)
-                    epsilon[i] = factor / epsilon[i];
             }
             else
             {
@@ -702,7 +697,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 if (diel <= APPROX_ZERO)
                     diel = 40;
                 logFile->printFormatted("Using a *constant* dielectric of:  %.2f\n", diel);
-                invDielCal = factor / diel;
+                invDielCal = DDD_FACTOR / diel;
             }
             break;
 
@@ -799,15 +794,6 @@ int InputDataLoader::parseGPFLine(const char *line)
         token = GPF_PARAM_FILE;
 
     return token;
-}
-
-double InputDataLoader::calculateDDDMehlerSolmajer(double distance, double approx_zero)
-{
-    double epsilon = DDD_FUNC(distance);
-
-    if (epsilon < approx_zero)
-        epsilon = 1;
-    return epsilon;
 }
 
 // checks that number of grid elements is valid

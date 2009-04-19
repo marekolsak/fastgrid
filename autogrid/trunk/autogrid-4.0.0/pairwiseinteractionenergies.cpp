@@ -93,7 +93,7 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
                 // loop over distance index, indexR, from 0 to MAX_DIST
                 for (int indexR = 1; indexR < MAX_DIST; indexR++)
                 {
-                    double r = angstrom(indexR);
+                    double r = indexToAngstrom<double>(indexR);
                     rA = pow(r, dxA);
                     rB = pow(r, dxB);
                     energyLookup->table[i][indexR][ia] = Mathd::Min(EINTCLAMP, (cA / rA - cB / rB));
@@ -126,7 +126,7 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
             logFile.print("\n");
             for (int j = 0; j <= 500; j += 10)
             {
-                logFile.printFormatted("%4.1lf", angstrom(j));
+                logFile.printFormatted("%4.1lf", indexToAngstrom<double>(j));
                 for (int iat = 0; iat < numReceptorTypes; iat++)
                     logFile.printFormatted((energyLookup->table[iat][j][ia] < 100000) ? "%9.2lf" : "%9.2lg", energyLookup->table[iat][j][ia]);               // iat
                 logFile.print("\n");

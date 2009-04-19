@@ -38,6 +38,7 @@
 //#endif
 
 #if defined(_MSC_VER)
+    // disable the warning: nameless struct/union
     #pragma warning (disable: 4201)
 #endif
 

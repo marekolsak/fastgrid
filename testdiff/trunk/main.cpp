@@ -175,14 +175,14 @@ bool FileDiff::IsSimilar(const std::string &s1, const std::string &s2, double &a
         absError = fabs(x - y);
         relError = fabs((x - y) / y);
 
-        bool absErrorPassed = absError < 0.05;
-        bool relErrorPassed = relError < 0.05;
+        bool absErrorPassed = absError < 0.5;
+        bool relErrorPassed = relError < 0.5;
 
         absErrorMax = max(absErrorMax, absError);
         if (relError == std::numeric_limits<double>::infinity())
         {
             if (!absErrorPassed)
-                std::cerr << "Warning: Skipping evaluation. RE = |(" << x << " - " << y << ") / " << y << "| = infinity\n";
+                std::cerr << "Warning: Skipping evaluation. RE = |(" << x << " - " << y << ") / " << y << "| = infinity (AE not passed)\n";
         }
         else
             relErrorMax = max(relErrorMax, relError);

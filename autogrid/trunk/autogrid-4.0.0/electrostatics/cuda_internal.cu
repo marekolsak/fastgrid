@@ -22,9 +22,11 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "../autogrid.h"
 #include "cuda_internal.h"
 #include <cstdio>
+
+#define AG_CALLCONV __device__
+#include "../autogrid.h"
 
 // Grid size and spacing
 static __constant__ int2 numGridPointsDiv2;
@@ -35,37 +37,75 @@ static __constant__ float gridSpacing;
 static __constant__ int outputIndexZBase, numAtoms;
 static __constant__ float4 atoms[NUM_ATOMS_PER_KERNEL]; // {x, y, (z-gridPosZ)^2, charge}
 
+static __device__ float getDistDepDiel(float invR, const float *epsilon)
+{
+#if DDD_PROFILE == DDD_GLOBALMEM
+
+    int index = angstromToIndex<int>(1.0f / invR);
+    return epsilon[index];
+
+#elif DDD_PROFILE == DDD_TEXTUREMEM
+
+    TODO? // TODO
+
+#elif DDD_PROFILE == DDD_INPLACE
+
+    return calculateDistDepDielInv<float>(1.0f / invR);
+
+#else
+    Error?
+#endif
+}
+
 // Generic kernel
 template<int DistanceDependentDielectric>
 static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
 {
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int x = (blockIdx.x * blockDim.x + threadIdx.x) * NUM_GRIDPOINTS_PER_KERNEL;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
     float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
     float gridPosY = (y - numGridPointsDiv2.y) * gridSpacing;
 
-    float energy = 0;
+    float energy[NUM_GRIDPOINTS_PER_KERNEL] = {0};
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
     {
-        // Get the distance from current grid point to this receptor atom (|receptorAtom - gridPos|)
-        float dx = atoms[ia].x - gridPosX;
-        float dy = atoms[ia].y - gridPosY;
-        float rSq = dx*dx + dy*dy + atoms[ia].z;
-        float invR = rsqrt(rSq);
+        float dy = gridPosY - atoms[ia].y;
+        float dydzSq = dy*dy + atoms[ia].z;
+
+        // Calculate dx[i]
+        float dx[NUM_GRIDPOINTS_PER_KERNEL];
+        dx[0] = gridPosX - atoms[ia].x;
+
+        #pragma unroll
+        for (int i = 1; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
+            dx[i] = dx[i-1] + gridSpacing;
 
         // The estat forcefield coefficient/weight is premultiplied
         if (DistanceDependentDielectric)
-            energy += atoms[ia].w * min(invR, 2.f) * epsilon[min(int(A_DIVISOR / invR), int(MAX_DIST-1))];
+        {
+            #pragma unroll
+            for (int i = 0; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
+            {
+                float invR = rsqrt(dx[i]*dx[i] + dydzSq);
+                energy[i] += atoms[ia].w * min(invR, 2.f) * getDistDepDiel(invR, epsilon);
+            }
+        }
         else
-            energy += atoms[ia].w * min(invR, 2.f);
+        {
+            #pragma unroll
+            for (int i = 0; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
+                energy[i] += atoms[ia].w * min(rsqrt(dx[i]*dx[i] + dydzSq), 2.f);
+        }
     }
 
-    // Round to 3 decimal places
     int outputIndex = outputIndexZBase + y * numGridPointsX + x;
-    outEnergies[outputIndex] += energy;
+
+    #pragma unroll
+    for (int i = 0; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
+        outEnergies[outputIndex++] += energy[i];
 }
 
 void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY, const float *gridSpacing, cudaStream_t stream)

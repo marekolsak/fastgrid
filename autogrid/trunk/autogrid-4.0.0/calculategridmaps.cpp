@@ -288,7 +288,7 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
         double invR = Mathd::Rsqrt(rSq);
         distance *= invR;
 
-        int indexR = lookup(1 / invR);
+        int indexR = angstromToIndex<int>(1 / invR);
 
         double racc, rdon, Hramp;
         getHBondAngularFunction(input, bondVectors, ia, closestH, distance, racc, rdon, Hramp);

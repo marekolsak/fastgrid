@@ -110,13 +110,14 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     }
 
     // Pad/align the grid to a size of the grid block
-    dim3 dimBlock(16, 16);
-    Vec3i numGridPointsPadded = input->numGridPoints;
-    numGridPointsPadded.x = ((numGridPointsPadded.x - 1) / dimBlock.x + 1) * dimBlock.x;
-    numGridPointsPadded.y = ((numGridPointsPadded.y - 1) / dimBlock.y + 1) * dimBlock.y;
+    dim3 dimBlock(2*NUM_GRIDPOINTS_PER_KERNEL, 14);
+    Vec3i numGridPointsPadded(align(input->numGridPoints.x, dimBlock.x),
+                              align(input->numGridPoints.y, dimBlock.y),
+                              input->numGridPoints.z);
     int numGridPointsPerMapPadded = numGridPointsPadded.Cube();
     dim3 dimGrid(numGridPointsPadded.x / dimBlock.x,
                  numGridPointsPadded.y / dimBlock.y);
+    dimBlock.x /= NUM_GRIDPOINTS_PER_KERNEL;
 
     // Record the init event
     if (programParams.benchmarkEnabled())

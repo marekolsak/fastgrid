@@ -26,7 +26,18 @@
 #include <cuda_runtime_api.h>
 #include <vector_functions.h>
 
-#define NUM_ATOMS_PER_KERNEL 4000
+
+#define NUM_ATOMS_PER_KERNEL 4094   // this is limited by the size of constant memory
+#define NUM_GRIDPOINTS_PER_KERNEL 8 // unroll the outer loop (over grid points in axis X) with this number
+
+#define DDD_GLOBALMEM   1
+#define DDD_TEXTUREMEM  2
+#define DDD_INPLACE     3
+
+//#define DDD_PROFILE DDD_GLOBALMEM
+//#define DDD_PROFILE DDD_TEXTUREMEM
+#define DDD_PROFILE DDD_INPLACE
+
 
 void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY, const float *gridSpacing, cudaStream_t stream);
 void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream);

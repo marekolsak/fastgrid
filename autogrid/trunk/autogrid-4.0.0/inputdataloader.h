@@ -36,7 +36,6 @@ private:
 
     int checkSize(int numGridPointsMinusOne, char axischar);
     static int parseGPFLine(const char *line);
-    static double calculateDDDMehlerSolmajer(double distance, double approx_zero);
     static int parseTypes(char *line, char **words, int maxwords);
     static int strIndex(const char *s, const char *t);
 };

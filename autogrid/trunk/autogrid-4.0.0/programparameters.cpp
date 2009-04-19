@@ -29,18 +29,26 @@
 #include "utils.h"
 #include "exceptions.h"
 
+#define ST_IGNORED " (ignored)"
+#define ST_ENABLED "enabled"
+#define ST_DISABLED "disabled (related options ignored)"
+
 #if defined(AG_OPENMP)
     #include <omp.h>
     #define OMP_IGNORED
+    #define OMP_STATUS ST_ENABLED
 #else
-    #define OMP_IGNORED " (ignored)"
+    #define OMP_IGNORED ST_IGNORED
+    #define OMP_STATUS ST_DISABLED
 #endif
 
 #if defined(AG_CUDA)
     #include "electrostatics/cuda_internal.h"
     #define CUDA_IGNORED
+    #define CUDA_STATUS ST_ENABLED
 #else
-    #define CUDA_IGNORED " (ignored)"
+    #define CUDA_IGNORED ST_IGNORED
+    #define CUDA_STATUS ST_DISABLED
 #endif
 
 ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), benchmark(false), nns(true), cutoffGrid(true), cuda(true)
@@ -75,20 +83,12 @@ void ProgramParameters::parse(int argc, char **argv)
                             "      --no-nns      disable the nearest-neighbor-search optimization\n"
                             "      --no-cogrid   disable the cutoff-grid optimization\n"
                             "      --omp N       set OpenMP to use N threads at most" OMP_IGNORED "\n"
-                            "      --no-cuda     disable CUDA" CUDA_IGNORED "\n"
+                            "      --no-cuda     disable CUDA, use the CPU codepath instead" CUDA_IGNORED "\n"
                             "      --cuda-enum   enumerate all CUDA devices and exit" CUDA_IGNORED "\n"
                             "      --cuda-dev N  use a CUDA device number N (default: 0)" CUDA_IGNORED "\n"
                             "\n"
-#if defined(AG_OPENMP)
-                            "Compiled with OpenMP enabled.\n"
-#else
-                            "Compiled with OpenMP disabled (related options ignored).\n"
-#endif
-#if defined(AG_CUDA)
-                            "Compiled with CUDA enabled.\n"
-#else
-                            "Compiled with CUDA disabled (related options ignored).\n"
-#endif
+                            "Compiled with OpenMP " OMP_STATUS ".\n"
+                            "Compiled with CUDA " CUDA_STATUS ".\n"
                             "\n", programName);
             throw ExitProgram(0);
         }
@@ -175,7 +175,7 @@ void ProgramParameters::parse(int argc, char **argv)
         }
         else
         {
-            fprintf(stderr, "%s: unknown switch %s\n", programName, argv[1]);
+            fprintf(stderr, "%s: unknown switch '%s'\n", programName, argv[1]);
             throw ExitProgram(1);
         }
 

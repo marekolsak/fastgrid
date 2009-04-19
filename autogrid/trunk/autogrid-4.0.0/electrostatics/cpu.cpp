@@ -44,7 +44,7 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
 
             if (DistanceDependentDielectric)
                 // The estat forcefield coefficient/weight is premultiplied
-                energy += input->receptorAtom[ia].w * Mathd::Min(invR, 2) * input->epsilon[lookup(r)];
+                energy += input->receptorAtom[ia].w * Mathd::Min(invR, 2) * input->epsilon[angstromToIndex<int>(r)];
             else
                 // Both the constant dielectric and the estat forcefield coefficient/weight are premultiplied
                 energy += input->receptorAtom[ia].w * Mathd::Min(invR, 2);

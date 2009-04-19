@@ -30,3 +30,15 @@
 
 #include "math/All.h"
 using namespace Rune;
+
+template<typename T>
+T min(T x, T y)
+{
+    return Math<T>::Min(x, y);
+}
+
+template<typename T>
+T max(T x, T y)
+{
+    return Math<T>::Max(x, y);
+}

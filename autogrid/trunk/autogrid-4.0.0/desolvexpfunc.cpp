@@ -37,7 +37,7 @@ DesolvExpFunc::DesolvExpFunc(double coeffDesolv)
     minusInvTwoSigmaSquared = -1 / (2 * sigma * sigma);
     for (int indexR = 1; indexR < MAX_DIST; indexR++)
     {
-        double r = angstrom(indexR);
+        double r = indexToAngstrom<double>(indexR);
         func[indexR] = exp(Mathd::Sqr(r) * minusInvTwoSigmaSquared);
         func[indexR] *= coeffDesolv;
     }

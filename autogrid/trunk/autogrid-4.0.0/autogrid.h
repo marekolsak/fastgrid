@@ -30,6 +30,8 @@
     #if defined(_MSC_VER)
         // disable the warning: ' function ': was declared deprecated
         #pragma warning (disable: 4996)
+        // disable the warning: conditional expression is constant
+        #pragma warning (disable: 4127)
 
         // Some functions in Visual C++ differ from those in the linux/unix environment
         #define isnan _isnan
@@ -38,8 +40,11 @@
 
         #define inline __forceinline
     #endif
+#endif
 
-    #include "../autodock-4.0.1/autocomm.h"
+#include "../autodock-4.0.1/autocomm.h"
+
+#if !defined(__CUDACC__)
     #undef X
     #undef Y
     #undef Z
@@ -78,38 +83,46 @@
 #define NUM_RECEPTOR_TYPES      NUM_ALL_TYPES
 #define INIT_NUM_GRID_PTS       UINT_MAX
 
-// Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
-#if !defined(DDD_TYPE)
-    #define DDD_TYPE double
+#if !defined(AG_CALLCONV)
+    #define AG_CALLCONV
 #endif
-#define DDD_LAMBDA      DDD_TYPE(0.003627)
-#define DDD_EPSILON0    DDD_TYPE(78.4)
-#define DDD_A           DDD_TYPE(-8.5525)
-#define DDD_B           (DDD_EPSILON0 - DDD_A)
-#define DDD_RK          DDD_TYPE(7.7839)
-#define DDD_LAMBDA_B    (-DDD_LAMBDA * DDD_B)
-#define DDD_FUNC(dist)  (DDD_A + DDD_B / (DDD_TYPE(1) + DDD_RK*exp(DDD_LAMBDA_B * (dist))))
+
+// Functions
+
+#define DDD_FACTOR 332 // Used to convert between calories and SI units
+
+// Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
+template<typename T>
+inline AG_CALLCONV T calculateDistDepDielInv(T distance)
+{
+    // Optimized formula is given by:
+    T E = exp(T(-0.3153767175) * distance);
+    return (T(DDD_FACTOR) + T(DDD_FACTOR * 7.7839) * E) / (T(78.4) + T(-66.57180475) * E);
+}
+
+template<typename Float, typename Int>
+inline AG_CALLCONV Float indexToAngstrom(Int i)
+{
+    return Float(i) / Float(A_DIVISOR);
+}
+
+template<typename Int, typename Float>
+inline AG_CALLCONV Int angstromToIndex(Float r)
+{
+    Int index = Int(r * Float(A_DIVISOR));
+    return min(index, Int(MAX_DIST-1)); // make sure lookup index is in the table
+}
 
 #if !defined(__CUDACC__)
-
-    // Functions
-
-    template<typename T>
-    inline double angstrom(T i)
-    {
-        return double(i) / A_DIVISOR;
-    }
-
-    template<typename T>
-    inline int lookup(T r)
-    {
-        // make sure lookup index is in the table
-        return Mathi::Min(int(r * A_DIVISOR), MAX_DIST-1);
-    }
 
     inline double roundOutput(double a)
     {
         return fabs(a) < 0.0005 ? 0 : Mathd::Round(a * 1000) * 0.001; // round to 3 decimal places
+    }
+
+    inline int align(int value, int size)
+    {
+        return ((value - 1) / size + 1) * size;
     }
 
     // Useful macros - loop over all grid points
