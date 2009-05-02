@@ -127,9 +127,9 @@ void setGridMapKernelParametersAsyncCUDA(const int *numAtoms, const float4 *atom
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numAtoms", numAtoms, sizeof(int),                0, cudaMemcpyHostToDevice, stream));
 }
 
-void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon, cudaStream_t stream)
+void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, bool distDepDiel, const float *epsilon, cudaStream_t stream)
 {
-    if (epsilon)
+    if (distDepDiel)
         CUDA_SAFE_KERNEL((calcGridPoint<1><<<grid, block, stream>>>(outEnergies, epsilon)));
     else
         CUDA_SAFE_KERNEL((calcGridPoint<0><<<grid, block, stream>>>(outEnergies, 0)));

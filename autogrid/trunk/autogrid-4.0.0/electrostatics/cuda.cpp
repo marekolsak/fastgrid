@@ -129,15 +129,17 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
     // Allocate the lookup table for a distance-dependent dielectric
     float *epsilon = 0;
+#if DDD_PROFILE == DDD_GLOBALMEM
     if (input->distDepDiel)
         CUDA_SAFE_CALL(cudaMalloc((void**)&epsilon, sizeof(float) * MAX_DIST));
+#endif
 
     // Copy the initial energies from the original grid to the padded one in global memory
     // Elements in the area of padding will stay uninitialized
     myCudaCopyGridMapPaddedAsync<float, double>(outEnergies, numGridPointsPadded, elecMap.energies, input->numGridPoints, cudaMemcpyHostToDevice, stream);
 
     // Copy the lookup table for a distance-dependent dielectric to global memory
-    if (input->distDepDiel)
+    if (input->distDepDiel && epsilon)
         CUDA_SAFE_CALL((myCudaMemcpyAsync<float, double>(epsilon, input->epsilon, MAX_DIST, cudaMemcpyHostToDevice, stream)));
 
     // Set some variables in constant memory
@@ -205,7 +207,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
             setGridMapKernelParametersAsyncCUDA(&thisAtomConstMem.numAtoms, thisAtomConstMem.atoms, stream);
 
             // Calculate the slice of the grid for the given subset of atoms
-            callKernelAsyncCUDA(dimGrid, dimBlock, outEnergies, epsilon, stream);
+            callKernelAsyncCUDA(dimGrid, dimBlock, outEnergies, input->distDepDiel, epsilon, stream);
         }
     }
 

@@ -42,7 +42,7 @@
 void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY, const float *gridSpacing, cudaStream_t stream);
 void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream);
 void setGridMapKernelParametersAsyncCUDA(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
-void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, const float *epsilon, cudaStream_t stream);
+void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, bool distDepDiel, const float *epsilon, cudaStream_t stream);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
