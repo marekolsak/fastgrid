@@ -152,7 +152,7 @@ void ProgramParameters::parse(int argc, char **argv)
             {
                 memset(&prop, 0, sizeof(prop));
                 CUDA_SAFE_CALL(cudaGetDeviceProperties(&prop, i));
-                fprintf(stderr, "%i. %s, Capability: %i.%i, Global memory: %i, Constant memory: %i\n", i,
+                fprintf(stderr, "%i. %s, Capability: %i.%i, Global memory: %lu, Constant memory: %lu\n", i,
                                 prop.name, prop.major, prop.minor, prop.totalGlobalMem, prop.totalConstMem);
             }
 #endif

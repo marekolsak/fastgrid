@@ -27,6 +27,7 @@
 #include "exceptions.h"
 #include <cstring>
 #include <cctype>
+#include <climits>
 
 // GPF tokens
 enum GPFTokens
@@ -281,7 +282,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                             cmax[i] = Mathd::Max(cmax[i], receptorAtom[ia][i]);
                             cmin[i] = Mathd::Min(cmin[i], receptorAtom[ia][i]);
                         }
-                        csum += receptorAtom[ia].xyz;
+                        csum += Vec3d(receptorAtom[ia]);
                         // Total up the partial charges as we go...
                         q_tot += charge[ia];
 
@@ -425,7 +426,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             }
             // centering stuff...
             for (int ia = 0; ia < numReceptorAtoms; ia++)
-                receptorAtom[ia].xyz -= gridCenter;  // transform to center of gridmaps
+                *((Vec3d*)&receptorAtom[ia]) -= gridCenter;  // transform to center of gridmaps
             gridExtent = Vec3d(numGridPointsDiv2) * gridSpacing;
             gridCornerMax = gridCenter + gridExtent;
             gridCornerMin = gridCenter - gridExtent;

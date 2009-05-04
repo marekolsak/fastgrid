@@ -71,7 +71,7 @@ static inline int findClosestHBond(const InputData *input, const Vec3d &gridPos)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
             // DS or D1
-            Vec3d distance = input->receptorAtom[ia].xyz - gridPos;
+            Vec3d distance = Vec3d(input->receptorAtom[ia]) - gridPos;
             double rSq = distance.MagnitudeSqr();
             if (rSq < rminSq)
             {
@@ -272,7 +272,7 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
         //   just continue to next atom...
 
         //  Get distance from current grid point to this receptor atom
-        Vec3d distance = input->receptorAtom[ia].xyz - gridPos;
+        Vec3d distance = Vec3d(input->receptorAtom[ia]) - gridPos;
 
         // rSq = |distance|^2
         double rSq = distance.MagnitudeSqr();
@@ -347,7 +347,7 @@ static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch
     for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         if (input->hbond[ia] == DS || input->hbond[ia] == D1)
         {
-            hcoord[numH] = input->receptorAtom[ia].xyz;
+            hcoord[numH] = Vec3d(input->receptorAtom[ia]);
             indicesHtoA[numH] = ia;
             ++numH;
         }

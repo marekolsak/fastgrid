@@ -23,7 +23,7 @@
 */
 
 #pragma once
-#include "ann/ann.h"
+#include "ann/ANN.h"
 
 // Given a set of points, this class can find the nearest neighbor point from the given position in space.
 template<typename T>

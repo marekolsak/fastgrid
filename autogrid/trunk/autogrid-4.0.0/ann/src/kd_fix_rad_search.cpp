@@ -42,14 +42,14 @@
 //		These are given below.
 //----------------------------------------------------------------------
 
-int				ANNkdFRDim;				// dimension of space
-ANNpoint		ANNkdFRQ;				// query point
-ANNdist			ANNkdFRSqRad;			// squared radius search bound
-double			ANNkdFRMaxErr;			// max tolerable squared error
-ANNpointArray	ANNkdFRPts;				// the points
-ANNmin_k*		ANNkdFRPointMK;			// set of k closest points
-int				ANNkdFRPtsVisited;		// total points visited
-int				ANNkdFRPtsInRange;		// number of points in the range
+ANN_THREAD_LOCAL int				ANNkdFRDim;				// dimension of space
+ANN_THREAD_LOCAL ANNpoint		ANNkdFRQ;				// query point
+ANN_THREAD_LOCAL ANNdist			ANNkdFRSqRad;			// squared radius search bound
+ANN_THREAD_LOCAL double			ANNkdFRMaxErr;			// max tolerable squared error
+ANN_THREAD_LOCAL ANNpointArray	ANNkdFRPts;				// the points
+ANN_THREAD_LOCAL ANNmin_k*		ANNkdFRPointMK;			// set of k closest points
+ANN_THREAD_LOCAL int				ANNkdFRPtsVisited;		// total points visited
+ANN_THREAD_LOCAL int				ANNkdFRPtsInRange;		// number of points in the range
 
 //----------------------------------------------------------------------
 //	annkFRSearch - fixed radius search for k nearest neighbors

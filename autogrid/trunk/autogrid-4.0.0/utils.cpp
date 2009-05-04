@@ -220,7 +220,7 @@ void Timer::reset()
 void Timer::log(FILE *file, bool reset)
 {
     int cps = getClocksPerSec();
-    fprintf(file, "%s  Real: %i ms,\tUser: %i ms,\tSys: %i ms\n", p->name, p->real * 1000 / cps, p->user * 1000 / cps, p->sys * 1000 / cps);
+    fprintf(file, "%s  Real: %li ms,\tUser: %li ms,\tSys: %li ms\n", p->name, p->real * 1000 / cps, p->user * 1000 / cps, p->sys * 1000 / cps);
     fflush(file);
     if (reset)
         this->reset();

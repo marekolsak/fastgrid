@@ -22,8 +22,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+using namespace std;
 #include "cuda_internal.h"
-#include <cstdio>
 
 #define AG_CALLCONV __device__
 #include "../autogrid.h"

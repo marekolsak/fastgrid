@@ -35,7 +35,9 @@
 #define ANNx_H
 
 #include <iomanip>				// I/O manipulators
-#include "../ANN.h"			// ANN includes
+#include <cstring>
+#include <cstdlib>
+#include "ANN.h"			// ANN includes
 
 //----------------------------------------------------------------------
 //	Global constants and types

@@ -26,23 +26,35 @@ namespace Rune
     /**
         Trirozmerny vektor
     **************************************************************************************************/
+#if defined(_MSC_VER)
     template<typename T, int spaceXY = 0, int spaceYZ = 0>
     class Vec3 : public Vec3Content<T, spaceXY, spaceYZ>
     {
     public:
-        typedef Rune::Vec2<T> Vec2;
-
-        Vec3() {}
-        Vec3(T f)                                       { x = f; y = f; z = f; }
-        Vec3(const Vec2 &v, T Z)                        { xy = v; z = Z; }
-        Vec3(T X, const Vec2 &v)                        { x = X; yz = v; }
-        Vec3(T X, T Y, T Z)                             { x = X; y = Y; z = Z; }
-
         template<int xspaceXY, int xspaceYZ>
         Vec3(const Vec3<T, xspaceXY, xspaceYZ> &v)      { x = v.x; y = v.y; z = v.z; }
 
         template<typename U, int xspaceXY, int xspaceYZ>
         explicit Vec3(const Vec3<U, xspaceXY, xspaceYZ> &v) { x = T(v.x); y = T(v.y); z = T(v.z); }
+
+#else
+    template<typename T>
+    class Vec3
+    {
+    public:
+        T x, y, z;
+
+        template<typename U>
+        explicit Vec3(const Vec3<U> &v) { x = T(v.x); y = T(v.y); z = T(v.z); }
+#endif
+
+        typedef Rune::Vec2<T> Vec2;
+
+        Vec3() {}
+        Vec3(T f)                                       { x = f; y = f; z = f; }
+        Vec3(const Vec2 &v, T Z)                        { x = v.x; y = v.y; z = Z; }
+        Vec3(T X, const Vec2 &v)                        { x = X; y = v.x; z = v.y; }
+        Vec3(T X, T Y, T Z)                             { x = X; y = Y; z = Z; }
 
         bool operator ==(const Vec3 &v) const           { return x == v.x && y == v.y && z == v.z; }
         bool operator !=(const Vec3 &v) const           { return x != v.x && y != v.y && z != v.z; }

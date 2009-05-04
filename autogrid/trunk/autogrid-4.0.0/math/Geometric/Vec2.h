@@ -26,19 +26,28 @@ namespace Rune
     /**
         Dvourozmerny vektor
     **************************************************************************************************/
+#if defined(_MSC_VER)
     template<typename T, int space1 = 0, int order = 0>
     class Vec2 : public Vec2Content<T, space1, order>  
     {
     public:
-        Vec2() {}
-        Vec2(T f) { x = f; y = f; }
-        Vec2(T X, T Y) { x = X; y = Y; }
-
         template<int xspace1, int xorder>
         Vec2(const Vec2<T, xspace1, xorder> &v) { x = v.x; y = v.y; }
 
         template<typename U, int xspace1, int xorder>
         explicit Vec2(const Vec2<U, xspace1, xorder> &v) { x = T(v.x); y = T(v.y); }
+
+#else
+    template<typename T>
+    class Vec2
+    {
+    public:
+        T x, y;
+#endif
+
+        Vec2() {}
+        Vec2(T f) { x = f; y = f; }
+        Vec2(T X, T Y) { x = X; y = Y; }
 
         bool operator ==(const Vec2 &v) const           { return x == v.x && y == v.y; }
         bool operator !=(const Vec2 &v) const           { return x != v.x && y != v.y; }

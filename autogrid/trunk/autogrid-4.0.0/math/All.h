@@ -44,20 +44,27 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include "Int.h"
 #include "UnionCast.h"
 
-// Zaklad
+// Basic
 #include "Half.h"
 #include "Math.h"
 
-// Vektory
-#include "Geometric/Vec2Content.h"
+// Vectors
+#if defined(_MSC_VER)
+    #include "Geometric/Vec2Content.h"
+#endif
 #include "Geometric/Vec2.h"
-#include "Geometric/Vec3Content.h"
+#if defined(_MSC_VER)
+    #include "Geometric/Vec3Content.h"
+#endif
 #include "Geometric/Vec3.h"
-#include "Geometric/Vec4Content.h"
+#if defined(_MSC_VER)
+    #include "Geometric/Vec4Content.h"
+#endif
 #include "Geometric/Vec4.h"
 
 // 2D

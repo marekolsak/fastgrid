@@ -134,7 +134,7 @@ inline AG_CALLCONV Int angstromToIndex(Float r)
             /* gridPos contains the current grid point. */ \
             Vec3d gridPos; \
             gridPos.z = (z - input->numGridPointsDiv2.z) * input->gridSpacing; \
-            int outputIndexZBase = z * input->numGridPoints.xy.Square(); \
+            int outputIndexZBase = z * input->numGridPoints.x*input->numGridPoints.y; \
     \
             /* Y axis */ \
             for (int y = 0; y < input->numGridPoints.y; y++) \

@@ -72,8 +72,8 @@ template<typename TDst, typename TSrc>
 static void myCudaCopyGridMapPaddedAsync(TDst *dst, const Vec3i &numGridPointsDst, const TSrc *src, const Vec3i &numGridPointsSrc, cudaMemcpyKind kind, cudaStream_t stream)
 {
     Vec3i numGridPointsMin = Vec3i::ScalarOperator(numGridPointsDst, numGridPointsSrc, Mathi::Min);
-    int numGridPointsDstXMulY = numGridPointsDst.xy.Square();
-    int numGridPointsSrcXMulY = numGridPointsSrc.xy.Square();
+    int numGridPointsDstXMulY = numGridPointsDst.x*numGridPointsDst.y;
+    int numGridPointsSrcXMulY = numGridPointsSrc.x*numGridPointsSrc.y;
 
     for (int z = 0; z < numGridPointsMin.z; z++)
     {
@@ -95,7 +95,7 @@ static void myCudaCopyGridMapPaddedAsync(TDst *dst, const Vec3i &numGridPointsDs
 
 static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
-    // Create a CUDA stream and events
+    // Create a CUDA stream
     cudaStream_t stream;
     CUDA_SAFE_CALL(cudaStreamCreate(&stream));
 
@@ -163,7 +163,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     } *atomConstMem = new AtomConstMem[input->numGridPoints.z * numAtomSubsets];
 
     // Precalculate X*Y
-    int numGridPointsPaddedXMulY = numGridPointsPadded.xy.Square();
+    int numGridPointsPaddedXMulY = numGridPointsPadded.x*numGridPointsPadded.y;
 
     // Record the calc event
     if (programParams.benchmarkEnabled())

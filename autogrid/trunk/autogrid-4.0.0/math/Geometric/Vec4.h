@@ -26,6 +26,7 @@ namespace Rune
     /**
         Ctyrrozmerny vektor
     **************************************************************************************************/
+#if defined(_MSC_VER)
     template<typename T>
     class Vec4 : public Vec4Content<T>
     {
@@ -33,17 +34,29 @@ namespace Rune
         typedef Rune::Vec2<T> Vec2;
         typedef Rune::Vec3<T> Vec3;
 
+        operator Vec3() const                           { return xyz; } // This implicit conversion should not be allowed!
+#else
+    template<typename T>
+    class Vec4
+    {
+    public:
+        typedef Rune::Vec2<T> Vec2;
+        typedef Rune::Vec3<T> Vec3;
+
+        T x, y, z, w;
+
+        operator Vec3() const                           { return Vec3(x, y, z); } // This implicit conversion should not be allowed!
+#endif
+
         Vec4()                                          {}
         Vec4(T f)                                       { x = f; y = f; z = f; w = f; }
         Vec4(T X, T Y, T Z, T W)                        { x = X; y = Y; z = Z; w = W; }
-        Vec4(T X, T Y, const Vec2 &v)                   { x = X; y = Y; zw = v; }
-        Vec4(T X, const Vec2 &v, T W)                   { x = X; yz = v; w = W; }
-        Vec4(const Vec2 &v, T Z, T W)                   { xy = v; z = Z; w = W; }
-        Vec4(const Vec2 &v1, const Vec2 &v2)            { xy = v1; zw = v2; }
-        Vec4(const Vec3 &v, T W)                        { xyz = v; w = W; }
-        Vec4(T X, const Vec3 &v)                        { x = X; yzw = v; }
-
-        operator Vec3() const                           { return xyz; } // This implicit conversion should not be allowed!
+        Vec4(T X, T Y, const Vec2 &v)                   { x = X; y = Y; z = v.x; w = v.y; }
+        Vec4(T X, const Vec2 &v, T W)                   { x = X; y = v.x; z = v.y; w = W; }
+        Vec4(const Vec2 &v, T Z, T W)                   { x = v.x; y = v.y; z = Z; w = W; }
+        Vec4(const Vec2 &v1, const Vec2 &v2)            { x = v1.x; y = v1.y; z = v2.x; w = v2.y; }
+        Vec4(const Vec3 &v, T W)                        { x = v.x; y = v.y; z = v.z; w = W; }
+        Vec4(T X, const Vec3 &v)                        { x = X; y = v.x; z = v.y; w = v.z; }
 
         template<typename U>
         explicit Vec4(const Vec4<U> &v)                 { x = T(v.x); y = T(v.y); z = T(v.z); w = T(v.w); }

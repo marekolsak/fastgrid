@@ -39,7 +39,7 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
         for (int ia = 0; ia < input->numReceptorAtoms; ia++)
         {
             // Get reciprocal of the distance from current grid point to this receptor atom (1 / |receptorAtom - gridPos|)
-            double r = (input->receptorAtom[ia].xyz - gridPos).Magnitude();
+            double r = (Vec3d(input->receptorAtom[ia]) - gridPos).Magnitude();
             double invR = 1 / r;
 
             if (DistanceDependentDielectric)
