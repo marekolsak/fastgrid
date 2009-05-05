@@ -27,6 +27,7 @@ using namespace std;
 
 #define AG_CALLCONV __device__
 #include "../autogrid.h"
+#include <cstdio>
 
 // Grid size and spacing
 static __constant__ int2 numGridPointsDiv2;
