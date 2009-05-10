@@ -60,7 +60,7 @@ namespace Rune
         static T Sqrt(T f)              { return T(sqrt(f)); }
         static T Cube(T f)              { return f*f*f; }
 
-        static T Abs(T f)               { return abs(f); }
+        static T Abs(T f)               { return fabs(f); }
         static T Min(T f, T g)          { return (f < g)? f : g; }
         static T Max(T f, T g)          { return (f > g)? f : g; }
         static T Clamp(T f, T min, T max) { return Min(Max(f, min), max); }

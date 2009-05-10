@@ -247,7 +247,11 @@ public:
         }
 
         // Divide the X axis up to 4*CPUs segments to balance fluctuating density of spheres
+#if defined(AG_OPENMP)
         int segments = omp_get_num_procs() * 4;
+#else
+        int segments = 1;
+#endif
         int numCellsXPerSegment = Mathi::Max(1, int(Mathd::Ceil(double(numCells.x) / segments)));
         // The reason we do this is that iterating through all X elements concurrently and then through all the spheres
         // would be waste of computational time since not all spheres intersect the particular X coordinate, so we divide

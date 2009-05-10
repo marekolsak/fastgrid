@@ -52,7 +52,9 @@
 
     #include <cmath>
     #include <cfloat>
-    #include <omp.h>
+    #if defined(AG_OPENMP)
+        #include <omp.h>
+    #endif
     #include "math.h"
 
     // Options
