@@ -71,7 +71,10 @@ static cudaError_t myCudaMemcpyAsync(TDst *dst, const TSrc *src, size_t numEleme
 template<typename TDst, typename TSrc>
 static void myCudaCopyGridMapPaddedAsync(TDst *dst, const Vec3i &numGridPointsDst, const TSrc *src, const Vec3i &numGridPointsSrc, cudaMemcpyKind kind, cudaStream_t stream)
 {
-    Vec3i numGridPointsMin = Vec3i::ScalarOperator(numGridPointsDst, numGridPointsSrc, Mathi::Min);
+    //Vec3i numGridPointsMin = Vec3i::ScalarOperator(numGridPointsDst, numGridPointsSrc, Mathi::Min);
+    Vec3i numGridPointsMin = Vec3i(Mathi::Min(numGridPointsDst.x, numGridPointsSrc.x),
+                                   Mathi::Min(numGridPointsDst.y, numGridPointsSrc.y),
+                                   Mathi::Min(numGridPointsDst.z, numGridPointsSrc.z));
     int numGridPointsDstXMulY = numGridPointsDst.x*numGridPointsDst.y;
     int numGridPointsSrcXMulY = numGridPointsSrc.x*numGridPointsSrc.y;
 
