@@ -83,9 +83,9 @@ void FileDiff::ReadFileInfo(const std::string &command, std::istream &input)
 void FileDiff::InsertLine(const std::string line)
 {
     if (line[0] == '+')
-        added.push_back(std::string(line, 1));
+        added.push_back(std::string(line, 1, line[line.size()-1] == 0xD ? line.size()-2 : line.size()-1));
     else if (line[0] == '-')
-        removed.push_back(std::string(line, 1));
+        removed.push_back(std::string(line, 1, line[line.size()-1] == 0xD ? line.size()-2 : line.size()-1));
 }
 
 // examines changes and returns true if they were irrelevant (typically caused by a different floating-point implementation)

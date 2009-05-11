@@ -165,7 +165,7 @@ void autogridMain(int argc, char **argv)
     DesolvExpFunc desolvExpFunc(parameterLibrary.coeff_desolv);
 
     // Calculating bond vectors for directional H-bonds
-    BondVectors *bondVectors = new BondVectors(&logFile);
+    BondVectors *bondVectors = new BondVectors(input->numReceptorAtoms, &logFile);
     bondVectors->calculate(input, parameterLibrary);
 
     if (programParams.benchmarkEnabled())

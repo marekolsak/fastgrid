@@ -51,7 +51,7 @@
     #define CUDA_STATUS ST_DISABLED
 #endif
 
-ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), benchmark(false), nns(true), cutoffGrid(true), cuda(true)
+ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), benchmark(false), nns(true), cutoffGrid(true), cuda(true), cudaUnroll(true)
 {
     programName[0] = 0;
     gridParameterFilename[0] = 0;
@@ -86,6 +86,7 @@ void ProgramParameters::parse(int argc, char **argv)
                             "      --no-cuda     disable CUDA, use the CPU codepath instead" CUDA_IGNORED "\n"
                             "      --cuda-enum   enumerate all CUDA devices and exit" CUDA_IGNORED "\n"
                             "      --cuda-dev N  use a CUDA device number N (default: 0)" CUDA_IGNORED "\n"
+                            "      --cuda-no-unroll  this may increase performance for small gridmaps" CUDA_IGNORED "\n"
                             "\n"
                             "Compiled with OpenMP " OMP_STATUS ".\n"
                             "Compiled with CUDA " CUDA_STATUS ".\n"
@@ -147,13 +148,16 @@ void ProgramParameters::parse(int argc, char **argv)
 
             // Print a list of devices
             cudaDeviceProp prop;
-            fprintf(stderr, "Found %i CUDA devices:\n", deviceCount);
+            fprintf(stderr, "Found %i CUDA devices:\n\n"
+                            " # | Name                           | MPs | Cap | GlobalMem | ConstMem\n"
+                            "-----------------------------------------------------------------------\n", deviceCount);
             for (int i = 0; i < deviceCount; i++)
             {
                 memset(&prop, 0, sizeof(prop));
                 CUDA_SAFE_CALL(cudaGetDeviceProperties(&prop, i));
-                fprintf(stderr, "%i. %s, Capability: %i.%i, Global memory: %lu, Constant memory: %lu\n", i,
-                                prop.name, prop.major, prop.minor, prop.totalGlobalMem, prop.totalConstMem);
+                fprintf(stderr, "%2i | %-31s|%4i |%2i.%-2i|%6lu MiB |%5lu KiB\n", i,
+                                prop.name, prop.multiProcessorCount, prop.major, prop.minor,
+                                prop.totalGlobalMem >> 20, prop.totalConstMem >> 10);
             }
 #endif
             throw ExitProgram(0);
@@ -173,6 +177,12 @@ void ProgramParameters::parse(int argc, char **argv)
             ++argv;
             --argc;
         }
+        else if (strncmp(argv[1], "--cuda-no-unroll", 16) == 0)
+        {
+#if defined(AG_CUDA)
+            cudaUnroll = false;
+#endif
+        }
         else
         {
             fprintf(stderr, "%s: unknown switch '%s'\n", programName, argv[1]);
@@ -183,3 +193,4 @@ void ProgramParameters::parse(int argc, char **argv)
         ++argv;
     }
 }
+

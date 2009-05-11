@@ -29,12 +29,13 @@
 class BondVectors
 {
 public:
-    bool disorder[AG_MAX_ATOMS];
-    int rexp[AG_MAX_ATOMS];
-    Vec3d rvector[AG_MAX_ATOMS];
-    Vec3d rvector2[AG_MAX_ATOMS];
+    bool *disorder;
+    int *rexp;
+    Vec3d *rvector;
+    Vec3d *rvector2;
 
-    BondVectors(LogFile *logFile);
+    BondVectors(int numReceptorAtoms, LogFile *logFile);
+    ~BondVectors();
     void calculate(const InputData *input, const ParameterLibrary &parameterLibrary);
 
 private:

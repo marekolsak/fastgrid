@@ -29,6 +29,7 @@ class InputDataLoader : public InputData
 {
 public:
     InputDataLoader(LogFile *logFile);
+    ~InputDataLoader();
     void load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary);
 
 private:

@@ -30,20 +30,21 @@ using namespace std;
 #include <cstdio>
 
 // Grid size and spacing
+static __constant__ float *epsilon, *outEnergies;
 static __constant__ int2 numGridPointsDiv2;
 static __constant__ int numGridPointsX;
-static __constant__ float gridSpacing;
+static __constant__ float gridSpacing, gridSpacingCoalesced;
 
 // Per-slice parameters
 static __constant__ int outputIndexZBase, numAtoms;
 static __constant__ float4 atoms[NUM_ATOMS_PER_KERNEL]; // {x, y, (z-gridPosZ)^2, charge}
 
-static __device__ float getDistDepDiel(float invR, const float *epsilon)
+static inline __device__ float getDistDepDiel(float invR)
 {
 #if DDD_PROFILE == DDD_GLOBALMEM
 
     int index = angstromToIndex<int>(1.0f / invR);
-    return epsilon[index];
+    float e = epsilon[index];
 
 #elif DDD_PROFILE == DDD_TEXTUREMEM
 
@@ -51,24 +52,58 @@ static __device__ float getDistDepDiel(float invR, const float *epsilon)
 
 #elif DDD_PROFILE == DDD_INPLACE
 
-    return calculateDistDepDielInv<float>(1.0f / invR);
+    float e = calculateDistDepDielInv<float>(1.0f / invR);
 
 #else
     Error?
 #endif
+
+    return min(invR, 2.f) * e;
 }
 
-// Generic kernel
+// Basic kernel, no loop unrolling
 template<int DistanceDependentDielectric>
-static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
+static __global__ void calcGridPoints1()
 {
-    int x = (blockIdx.x * blockDim.x + threadIdx.x) * NUM_GRIDPOINTS_PER_KERNEL;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
     float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
     float gridPosY = (y - numGridPointsDiv2.y) * gridSpacing;
 
-    float energy[NUM_GRIDPOINTS_PER_KERNEL] = {0};
+    float energy = 0;
+
+    //  Do all Receptor (protein, DNA, etc.) atoms...
+    for (int ia = 0; ia < numAtoms; ia++)
+    {
+        float dy = gridPosY - atoms[ia].y;
+        float dydzSq = dy*dy + atoms[ia].z;
+
+        // Calculate dx
+        float dx = gridPosX - atoms[ia].x;
+
+        // The estat forcefield coefficient/weight is premultiplied
+        if (DistanceDependentDielectric)
+            energy += atoms[ia].w * getDistDepDiel(rsqrt(dx*dx + dydzSq));
+        else
+            energy += atoms[ia].w * min(rsqrt(dx*dx + dydzSq), 2.f);
+    }
+
+    int outputIndex = outputIndexZBase + y * numGridPointsX + x;
+    outEnergies[outputIndex] += energy;
+}
+
+// Kernel where the loop over grid points is unrolled by 4
+template<int DistanceDependentDielectric>
+static __global__ void calcGridPoints4()
+{
+    int x = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
+    float gridPosY = (y - numGridPointsDiv2.y) * gridSpacing;
+
+    float energy0 = 0, energy1 = 0, energy2 = 0, energy3 = 0;
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
@@ -77,44 +112,48 @@ static __global__ void calcGridPoint(float *outEnergies, const float *epsilon)
         float dydzSq = dy*dy + atoms[ia].z;
 
         // Calculate dx[i]
-        float dx[NUM_GRIDPOINTS_PER_KERNEL];
-        dx[0] = gridPosX - atoms[ia].x;
-
-        #pragma unroll
-        for (int i = 1; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
-            dx[i] = dx[i-1] + gridSpacing;
+        float dx0, dx1, dx2, dx3;
+        dx0 = gridPosX - atoms[ia].x;
+        dx1 = dx0 + gridSpacing;
+        dx2 = dx1 + gridSpacing;
+        dx3 = dx2 + gridSpacing;
 
         // The estat forcefield coefficient/weight is premultiplied
         if (DistanceDependentDielectric)
         {
-            #pragma unroll
-            for (int i = 0; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
-            {
-                float invR = rsqrt(dx[i]*dx[i] + dydzSq);
-                energy[i] += atoms[ia].w * min(invR, 2.f) * getDistDepDiel(invR, epsilon);
-            }
+            energy0 += atoms[ia].w * getDistDepDiel(rsqrt(dx0*dx0 + dydzSq));
+            energy1 += atoms[ia].w * getDistDepDiel(rsqrt(dx1*dx1 + dydzSq));
+            energy2 += atoms[ia].w * getDistDepDiel(rsqrt(dx2*dx2 + dydzSq));
+            energy3 += atoms[ia].w * getDistDepDiel(rsqrt(dx3*dx3 + dydzSq));
         }
         else
         {
-            #pragma unroll
-            for (int i = 0; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
-                energy[i] += atoms[ia].w * min(rsqrt(dx[i]*dx[i] + dydzSq), 2.f);
+            energy0 += atoms[ia].w * min(rsqrt(dx0*dx0 + dydzSq), 2.f);
+            energy1 += atoms[ia].w * min(rsqrt(dx1*dx1 + dydzSq), 2.f);
+            energy2 += atoms[ia].w * min(rsqrt(dx2*dx2 + dydzSq), 2.f);
+            energy3 += atoms[ia].w * min(rsqrt(dx3*dx3 + dydzSq), 2.f);
         }
     }
 
     int outputIndex = outputIndexZBase + y * numGridPointsX + x;
 
-    #pragma unroll
-    for (int i = 0; i < NUM_GRIDPOINTS_PER_KERNEL; i++)
-        outEnergies[outputIndex++] += energy[i];
+    outEnergies[outputIndex++] += energy0;
+    outEnergies[outputIndex++] += energy1;
+    outEnergies[outputIndex++] += energy2;
+    outEnergies[outputIndex  ] += energy3;
 }
 
-void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY, const float *gridSpacing, cudaStream_t stream)
+void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY,
+                                   const float *gridSpacing, const float *gridSpacingCoalesced,
+                                   float **epsilon, float **outEnergies, cudaStream_t stream)
 {
     // Set common variables
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsDiv2", numGridPointsDiv2XY, sizeof(int2),  0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsX",    numGridPointsX,      sizeof(int),   0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacing",       gridSpacing,         sizeof(float), 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("epsilon",              epsilon,              sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("outEnergies",          outEnergies,          sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsDiv2",    numGridPointsDiv2XY,  sizeof(int2),   0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsX",       numGridPointsX,       sizeof(int),    0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacing",          gridSpacing,          sizeof(float),  0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacingCoalesced", gridSpacingCoalesced, sizeof(float),  0, cudaMemcpyHostToDevice, stream));
 }
 
 void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream)
@@ -128,20 +167,17 @@ void setGridMapKernelParametersAsyncCUDA(const int *numAtoms, const float4 *atom
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numAtoms", numAtoms, sizeof(int),                0, cudaMemcpyHostToDevice, stream));
 }
 
-void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, float *outEnergies, bool distDepDiel, const float *epsilon, cudaStream_t stream)
+void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, bool unrollLoop, bool distDepDiel, cudaStream_t stream)
 {
-    if (distDepDiel)
-        CUDA_SAFE_KERNEL((calcGridPoint<1><<<grid, block, stream>>>(outEnergies, epsilon)));
+    if (unrollLoop)
+        if (distDepDiel)
+            CUDA_SAFE_KERNEL((calcGridPoints4<1><<<grid, block, stream>>>()));
+        else
+            CUDA_SAFE_KERNEL((calcGridPoints4<0><<<grid, block, stream>>>()));
     else
-        CUDA_SAFE_KERNEL((calcGridPoint<0><<<grid, block, stream>>>(outEnergies, 0)));
+        if (distDepDiel)
+            CUDA_SAFE_KERNEL((calcGridPoints1<1><<<grid, block, stream>>>()));
+        else
+            CUDA_SAFE_KERNEL((calcGridPoints1<0><<<grid, block, stream>>>()));
 }
 
-void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code)
-{
-    if (e != cudaSuccess)
-        fprintf(stderr, "CUDA error: '%s'\n"
-                        "        in file '%s'\n"
-                        "        in line %i\n"
-                        "        in function '%s'\n"
-                        "        in code '%s'\n", cudaGetErrorString(e), file, line, func, code);
-}

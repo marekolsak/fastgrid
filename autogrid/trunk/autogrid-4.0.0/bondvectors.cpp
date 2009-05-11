@@ -25,9 +25,22 @@
 #include "bondvectors.h"
 #include <cstring>
 
-BondVectors::BondVectors(LogFile *logFile): logFile(logFile)
+BondVectors::BondVectors(int numReceptorAtoms, LogFile *logFile): logFile(logFile)
 {
-    memset(rexp, 0, sizeof(rexp));
+    disorder = new bool[numReceptorAtoms];
+    rexp = new int[numReceptorAtoms];
+    rvector = new Vec3d[numReceptorAtoms];
+    rvector2 = new Vec3d[numReceptorAtoms];
+    
+    memset(rexp, 0, sizeof(sizeof(int) * numReceptorAtoms));
+}
+
+BondVectors::~BondVectors()
+{
+    delete [] disorder;
+    delete [] rexp;
+    delete [] rvector;
+    delete [] rvector2;
 }
 
 void BondVectors::calculate(const InputData *input, const ParameterLibrary &parameterLibrary)

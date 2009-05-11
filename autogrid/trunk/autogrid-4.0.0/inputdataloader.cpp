@@ -81,6 +81,21 @@ InputDataLoader::InputDataLoader(LogFile *logFile): logFile(logFile)
 
     distDepDiel = false;
     disorderH = false;
+
+    receptorAtom = 0;
+}
+
+InputDataLoader::~InputDataLoader()
+{
+    if (receptorAtom)
+    {
+        delete [] charge;
+        delete [] vol;
+        delete [] solpar;
+        delete [] atomType;
+        delete [] hbond;
+        delete [] receptorAtom;
+    }
 }
 
 void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridmaps, ParameterLibrary &parameterLibrary)
@@ -115,7 +130,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     char temp_char = ' ';
     char token[5];
     char xyz[5] = "xyz";
-    FILE *receptor_fileptr, *xyz_fileptr = 0;
+    FILE *receptorFile, *xyz_fileptr = 0;
 
     double q_tot = 0.0;
     double diel;
@@ -185,15 +200,38 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 logFile->printFormatted("\nReceptor Input File :\t%s\n\nReceptor Atom Type Assignments:\n\n", receptorFilename);
 
                 // try to open receptor file
-                if ((receptor_fileptr = boincOpenFile(receptorFilename, "r")) == 0)
+                if ((receptorFile = boincOpenFile(receptorFilename, "r")) == 0)
                 {
                     logFile->printErrorFormatted(ERROR, "can't find or open receptor PDBQT file \"%s\".\n", receptorFilename);
                     logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
                 }
 
+                // get the upper bound of total number of atoms
+                fseek(receptorFile, 0, SEEK_END);
+                int sizeOfFile = ftell(receptorFile);
+                fseek(receptorFile, 0, SEEK_SET);
+                char *fileContent = new char[sizeOfFile];
+                fread(fileContent, sizeOfFile, 1, receptorFile);
+                fseek(receptorFile, 0, SEEK_SET);
+
+                int numAtomsMax = 1;
+                for (int i = 0; i < sizeOfFile; i++)
+                    if (fileContent[i] == '\n')
+                        ++numAtomsMax;
+                
+                delete [] fileContent; 
+                
+                // reserve space for atoms
+                charge = new double[numAtomsMax];
+                vol = new double[numAtomsMax];
+                solpar = new double[numAtomsMax];
+                atomType = new int[numAtomsMax];
+                hbond = new HBondType[numAtomsMax];
+                receptorAtom = new Vec4d[numAtomsMax];
+
                 // start to read in the lines of the receptor file
                 int ia = 0;
-                while ((fgets(line, length, receptor_fileptr)) != 0)
+                while ((fgets(line, length, receptorFile)) != 0)
                 {
                     sscanf(line, "%6s", record);
                     if (strncmp(record, "ATOM", 4) == 0 || // Amino Acid or DNA/RNA atoms
@@ -302,7 +340,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                     }               // endif
                 }                   // endwhile
                 // Finished reading in the lines of the receptor file
-                fclose(receptor_fileptr);
+                fclose(receptorFile);
                 if (has_receptor_types_in_gpf == 1)
                     // Check that the number of atom types found in the receptor PDBQT
                     // file match the number parsed in by the "receptorTypes" command

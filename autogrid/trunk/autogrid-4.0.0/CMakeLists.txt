@@ -1,6 +1,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.3)
 
 PROJECT(autogrid)
+SET(CMAKE_BUILD_TYPE Release)
+SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v)
 
 SET(AUTOGRID_SOURCES
     ./ann/src/perf.cpp

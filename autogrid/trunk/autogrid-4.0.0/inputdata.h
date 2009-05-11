@@ -50,12 +50,13 @@ struct InputData
     int numReceptorTypes; // number of different receptor atom types actually found in receptor PDBQT
     int numReceptorAtoms;
 
-    double charge[AG_MAX_ATOMS];
-    double vol[AG_MAX_ATOMS];
-    double solpar[AG_MAX_ATOMS];
-    int atomType[AG_MAX_ATOMS];
-    HBondType hbond[AG_MAX_ATOMS];
-    Vec4d receptorAtom[AG_MAX_ATOMS]; // XYZ = coord, W = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
+    // length of these arrays is equal to InputData::numReceptorAtoms
+    double *charge;
+    double *vol;
+    double *solpar;
+    int *atomType;
+    HBondType *hbond;
+    Vec4d *receptorAtom; // XYZ = coord, W = charge * coeff_estat * (distDepDiel ? 1 : invDielCal)
 
     double epsilon[MAX_DIST];
 
@@ -68,4 +69,7 @@ struct InputData
     Vec3d covalentPoint;         // Cartesian-coordinate of covalent affinity well.
 
     bool distDepDiel, disorderH;
+    
+    virtual ~InputData() {}
 };
+

@@ -37,13 +37,14 @@ public:
     bool useNNS() const                             { return nns; }
     bool useCutoffGrid() const                      { return cutoffGrid; }
     bool useCUDA() const                            { return cuda; }
+    bool unrollLoopCUDA() const                     { return cudaUnroll; }
 
 private:
     char programName[MAX_CHARS];
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
     int debug;
-    bool benchmark, nns, cutoffGrid, cuda;
+    bool benchmark, nns, cutoffGrid, cuda, cudaUnroll;
 
     void parse(int argc, char **argv);
 };
