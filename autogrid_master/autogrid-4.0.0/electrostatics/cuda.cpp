@@ -90,14 +90,18 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         Performance:
 
         Gridmap size: 40^3 (41^3 grid points)
-        
-        CONST DIEL:
+
+        CONST DIELECTRIC:
             No unrolling:
                 Electrostatics performance: 5149 million atoms/s
                 Electrostatics performance: 7057 million atoms/s (including grid points added by padding)
             Unrolling 4x:
                 Electrostatics performance: 4836 million atoms/s
                 Electrostatics performance: 8102 million atoms/s (including grid points added by padding)
+
+
+        DISTANCE DEPENDENT DIELECTRIC (ddd):
+        --------------------------------------
 
         GLOBAL MEM:
             No unrolling:
@@ -106,7 +110,6 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
             Unrolling 4x:
                 Electrostatics performance: 686 million atoms/s
                 Electrostatics performance: 1149 million atoms/s (including grid points added by padding)
-
 
         TEXTURE MEM:
             No unrolling:
@@ -143,13 +146,13 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         if (input->distDepDiel)
         {
 #if DDD_PROFILE == DDD_GLOBALMEM
-            dimBlock = dim3(16, 4);
+            dimBlock = dim3(16, 16);
 #elif DDD_PROFILE == DDD_TEXTUREMEM
-            dimBlock = dim3(16, 4);
+            dimBlock = dim3(16, 16);
 #elif DDD_PROFILE == DDD_INPLACE
-            dimBlock = dim3(16, 4);
+            dimBlock = dim3(16, 16);
 #elif DDD_PROFILE == DDD_CONSTMEM
-            dimBlock = dim3(16, 4);
+            dimBlock = dim3(16, 16);
 #else
             Error?
 #endif

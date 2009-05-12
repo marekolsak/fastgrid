@@ -59,7 +59,7 @@ static inline __device__ float dielectric(float invR);
 template<>
 static inline __device__ float dielectric<CONSTANT_DIEL>(float invR)
 {
-    return min(invR, 2.f);
+    return fminf(invR, 2.f);
 }
 
 // Distance-dependent dielectric
@@ -83,28 +83,32 @@ static inline __device__ float dielectric<DISTANCE_DEPENDENT_DIEL>(float invR)
 template<int DielectricKind>
 static __global__ void calcGridPoints1()
 {
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    float2 gridPos;
+    int outputIndex;
+    
+    // Calculate gridPos, outputIndex
+    {
+        int x = blockIdx.x * blockDim.x + threadIdx.x;
+        int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
-    float gridPosY = (y - numGridPointsDiv2.y) * gridSpacing;
+        gridPos.x = (x - numGridPointsDiv2.x) * gridSpacing;
+        gridPos.y = (y - numGridPointsDiv2.y) * gridSpacing;
+        outputIndex = outputIndexZBase + y * numGridPointsX + x;
+    }
 
     float energy = 0;
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
     {
-        float dy = gridPosY - atoms[ia].y;
-        float dydzSq = dy*dy + atoms[ia].z;
-
-        // Calculate dx
-        float dx = gridPosX - atoms[ia].x;
+        // Calculate dx, dy
+        float dx = gridPos.x - atoms[ia].x;
+        float dy = gridPos.y - atoms[ia].y;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
-        energy += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx*dx + dydzSq));
+        energy += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx*dx + dy*dy + atoms[ia].z));
     }
 
-    int outputIndex = outputIndexZBase + y * numGridPointsX + x;
     outEnergies[outputIndex] += energy;
 }
 
@@ -112,26 +116,32 @@ static __global__ void calcGridPoints1()
 template<int DielectricKind>
 static __global__ void calcGridPoints4()
 {
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    float2 gridPos;
+    int outputIndex;
 
-    float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
-    float gridPosY = (y - numGridPointsDiv2.y) * gridSpacing;
+    // Calculate gridPos, outputIndex
+    {
+        int x = blockIdx.x * blockDim.x + threadIdx.x;
+        int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+        gridPos.x = (x - numGridPointsDiv2.x) * gridSpacing;
+        gridPos.y = (y - numGridPointsDiv2.y) * gridSpacing;
+        outputIndex = outputIndexZBase + y * numGridPointsX + x;
+    }
 
     float energy0 = 0, energy1 = 0, energy2 = 0, energy3 = 0;
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
     {
-        float dy = gridPosY - atoms[ia].y;
-        float dydzSq = dy*dy + atoms[ia].z;
-
         // Calculate dx[i]
-        float dx0, dx1, dx2, dx3;
-        dx0 = gridPosX - atoms[ia].x;
-        dx1 = dx0 + gridSpacingCoalesced;
-        dx2 = dx1 + gridSpacingCoalesced;
-        dx3 = dx2 + gridSpacingCoalesced;
+        float dx0 = gridPos.x - atoms[ia].x;
+        float dx1 = dx0 + gridSpacingCoalesced;
+        float dx2 = dx1 + gridSpacingCoalesced;
+        float dx3 = dx2 + gridSpacingCoalesced;
+
+        float dy = gridPos.y - atoms[ia].y;
+        float dydzSq = dy*dy + atoms[ia].z;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
         energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx0*dx0 + dydzSq));
@@ -139,8 +149,6 @@ static __global__ void calcGridPoints4()
         energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx2*dx2 + dydzSq));
         energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx3*dx3 + dydzSq));
     }
-
-    int outputIndex = outputIndexZBase + y * numGridPointsX + x;
 
     outEnergies[outputIndex] += energy0; outputIndex += 16;
     outEnergies[outputIndex] += energy1; outputIndex += 16;
