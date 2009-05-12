@@ -116,6 +116,11 @@ void autogridMain(int argc, char **argv)
 
     // Initialize the log file
     LogFile logFile(versionNumber, programParams.getProgramName(), programParams.getLogFilename());
+#if defined(AG_OPENMP)
+    logFile.printFormatted("Using OpenMP.\n"
+                           "- Total number of cores: %i\n"
+                           "- Threads available: %i\n\n", omp_get_max_threads());
+#endif
 
     // Declaration of gridmaps, InputDataLoader::load takes care of their initialization
     GridMapList gridmaps(&logFile);

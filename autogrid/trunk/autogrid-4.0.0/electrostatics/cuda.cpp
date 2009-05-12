@@ -77,13 +77,60 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         CUDA_SAFE_CALL(cudaEventCreate(&end));
     }
 
-    /*  Compute capability: 1.0
-        (registers, max threads, recommended num threads)
+    /*  Calculated using the CUDA occupancy calculator.
+        Compute capability: 1.0
+        (registers, max threads, used num threads, occupancy)
 
-                       | global mem ddd | texture mem ddd | in-place ddd   | const diel
-        no unrolling   | ( 9, 512, 384) |     TODO        | (10, 512, 384) | (8,  512, 384)
-        unrolling by 4 | (  ,    ,    ) |     TODO        | (  ,    ,    ) | (  ,    ,    )
-        unrolling by 8 | (20, 384,  48) |     TODO        | (22, 352,  64) | (16, 512,  48)
+                       | global mem ddd       | texture mem ddd      | in-place ddd         | const mem ddd        | const diel
+        no unrolling   | ( 9, 512, 384, 100%) | ( 9, 512, 384, 100%) | (10, 512, 384, 100%) | ( 8, 512, 384, 100%)!| ( 8, 512, 384, 100%)
+        unrolling by 4 | (15, 512,  64,  67%) | (15, 512,  64,  67%) | (16, 512,  64,  67%) | (15, 512,  64,  67%)!| (14, 512, 288,  75%)
+
+
+        *************************************************************************************************
+        Performance:
+
+        Gridmap size: 40^3 (41^3 grid points)
+        
+        CONST DIEL:
+            No unrolling:
+                Electrostatics performance: 5149 million atoms/s
+                Electrostatics performance: 7057 million atoms/s (including grid points added by padding)
+            Unrolling 4x:
+                Electrostatics performance: 4836 million atoms/s
+                Electrostatics performance: 8102 million atoms/s (including grid points added by padding)
+
+        GLOBAL MEM:
+            No unrolling:
+                Electrostatics performance: 1313 million atoms/s
+                Electrostatics performance: 1800 million atoms/s (including grid points added by padding)
+            Unrolling 4x:
+                Electrostatics performance: 686 million atoms/s
+                Electrostatics performance: 1149 million atoms/s (including grid points added by padding)
+
+
+        TEXTURE MEM:
+            No unrolling:
+                Electrostatics performance: 2901 million atoms/s
+                Electrostatics performance: 3976 million atoms/s (including grid points added by padding)
+            Unrolling 4x:
+                Electrostatics performance: 918 million atoms/s
+                Electrostatics performance: 1539 million atoms/s (including grid points added by padding)
+
+        IN-PLACE:
+            No unrolling:
+                Electrostatics performance: 1870 million atoms/s
+                Electrostatics performance: 2563 million atoms/s (including grid points added by padding)
+            Unrolling 4x:
+                Electrostatics performance: 1019 million atoms/s
+                Electrostatics performance: 1707 million atoms/s (including grid points added by padding)
+
+        CONST MEM:
+            No unrolling:
+                Electrostatics performance: 385 million atoms/s
+                Electrostatics performance: 527 million atoms/s (including grid points added by padding)
+            Unrolling 4x:
+                Electrostatics performance: 295 million atoms/s
+                Electrostatics performance: 495 million atoms/s (including grid points added by padding)
     */
 
     // Determine the block size
@@ -96,17 +143,19 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         if (input->distDepDiel)
         {
 #if DDD_PROFILE == DDD_GLOBALMEM
-            dimBlock = dim3(6, 16);
+            dimBlock = dim3(16, 4);
 #elif DDD_PROFILE == DDD_TEXTUREMEM
-            dimBlock = dim3(TODO);
+            dimBlock = dim3(16, 4);
 #elif DDD_PROFILE == DDD_INPLACE
-            dimBlock = dim3(6, 21);
+            dimBlock = dim3(16, 4);
+#elif DDD_PROFILE == DDD_CONSTMEM
+            dimBlock = dim3(16, 4);
 #else
             Error?
 #endif
         }
         else
-            dimBlock = dim3(6, 16);
+            dimBlock = dim3(16, 4);
     }
     else
     {
@@ -115,17 +164,19 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         if (input->distDepDiel)
         {
 #if DDD_PROFILE == DDD_GLOBALMEM
-            dimBlock = dim3(24, 16);
+            dimBlock = dim3(16, 24);
 #elif DDD_PROFILE == DDD_TEXTUREMEM
-            dimBlock = dim3(TODO);
+            dimBlock = dim3(16, 24);
 #elif DDD_PROFILE == DDD_INPLACE
-            dimBlock = dim3(24, 16);
+            dimBlock = dim3(16, 24);
+#elif DDD_PROFILE == DDD_CONSTMEM
+            dimBlock = dim3(16, 24);
 #else
             Error?
 #endif
         }
         else
-            dimBlock = dim3(24, 16);
+            dimBlock = dim3(16, 24);
     }
 
     // Pad/align the grid to a size of the grid block
@@ -149,13 +200,20 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     CUDA_SAFE_CALL(cudaMallocHost((void**)&energiesHost, sizeof(float) *input->numGridPointsPerMap));
     std::transform(elecMap.energies, elecMap.energies + input->numGridPointsPerMap, energiesHost, typecast<float, double>);
 
-    // Allocate the lookup table for a distance-dependent dielectric
+    // Allocate the lookup table for distance-dependent dielectric
     float *epsilonDevice = 0;
-#if DDD_PROFILE == DDD_GLOBALMEM
+#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM) || (DDD_PROFILE == DDD_TEXTUREMEM)
     float *epsilonHost = 0;
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray *epsilonArray;
     if (input->distDepDiel)
     {
+    #if DDD_PROFILE == DDD_GLOBALMEM
         CUDA_SAFE_CALL(cudaMalloc((void**)&epsilonDevice, sizeof(float) * MAX_DIST));
+    #elif DDD_PROFILE == DDD_TEXTUREMEM
+        // Allocate the texture for distance-dependent dielectric
+        CUDA_SAFE_CALL(cudaMallocArray(&epsilonArray, &channelDesc, MAX_DIST, 1));
+    #endif
         CUDA_SAFE_CALL(cudaMallocHost((void**)&epsilonHost, sizeof(float) * MAX_DIST));
     }
 #endif
@@ -164,21 +222,32 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     // Elements in the area of padding will stay uninitialized
     myCudaCopyGridMapPaddedAsync(energiesDevice, numGridPointsPadded, energiesHost, input->numGridPoints, cudaMemcpyHostToDevice, stream);
 
-#if DDD_PROFILE == DDD_GLOBALMEM
+#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM) || (DDD_PROFILE == DDD_TEXTUREMEM)
     if (input->distDepDiel)
     {
-        // Copy the epsilon table to global memory
+        // Convert doubles to floats
         std::transform(input->epsilon, input->epsilon + MAX_DIST, epsilonHost, typecast<float, double>);
+
+    #if DDD_PROFILE == DDD_GLOBALMEM
+        // Copy the epsilon table to global memory
         CUDA_SAFE_CALL(cudaMemcpyAsync(epsilonDevice, epsilonHost, sizeof(float) * MAX_DIST, cudaMemcpyHostToDevice, stream));
+    #elif DDD_PROFILE == DDD_TEXTUREMEM
+        CUDA_SAFE_CALL(cudaMemcpyToArrayAsync(epsilonArray, 0, 0, epsilonHost, sizeof(float) * MAX_DIST, cudaMemcpyHostToDevice, stream));
+        setEpsilonTexture(epsilonArray, &channelDesc);
+    #endif
     }
 #endif
 
     // Set some variables in constant memory
     float gridSpacing = float(input->gridSpacing);
     float gridSpacingCoalesced = gridSpacing * 16;
+    float *epsilonParam = epsilonDevice;
+#if DDD_PROFILE == DDD_CONSTMEM
+    epsilonParam = epsilonHost;
+#endif
     int2 numGridPointsDiv2XY = make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y);
     setGridMapParametersAsyncCUDA(&numGridPointsPadded.x, &numGridPointsDiv2XY, &gridSpacing, &gridSpacingCoalesced,
-                                  &epsilonDevice, &energiesDevice, stream);
+                                  &epsilonParam, &energiesDevice, stream);
 
     // The number of subsets we divide atoms into. Each kernel invocation contains only a subset of atoms,
     // which is limited by the size of constant memory.
@@ -285,11 +354,15 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         CUDA_SAFE_CALL(cudaEventDestroy(end));
     }
 
-#if DDD_PROFILE == DDD_GLOBALMEM
+#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM) || (DDD_PROFILE == DDD_TEXTUREMEM)
     if (input->distDepDiel)
     {
         // Free the epsilon tables
+    #if DDD_PROFILE == DDD_GLOBALMEM
         CUDA_SAFE_CALL(cudaFree(epsilonDevice));
+    #elif DDD_PROFILE == DDD_TEXTUREMEM
+        CUDA_SAFE_CALL(cudaFreeArray(epsilonArray));
+    #endif
         CUDA_SAFE_CALL(cudaFreeHost(epsilonHost));
     }
 #endif

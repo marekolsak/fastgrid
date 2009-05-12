@@ -230,7 +230,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 receptorAtom = new Vec4d[numAtomsMax];
 
                 // start to read in the lines of the receptor file
-                int ia = 0;
+                size_t ia = 0;
                 while ((fgets(line, length, receptorFile)) != 0)
                 {
                     sscanf(line, "%6s", record);
@@ -331,8 +331,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         if (ia > AG_MAX_ATOMS)
                         {
                             logFile->printErrorFormatted(ERROR, "Too many atoms in receptor PDBQT file %s;", receptorFilename);
-                            logFile->printErrorFormatted(ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %d.", AG_MAX_ATOMS);
-                            logFile->printErrorFormatted(SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %d\" line", AG_MAX_ATOMS);
+                            logFile->printErrorFormatted(ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %ul.", AG_MAX_ATOMS);
+                            logFile->printErrorFormatted(SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %ul\" line", AG_MAX_ATOMS);
                             logFile->printError(SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
                             // FATAL_ERROR will cause AutoGrid to exit...
                             logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");

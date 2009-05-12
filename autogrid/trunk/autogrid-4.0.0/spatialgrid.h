@@ -248,7 +248,7 @@ public:
 
         // Divide the X axis up to 4*CPUs segments to balance fluctuating density of spheres
 #if defined(AG_OPENMP)
-        int segments = omp_get_num_procs() * 4;
+        int segments = omp_get_max_threads() * 4;
 #else
         int segments = 1;
 #endif

@@ -75,10 +75,10 @@
 // Macros
 
 // Using a greater value of MAX_DIST might increase precision a little,
-// but keep in mind that a memory consumption increases linearly
-#define MAX_DIST                (1<<14) // 2^14 = 16384 = 163.84 Angstroms. Maximum distance in 100ths of an Angstrom.
+// but keep in mind that this is a factor of application memory usage
+#define MAX_DIST                (1<<13) // 2^13 = 8192 = 81.92 Angstroms. Maximum distance in 100ths of an Angstrom.
 #define NBCUTOFF                8       // non-bond cutoff = 8 Angstroms.
-#define AG_MAX_ATOMS            ((1<<31)-1) // 2^31. Maximum number of atoms in macromolecule.
+#define AG_MAX_ATOMS            ((1<<31)-1) // 2^31 - 1. Maximum number of atoms in macromolecule.
 #define A_DIVISOR               100     // Angstrom is divided by this in the look-up table.
 #define MAX_LEN_AUTOGRID_TYPE   7
 #define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???
@@ -105,7 +105,7 @@ inline AG_CALLCONV T calculateDistDepDielInv(T distance)
 template<typename Float, typename Int>
 inline AG_CALLCONV Float indexToAngstrom(Int i)
 {
-    return Float(i) / Float(A_DIVISOR);
+    return Float(i) * (1 / Float(A_DIVISOR));
 }
 
 template<typename Int, typename Float>

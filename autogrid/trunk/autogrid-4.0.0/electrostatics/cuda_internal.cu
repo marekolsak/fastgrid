@@ -30,7 +30,15 @@ using namespace std;
 #include <cstdio>
 
 // Grid size and spacing
-static __constant__ float *epsilon, *outEnergies;
+#if DDD_PROFILE == DDD_GLOBALMEM
+static __constant__ float *epsilon;
+#elif DDD_PROFILE == DDD_CONSTMEM
+static __constant__ float epsilon[MAX_DIST];
+#elif DDD_PROFILE == DDD_TEXTUREMEM
+static texture<float, 1, cudaReadModeElementType> epsilonTexture;
+#endif
+
+static __constant__ float *outEnergies;
 static __constant__ int2 numGridPointsDiv2;
 static __constant__ int numGridPointsX;
 static __constant__ float gridSpacing, gridSpacingCoalesced;
@@ -39,30 +47,40 @@ static __constant__ float gridSpacing, gridSpacingCoalesced;
 static __constant__ int outputIndexZBase, numAtoms;
 static __constant__ float4 atoms[NUM_ATOMS_PER_KERNEL]; // {x, y, (z-gridPosZ)^2, charge}
 
-static inline __device__ float getDistDepDiel(float invR)
+// Kinds of dielectric
+#define CONSTANT_DIEL           0
+#define DISTANCE_DEPENDENT_DIEL 1
+
+// Forward declaration
+template<int DielectricKind>
+static inline __device__ float dielectric(float invR);
+
+// Constant dielectric
+template<>
+static inline __device__ float dielectric<CONSTANT_DIEL>(float invR)
 {
-#if DDD_PROFILE == DDD_GLOBALMEM
+    return min(invR, 2.f);
+}
 
-    int index = angstromToIndex<int>(1.0f / invR);
-    float e = epsilon[index];
-
+// Distance-dependent dielectric
+template<>
+static inline __device__ float dielectric<DISTANCE_DEPENDENT_DIEL>(float invR)
+{
+#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM)
+    float e = epsilon[min(int(A_DIVISOR / invR), MAX_DIST-1)];
 #elif DDD_PROFILE == DDD_TEXTUREMEM
-
-    TODO? // TODO
-
+    float e = tex1D(epsilonTexture, (float(A_DIVISOR) / (MAX_DIST-1)) / invR);
 #elif DDD_PROFILE == DDD_INPLACE
-
     float e = calculateDistDepDielInv<float>(1.0f / invR);
-
 #else
     Error?
 #endif
 
-    return min(invR, 2.f) * e;
+    return dielectric<CONSTANT_DIEL>(invR) * e;
 }
 
-// Basic kernel, no loop unrolling
-template<int DistanceDependentDielectric>
+// Basic kernel, no loop unrolling, memory accesses are automatically coalesced
+template<int DielectricKind>
 static __global__ void calcGridPoints1()
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -82,22 +100,19 @@ static __global__ void calcGridPoints1()
         // Calculate dx
         float dx = gridPosX - atoms[ia].x;
 
-        // The estat forcefield coefficient/weight is premultiplied
-        if (DistanceDependentDielectric)
-            energy += atoms[ia].w * getDistDepDiel(rsqrt(dx*dx + dydzSq));
-        else
-            energy += atoms[ia].w * min(rsqrt(dx*dx + dydzSq), 2.f);
+        // The estat forcefield coefficient/weight is premultiplied in .w
+        energy += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx*dx + dydzSq));
     }
 
     int outputIndex = outputIndexZBase + y * numGridPointsX + x;
     outEnergies[outputIndex] += energy;
 }
 
-// Kernel where the loop over grid points is unrolled by 4
-template<int DistanceDependentDielectric>
+// Kernel where the loop over grid points is unrolled 4x, memory accesses are explicitly coalesced
+template<int DielectricKind>
 static __global__ void calcGridPoints4()
 {
-    int x = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
     float gridPosX = (x - numGridPointsDiv2.x) * gridSpacing;
@@ -114,33 +129,23 @@ static __global__ void calcGridPoints4()
         // Calculate dx[i]
         float dx0, dx1, dx2, dx3;
         dx0 = gridPosX - atoms[ia].x;
-        dx1 = dx0 + gridSpacing;
-        dx2 = dx1 + gridSpacing;
-        dx3 = dx2 + gridSpacing;
+        dx1 = dx0 + gridSpacingCoalesced;
+        dx2 = dx1 + gridSpacingCoalesced;
+        dx3 = dx2 + gridSpacingCoalesced;
 
-        // The estat forcefield coefficient/weight is premultiplied
-        if (DistanceDependentDielectric)
-        {
-            energy0 += atoms[ia].w * getDistDepDiel(rsqrt(dx0*dx0 + dydzSq));
-            energy1 += atoms[ia].w * getDistDepDiel(rsqrt(dx1*dx1 + dydzSq));
-            energy2 += atoms[ia].w * getDistDepDiel(rsqrt(dx2*dx2 + dydzSq));
-            energy3 += atoms[ia].w * getDistDepDiel(rsqrt(dx3*dx3 + dydzSq));
-        }
-        else
-        {
-            energy0 += atoms[ia].w * min(rsqrt(dx0*dx0 + dydzSq), 2.f);
-            energy1 += atoms[ia].w * min(rsqrt(dx1*dx1 + dydzSq), 2.f);
-            energy2 += atoms[ia].w * min(rsqrt(dx2*dx2 + dydzSq), 2.f);
-            energy3 += atoms[ia].w * min(rsqrt(dx3*dx3 + dydzSq), 2.f);
-        }
+        // The estat forcefield coefficient/weight is premultiplied in .w
+        energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx0*dx0 + dydzSq));
+        energy1 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx1*dx1 + dydzSq));
+        energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx2*dx2 + dydzSq));
+        energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx3*dx3 + dydzSq));
     }
 
     int outputIndex = outputIndexZBase + y * numGridPointsX + x;
 
-    outEnergies[outputIndex++] += energy0;
-    outEnergies[outputIndex++] += energy1;
-    outEnergies[outputIndex++] += energy2;
-    outEnergies[outputIndex  ] += energy3;
+    outEnergies[outputIndex] += energy0; outputIndex += 16;
+    outEnergies[outputIndex] += energy1; outputIndex += 16;
+    outEnergies[outputIndex] += energy2; outputIndex += 16;
+    outEnergies[outputIndex] += energy3;
 }
 
 void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY,
@@ -148,12 +153,27 @@ void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGri
                                    float **epsilon, float **outEnergies, cudaStream_t stream)
 {
     // Set common variables
+#if DDD_PROFILE == DDD_GLOBALMEM
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("epsilon",              epsilon,              sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
+#elif DDD_PROFILE == DDD_CONSTMEM
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("epsilon",              *epsilon,             sizeof(float) * MAX_DIST, 0, cudaMemcpyHostToDevice, stream));
+#endif
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("outEnergies",          outEnergies,          sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsDiv2",    numGridPointsDiv2XY,  sizeof(int2),   0, cudaMemcpyHostToDevice, stream));
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsX",       numGridPointsX,       sizeof(int),    0, cudaMemcpyHostToDevice, stream));
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacing",          gridSpacing,          sizeof(float),  0, cudaMemcpyHostToDevice, stream));
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacingCoalesced", gridSpacingCoalesced, sizeof(float),  0, cudaMemcpyHostToDevice, stream));
+}
+
+void setEpsilonTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc)
+{
+#if DDD_PROFILE == DDD_TEXTUREMEM
+    epsilonTexture.normalized = true;
+    epsilonTexture.filterMode = cudaFilterModePoint;
+    epsilonTexture.addressMode[0] = cudaAddressModeClamp;
+    
+    CUDA_SAFE_CALL(cudaBindTextureToArray(&epsilonTexture, ptr, desc));
+#endif
 }
 
 void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream)
@@ -171,13 +191,13 @@ void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, bool unrollLoop, b
 {
     if (unrollLoop)
         if (distDepDiel)
-            CUDA_SAFE_KERNEL((calcGridPoints4<1><<<grid, block, stream>>>()));
+            CUDA_SAFE_KERNEL((calcGridPoints4<DISTANCE_DEPENDENT_DIEL><<<grid, block, stream>>>()));
         else
-            CUDA_SAFE_KERNEL((calcGridPoints4<0><<<grid, block, stream>>>()));
+            CUDA_SAFE_KERNEL((calcGridPoints4<CONSTANT_DIEL><<<grid, block, stream>>>()));
     else
         if (distDepDiel)
-            CUDA_SAFE_KERNEL((calcGridPoints1<1><<<grid, block, stream>>>()));
+            CUDA_SAFE_KERNEL((calcGridPoints1<DISTANCE_DEPENDENT_DIEL><<<grid, block, stream>>>()));
         else
-            CUDA_SAFE_KERNEL((calcGridPoints1<0><<<grid, block, stream>>>()));
+            CUDA_SAFE_KERNEL((calcGridPoints1<CONSTANT_DIEL><<<grid, block, stream>>>()));
 }
 
