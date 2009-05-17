@@ -19,5 +19,5 @@ if [ "$#" -eq 4 ]; then
 	echo "RUNTIME ERROR! Autogrid terminated in an unusual way."
     fi
 else
-    echo "usage: %0 [reference dir] [autogrid dir] [diff output] [test output]"
+    echo "usage: $0 [reference dir] [autogrid dir] [diff output] [test output]"
 fi
