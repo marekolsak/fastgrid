@@ -106,7 +106,7 @@ static __global__ void calcGridPoints1()
         float dy = gridPos.y - atoms[ia].y;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
-        energy += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx*dx + dy*dy + atoms[ia].z));
+        energy += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dx*dx + dy*dy + atoms[ia].z));
     }
 
     outEnergies[outputIndex] += energy;
