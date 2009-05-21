@@ -24,6 +24,7 @@
 
 #pragma once
 #include "autogrid.h"
+#include "exceptions.h"
 
 typedef void *SpatialCell;
 
@@ -163,6 +164,11 @@ public:
             T *elements = (T*)cell+1;
             elements[num] = id;
             ++num;
+        }
+        else
+        {
+            fprintf(stderr, "SpatialGrid::insertIntoCell: cell overflow!\n");
+            throw ExitProgram(1);
         }
     }
 

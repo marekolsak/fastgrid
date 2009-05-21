@@ -331,11 +331,25 @@ static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydr
 
 static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 {
-    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
-    double cellSize = NBCUTOFF / 4.0;
+    double minDistanceSq = 10000000;
+    for (int i = 0; i < input->numReceptorAtoms; i++)
+        for (int j = i+1; j < input->numReceptorAtoms; j++)
+        {
+            double dist = Vec3d::DistanceSqr(Vec3d(input->receptorAtom[i]), Vec3d(input->receptorAtom[j]));
+            if (dist < minDistanceSq)
+                minDistanceSq = dist;
+        }
 
-    // TODO: reduce the bucket size (maxElementsInCell) according to a density of atoms
-    cutoffGrid.create(gridSize, cellSize, 0, input->numReceptorAtoms);
+    double minAtomRadius = sqrt(minDistanceSq)/2;
+    double minAtomArea = (4.0/3.0) * 3.14159265358979323846 * minAtomRadius;
+    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
+    double cellSize = NBCUTOFF / 2;
+    int maxAtomsPerCell = int(Mathd::Ceil(Mathd::Cube(cellSize + NBCUTOFF*2) / minAtomArea));
+
+    fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
+    fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
+
+    cutoffGrid.create(gridSize, cellSize, 0, maxAtomsPerCell);
     cutoffGrid.insertSpheres(input->numReceptorAtoms, &input->receptorAtom[0], NBCUTOFF);
 }
 
