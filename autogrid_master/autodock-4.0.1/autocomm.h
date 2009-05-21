@@ -87,7 +87,7 @@
 #elif defined( __CYGWIN__ ) 
 #define MAX_GRID_PTS 64		/* Maximum number of grid points in 1 dimension */
 #else
-#define MAX_GRID_PTS 128	/* Maximum number of grid points in 1 dimension */
+#define MAX_GRID_PTS 1024	/* Maximum number of grid points in 1 dimension */
 				/* MAX_GRID_PTS 128 causes a SIGSEGV on Cygwin */
 #endif
 
