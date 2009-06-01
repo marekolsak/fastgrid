@@ -37,7 +37,7 @@ void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
     for (int m = 0; m < gridmaps.getNumMaps(); m++)
         if (gridmaps[m].isCovalent)
 #if defined(AG_OPENMP)
-    #pragma AG_OPENMP_PARALLEL_FOR
+    #pragma omp parallel for schedule(dynamic, 1)
 #endif
             FOR_EACH_GRID_POINT(gridPos, outputIndex)
             {
@@ -58,7 +58,7 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
 
     // Calculate the so-called "Floating Grid"...
 #if defined(AG_OPENMP)
-    #pragma AG_OPENMP_PARALLEL_FOR
+    #pragma omp parallel for schedule(dynamic, 1)
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
     {
@@ -120,6 +120,9 @@ void autogridMain(int argc, char **argv)
     logFile.printFormatted("Using OpenMP.\n"
                            "- Total number of cores: %i\n"
                            "- Threads available: %i\n\n", omp_get_max_threads());
+#endif
+#if defined(AG_CUDA)
+    logFile.print("Using CUDA.\n");
 #endif
 
     // Declaration of gridmaps, InputDataLoader::load takes care of their initialization

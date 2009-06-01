@@ -242,22 +242,33 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 #endif
 
     // Set some variables in constant memory
-    float gridSpacing = float(input->gridSpacing);
-    float gridSpacingCoalesced = gridSpacing * 16;
-    float *epsilonParam = epsilonDevice;
+    struct Params
+    {
+        float gridSpacing, gridSpacingCoalesced;
+        float *epsilonParam, *energiesDevice;
+        int2 numGridPointsDiv2XY;
+        int numGridPointsPaddedX;
+    } *params;
+    CUDA_SAFE_CALL(cudaMallocHost((void**)&params, sizeof(Params)));
+    params->numGridPointsPaddedX = numGridPointsPadded.x;
+    params->gridSpacing = float(input->gridSpacing);
+    params->gridSpacingCoalesced = params->gridSpacing * 16;
+    params->epsilonParam = epsilonDevice;
 #if DDD_PROFILE == DDD_CONSTMEM
-    epsilonParam = epsilonHost;
+    params->epsilonParam = epsilonHost;
 #endif
-    int2 numGridPointsDiv2XY = make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y);
-    setGridMapParametersAsyncCUDA(&numGridPointsPadded.x, &numGridPointsDiv2XY, &gridSpacing, &gridSpacingCoalesced,
-                                  &epsilonParam, &energiesDevice, stream);
+    params->energiesDevice = energiesDevice;
+    params->numGridPointsDiv2XY = make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y);
+    setGridMapParametersAsyncCUDA(&params->numGridPointsPaddedX, &params->numGridPointsDiv2XY, &params->gridSpacing, &params->gridSpacingCoalesced,
+                                  &params->epsilonParam, &params->energiesDevice, stream);
 
     // The number of subsets we divide atoms into. Each kernel invocation contains only a subset of atoms,
     // which is limited by the size of constant memory.
     int numAtomSubsets = (input->numReceptorAtoms - 1) / NUM_ATOMS_PER_KERNEL + 1;
 
     // Reserve memory for each output index of a slice. We can't pass stack pointers to functions since the calls are asynchronous.
-    int *outputIndexZBase = new int[input->numGridPoints.z];
+    int *outputIndexZBase;
+    CUDA_SAFE_CALL(cudaMallocHost((void**)&outputIndexZBase, sizeof(int) * input->numGridPoints.z));
 
     // Reserve memory for each kernel invocation. The same reason as above.
     struct AtomConstMem
@@ -265,7 +276,8 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         int numAtoms;
         float4 atoms[NUM_ATOMS_PER_KERNEL];
 
-    } *atomConstMem = new AtomConstMem[input->numGridPoints.z * numAtomSubsets];
+    } *atomConstMem;
+    CUDA_SAFE_CALL(cudaMallocHost((void**)&atomConstMem, sizeof(AtomConstMem) * input->numGridPoints.z * numAtomSubsets));
 
     // Precalculate X*Y
     int numGridPointsPaddedXMulY = numGridPointsPadded.x*numGridPointsPadded.y;
@@ -283,7 +295,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         setGridMapSliceParametersAsyncCUDA(outputIndexZBasePtr, stream);
 
         // Calculate the Z coord of this grid point
-        double gridPosZ = (z - input->numGridPointsDiv2.z) * gridSpacing;
+        double gridPosZ = (z - input->numGridPointsDiv2.z) * params->gridSpacing;
 
         // Set the pointer to memory of this slice
         AtomConstMem *atomConstMemZBase = atomConstMem + z * numAtomSubsets;
@@ -327,7 +339,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     if (programParams.benchmarkEnabled())
         CUDA_SAFE_CALL(cudaEventRecord(end, stream));
     CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-    
+
     // Convert floats to doubles and save them in the elecMap object
     std::transform(energiesHost, energiesHost + input->numGridPointsPerMap, elecMap.energies, typecast<double, float>);
 
@@ -370,15 +382,16 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     }
 #endif
 
+    CUDA_SAFE_CALL(cudaFreeHost(params));
+    CUDA_SAFE_CALL(cudaFreeHost(atomConstMem));
+    CUDA_SAFE_CALL(cudaFreeHost(outputIndexZBase));
+
     // Free energies
     CUDA_SAFE_CALL(cudaFree(energiesDevice));
     CUDA_SAFE_CALL(cudaFreeHost(energiesHost));
 
     // Destroy the stream
     CUDA_SAFE_CALL(cudaStreamDestroy(stream));
-
-    delete [] atomConstMem;
-    delete [] outputIndexZBase;
 }
 
 void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);

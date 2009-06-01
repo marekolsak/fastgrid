@@ -66,10 +66,6 @@
     // Enables the NVIDIA CUDA support
     //#define AG_CUDA
 
-    // OpenMP configuration
-
-    #define AG_OPENMP_PARALLEL_FOR omp parallel for schedule(dynamic, 1)
-
 #endif
 
 // Macros
@@ -83,7 +79,7 @@
 #define MAX_LEN_AUTOGRID_TYPE   7
 #define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???
 #define NUM_RECEPTOR_TYPES      NUM_ALL_TYPES
-#define INIT_NUM_GRID_PTS       UINT_MAX
+#define INIT_NUM_GRID_PTS       UINT_MAX // Max number of grid points per axis.
 
 #if !defined(AG_CALLCONV)
     #define AG_CALLCONV

@@ -321,7 +321,7 @@ static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydr
                        const SpatialGrid &cutoffGrid, const int *indicesHtoA, const NearestNeighborSearch3d &hsearch)
 {
 #if defined(AG_OPENMP)
-    #pragma AG_OPENMP_PARALLEL_FOR
+    #pragma omp parallel for schedule(dynamic, 1)
 #endif
     FOR_EACH_GRID_POINT(gridPos, outputIndex)
         calculateGridPoint<UseNNS, UseCutoffGrid>(input, gridmaps, hydrogen, energyLookup, desolvExpFunc, bondVectors,
@@ -331,20 +331,42 @@ static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydr
 
 static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 {
+    // Find distance^2 between two closest atoms
+    int subsets = omp_get_max_threads()*4;
+    int countPerSubset = Mathi::Max(1, int(Mathd::Ceil(double(input->numReceptorAtoms) / subsets)));
+    double *minDistances = new double[subsets];
+    for (int s = 0; s < subsets; s++)
+        minDistances[s] = 10000000;
+
+#if defined(AG_OPENMP)
+    #pragma omp parallel for schedule(dynamic, 1)
+#endif
+    for (int s = 0; s < subsets; s++)
+    {
+        int start = s * countPerSubset;
+        int end = Mathi::Min((s+1) * countPerSubset - 1, input->numReceptorAtoms - 1);
+
+        for (int i = start; i <= end; i++)
+            for (int j = i+1; j < input->numReceptorAtoms; j++)
+            {
+                double dist = Vec3d::DistanceSqr(Vec3d(input->receptorAtom[i]), Vec3d(input->receptorAtom[j]));
+                if (dist < minDistances[s])
+                    minDistances[s] = dist;
+            }
+    }
+
     double minDistanceSq = 10000000;
-    for (int i = 0; i < input->numReceptorAtoms; i++)
-        for (int j = i+1; j < input->numReceptorAtoms; j++)
-        {
-            double dist = Vec3d::DistanceSqr(Vec3d(input->receptorAtom[i]), Vec3d(input->receptorAtom[j]));
-            if (dist < minDistanceSq)
-                minDistanceSq = dist;
-        }
+    for (int s = 0; s < subsets; s++)
+        if (minDistances[s] < minDistanceSq)
+            minDistanceSq = minDistances[s];
+
+    delete [] minDistances;
 
     double minAtomRadius = sqrt(minDistanceSq)/2;
-    double minAtomArea = (4.0/3.0) * 3.14159265358979323846 * minAtomRadius;
+    double minAtomVolume = (4.0/3.0) * 3.14159265358979323846 * minAtomRadius;
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
-    double cellSize = NBCUTOFF / 2;
-    int maxAtomsPerCell = int(Mathd::Ceil(Mathd::Cube(cellSize + NBCUTOFF*2) / minAtomArea));
+    double cellSize = NBCUTOFF;
+    int maxAtomsPerCell = int(Mathd::Ceil(Mathd::Cube(cellSize + NBCUTOFF*2) / minAtomVolume));
 
     fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
     fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
