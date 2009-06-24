@@ -7,7 +7,7 @@ Basic Installation
 The CMake build system is needed for the installation to work. Download
 the newest version at www.cmake.org or use your distribution package
 manager. Briefly, these commands generate Makefile, build and install
-this package:
+this program:
 
     cmake -D CMAKE_BUILD_TYPE=Release .
     make
