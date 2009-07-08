@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <OpenThreads/Barrier>
+#include "../Barrier"
 #include "PThreadBarrierPrivateData.h"
 
 using namespace OpenThreads;

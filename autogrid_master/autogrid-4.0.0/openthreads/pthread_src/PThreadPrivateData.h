@@ -26,7 +26,7 @@
 namespace OpenThreads {
 
 #include <pthread.h>
-#include <OpenThreads/Thread>
+#include "../Thread"
 
 
 class PThreadPrivateData {

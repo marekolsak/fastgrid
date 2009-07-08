@@ -22,7 +22,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#if defined(AG_CUDA)
+//#if defined(AG_CUDA)
 using namespace std;
 #include "cuda_internal.h"
 
@@ -209,4 +209,4 @@ void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, bool unrollLoop, b
         else
             CUDA_SAFE_KERNEL((calcGridPoints1<CONSTANT_DIEL><<<grid, block, stream>>>()));
 }
-#endif
+//#endif

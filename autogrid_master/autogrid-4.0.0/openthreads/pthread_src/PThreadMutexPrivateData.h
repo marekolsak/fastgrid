@@ -27,7 +27,7 @@
 namespace OpenThreads {
 
 #include <pthread.h>
-#include <OpenThreads/Mutex>
+#include "../Mutex"
 
 class PThreadMutexPrivateData {
 

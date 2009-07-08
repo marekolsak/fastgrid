@@ -23,7 +23,7 @@
 
 #include <sys/time.h>
 #include <assert.h>
-#include <OpenThreads/Condition>
+#include "../Condition"
 #include "PThreadConditionPrivateData.h"
 #include "PThreadMutexPrivateData.h"
 

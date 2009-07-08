@@ -34,7 +34,7 @@
 #include <sys/unistd.h>
 #endif
 
-#include <OpenThreads/Thread>
+#include "../Thread"
 #include "PThreadPrivateData.h"
 
 using namespace OpenThreads;
