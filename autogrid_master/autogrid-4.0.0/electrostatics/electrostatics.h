@@ -26,4 +26,12 @@
 #include "../gridmap.h"
 #include "../programparameters.h"
 
-void calculateElectrostaticMap(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
+// This function starts calculating the electrostatic map.
+// - If CUDA is enabled, the function is called asynchronously and a handle is returned
+//   for later synchronization.
+// - If CUDA is disabled, the function is called sequentially and zero is returned.
+void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
+
+// This functions synchronizes (or waits for) a previously-started asynchronous calculation.
+// A zero handle does no-op.
+void synchronizeCalculation(void *handle);

@@ -35,6 +35,11 @@ SET(AUTOGRID_SOURCES
     ./math/Geometric/Quaternion.cpp
     ./math/Geometric/Intersection3.cpp
 
+    ./openthreads/pthread_src/PThread.c++
+    ./openthreads/pthread_src/PThreadBarrier.c++
+    ./openthreads/pthread_src/PThreadCondition.c++
+    ./openthreads/pthread_src/PThreadMutex.c++
+
     ./times.cpp
     ./desolvexpfunc.cpp
     ./inputdataloader.cpp
@@ -50,6 +55,9 @@ SET(AUTOGRID_SOURCES
 
     ./electrostatics/cpu.cpp
 )
+
+ADD_DEFINITIONS(-DLinux)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread")
 
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/cuda" ${CMAKE_MODULE_PATH})
 
@@ -77,4 +85,3 @@ FIND_PACKAGE(CUDA)
 #ELSE(CUDA_FOUND)
 #    ADD_EXECUTABLE(autogrid4 ${AUTOGRID_SOURCES})
 #ENDIF(CUDA_FOUND)
-

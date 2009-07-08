@@ -38,12 +38,13 @@ public:
     bool useCutoffGrid() const                      { return cutoffGrid; }
     bool useCUDA() const                            { return cuda; }
     bool unrollLoopCUDA() const                     { return cudaUnroll; }
+    int getDeviceID() const                         { return deviceID; }
 
 private:
     char programName[MAX_CHARS];
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
-    int debug;
+    int debug, deviceID;
     bool benchmark, nns, cutoffGrid, cuda, cudaUnroll;
 
     void parse(int argc, char **argv);

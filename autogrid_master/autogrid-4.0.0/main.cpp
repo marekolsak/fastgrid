@@ -214,11 +214,14 @@ void autogridMain(int argc, char **argv)
     if (programParams.benchmarkEnabled())
         t1->stopAndLog(stderr);
 
-    // Calculate the electrostatic map
-    calculateElectrostaticMap(input, programParams, gridmaps.getElectrostaticMap());
+    // Start calculating the electrostatic map
+    void *handleElecMap = calculateElectrostaticMapAsync(input, programParams, gridmaps.getElectrostaticMap());
 
     // Calculate the atom maps and the desolvation map
     calculateGridmaps(input, programParams, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
+
+    // Wait for the calculation
+    synchronizeCalculation(handleElecMap);
 
     // Calculate the so-called "floating grid"
     if (gridmaps.containsFloatingGrid())

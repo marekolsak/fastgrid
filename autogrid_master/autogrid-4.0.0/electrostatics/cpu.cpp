@@ -99,9 +99,15 @@ void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameter
 
 #if !defined(AG_CUDA)
 
-void calculateElectrostaticMap(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
     calculateElectrostaticMapCPU(input, programParams, elecMap);
+    return 0;
+}
+
+void synchronizeCalculation(void *)
+{
+    // no-op
 }
 
 #endif

@@ -26,6 +26,7 @@
 #include "electrostatics.h"
 #include "cuda_internal.h"
 #include "../exceptions.h"
+#include "../openthreads/Thread"
 #include <algorithm>
 #include <cstring>
 
@@ -63,6 +64,9 @@ void myCudaCopyGridMapPaddedAsync(float *dst, const Vec3i &numGridPointsDst, con
 
 static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
+    // Set a device
+    CUDA_SAFE_CALL(cudaSetDevice(programParams.getDeviceID()));
+
     // Create a CUDA stream
     cudaStream_t stream = 0;
     CUDA_SAFE_CALL(cudaStreamCreate(&stream));
@@ -76,65 +80,6 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         CUDA_SAFE_CALL(cudaEventCreate(&finalize));
         CUDA_SAFE_CALL(cudaEventCreate(&end));
     }
-
-    /*  Calculated using the CUDA occupancy calculator.
-        Compute capability: 1.0
-        (registers, max threads, used num threads, occupancy)
-
-                       | global mem ddd       | texture mem ddd      | in-place ddd         | const mem ddd        | const diel
-        no unrolling   | ( 9, 512, 384, 100%) | ( 9, 512, 384, 100%) | (10, 512, 384, 100%) | ( 8, 512, 384, 100%)!| ( 8, 512, 384, 100%)
-        unrolling by 4 | (15, 512, 256,  67%) | (15, 512, 256,  67%) | (16, 512, 256,  67%) | (15, 512, 256,  67%)!| (14, 512, 288,  75%)
-
-
-        *************************************************************************************************
-        Performance:
-
-        Gridmap size: 40^3 (41^3 grid points)
-
-        CONST DIELECTRIC:
-            No unrolling:
-                Electrostatics performance: 5149 million atoms/s
-                Electrostatics performance: 7057 million atoms/s (including grid points added by padding)
-            Unrolling 4x:
-                Electrostatics performance: 4836 million atoms/s
-                Electrostatics performance: 8102 million atoms/s (including grid points added by padding)
-
-
-        DISTANCE DEPENDENT DIELECTRIC (ddd):
-        --------------------------------------
-
-        GLOBAL MEM:
-            No unrolling:
-                Electrostatics performance: 1313 million atoms/s
-                Electrostatics performance: 1800 million atoms/s (including grid points added by padding)
-            Unrolling 4x:
-                Electrostatics performance: 686 million atoms/s
-                Electrostatics performance: 1149 million atoms/s (including grid points added by padding)
-
-        TEXTURE MEM:
-            No unrolling:
-                Electrostatics performance: 2901 million atoms/s
-                Electrostatics performance: 3976 million atoms/s (including grid points added by padding)
-            Unrolling 4x:
-                Electrostatics performance: 918 million atoms/s
-                Electrostatics performance: 1539 million atoms/s (including grid points added by padding)
-
-        IN-PLACE:
-            No unrolling:
-                Electrostatics performance: 1870 million atoms/s
-                Electrostatics performance: 2563 million atoms/s (including grid points added by padding)
-            Unrolling 4x:
-                Electrostatics performance: 1019 million atoms/s
-                Electrostatics performance: 1707 million atoms/s (including grid points added by padding)
-
-        CONST MEM:
-            No unrolling:
-                Electrostatics performance: 385 million atoms/s
-                Electrostatics performance: 527 million atoms/s (including grid points added by padding)
-            Unrolling 4x:
-                Electrostatics performance: 295 million atoms/s
-                Electrostatics performance: 495 million atoms/s (including grid points added by padding)
-    */
 
     // Determine the block size
     int numGridPointsPerKernel;
@@ -394,16 +339,6 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     CUDA_SAFE_CALL(cudaStreamDestroy(stream));
 }
 
-void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
-
-void calculateElectrostaticMap(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
-{
-    if (programParams.useCUDA())
-        calculateElectrostaticMapCUDA(input, programParams, elecMap);
-    else
-        calculateElectrostaticMapCPU(input, programParams, elecMap);
-}
-
 void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code)
 {
     if (e != cudaSuccess)
@@ -418,4 +353,53 @@ void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, c
             throw ExitProgram(0xbad);
     }
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
+
+class CudaThread : public OpenThreads::Thread
+{
+public:
+    CudaThread(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+        : input(input), programParams(&programParams), elecMap(&elecMap) {}
+
+    virtual void run()
+    {
+        calculateElectrostaticMapCUDA(input, *programParams, *elecMap);
+    }
+
+private:
+    const InputData *input;
+    const ProgramParameters *programParams;
+    GridMap *elecMap;
+};
+
+void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+{
+    if (programParams.useCUDA())
+    {
+        // Create and run the thread
+        CudaThread *thread = new CudaThread(input, programParams, elecMap);
+        thread->start();
+        return thread;
+    }
+    else
+    {
+        calculateElectrostaticMapCPU(input, programParams, elecMap);
+        return 0;
+    }
+}
+
+void synchronizeCalculation(void *handle)
+{
+    if (handle)
+    {
+        CudaThread *thread = (CudaThread*)handle;
+
+        // Wait until the thread terminates
+        thread->join();
+        delete thread;
+    }
+}
+
 #endif

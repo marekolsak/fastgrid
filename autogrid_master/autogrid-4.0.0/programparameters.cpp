@@ -51,7 +51,7 @@
     #define CUDA_STATUS ST_DISABLED
 #endif
 
-ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), benchmark(false), nns(true), cutoffGrid(true), cuda(true), cudaUnroll(true)
+ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), benchmark(false), nns(true), cutoffGrid(true), cuda(true), cudaUnroll(true)
 {
     programName[0] = 0;
     gridParameterFilename[0] = 0;
@@ -167,7 +167,7 @@ void ProgramParameters::parse(int argc, char **argv)
 #if defined(AG_CUDA)
             int n;
             if (sscanf(argv[2], "%i", &n) == 1)
-                CUDA_SAFE_CALL(cudaSetDevice(n));
+                deviceID = n;
             else
             {
                 fprintf(stderr, "%s: '%s' is not a number\n", programName, argv[2]);
@@ -193,4 +193,3 @@ void ProgramParameters::parse(int argc, char **argv)
         ++argv;
     }
 }
-

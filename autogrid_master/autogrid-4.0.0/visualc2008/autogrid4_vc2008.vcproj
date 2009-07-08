@@ -53,7 +53,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
+				AdditionalIncludeDirectories=".;&quot;$(CUDA_INC_PATH)&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;AG_CUDA"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
@@ -148,8 +148,8 @@
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
 				EnableFiberSafeOptimizations="true"
-				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP"
+				AdditionalIncludeDirectories=".;&quot;$(CUDA_INC_PATH)&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP;AG_CUDA"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
@@ -243,7 +243,7 @@
 				AdditionalOptions="/MP"
 				Optimization="0"
 				InlineFunctionExpansion="0"
-				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
+				AdditionalIncludeDirectories=".;&quot;$(CUDA_INC_PATH)&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				OpenMP="true"
@@ -702,6 +702,15 @@
 				<File
 					RelativePath="..\electrostatics\cuda_internal.cu"
 					>
+					<FileConfiguration
+						Name="Release|Win32"
+						>
+						<Tool
+							Name="CUDA Build Rule"
+							Defines="AG_CUDA"
+							TypeInfo="true"
+						/>
+					</FileConfiguration>
 				</File>
 				<File
 					RelativePath="..\electrostatics\cuda_internal.h"
@@ -711,6 +720,70 @@
 					RelativePath="..\electrostatics\electrostatics.h"
 					>
 				</File>
+			</Filter>
+			<Filter
+				Name="openthreads"
+				>
+				<File
+					RelativePath="..\openthreads\Barrier"
+					>
+				</File>
+				<File
+					RelativePath="..\openthreads\Condition"
+					>
+				</File>
+				<File
+					RelativePath="..\openthreads\Exports"
+					>
+				</File>
+				<File
+					RelativePath="..\openthreads\Mutex"
+					>
+				</File>
+				<File
+					RelativePath="..\openthreads\Thread"
+					>
+				</File>
+				<Filter
+					Name="win32_src"
+					>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32BarrierPrivateData.h"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32Condition.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32Condition.h"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32ConditionPrivateData.h"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32Mutex.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32MutexPrivateData.h"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32Thread.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32ThreadBarrier.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\openthreads\win32_src\Win32ThreadPrivateData.h"
+						>
+					</File>
+				</Filter>
 			</Filter>
 		</Filter>
 	</Files>
