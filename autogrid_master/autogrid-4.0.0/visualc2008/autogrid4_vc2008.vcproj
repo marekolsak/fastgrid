@@ -15,7 +15,7 @@
 	</Platforms>
 	<ToolFiles>
 		<ToolFile
-			RelativePath="..\..\..\..\..\..\..\All Users\Application Data\NVIDIA Corporation\NVIDIA CUDA SDK\common\Cuda.rules"
+			RelativePath="C:\Documents And Settings\All Users\Application Data\NVIDIA Corporation\NVIDIA CUDA SDK\common\Cuda.rules"
 		/>
 	</ToolFiles>
 	<Configurations>
@@ -149,7 +149,7 @@
 				OmitFramePointers="true"
 				EnableFiberSafeOptimizations="true"
 				AdditionalIncludeDirectories="$(CUDA_INC_PATH)"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP;AG_CUDA"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
@@ -432,14 +432,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\math\Half.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\math\Half.h"
-					>
-				</File>
-				<File
 					RelativePath="..\math\Int.h"
 					>
 				</File>
@@ -563,15 +555,7 @@
 						>
 					</File>
 					<File
-						RelativePath="..\math\Geometric\Vec2Content.h"
-						>
-					</File>
-					<File
 						RelativePath="..\math\Geometric\Vec3.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Vec3Content.h"
 						>
 					</File>
 					<File
@@ -580,10 +564,6 @@
 					</File>
 					<File
 						RelativePath="..\math\Geometric\Vec4.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Vec4Content.h"
 						>
 					</File>
 					<File

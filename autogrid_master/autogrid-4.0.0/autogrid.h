@@ -57,14 +57,15 @@
     #endif
     #include "math.h"
 
-    // Options
-    // Do not uncomment these! Specify them in the command-line arguments of your compiler (G++, CMake) or in the project settings (VC++)
-
-    // Enables the OpenMP support
-    //#define AG_OPENMP
-
-    // Enables the NVIDIA CUDA support
-    //#define AG_CUDA
+    // These options needs to be specified in the command-line arguments of your
+    // compiler (G++, CMake) or in the project settings (VC++):
+    // Defining AG_OPENMP enables the OpenMP support.
+    // Defining AG_CUDA enables the NVIDIA CUDA support.
+    //
+    // OpenMP is enabled by default in VC++ 2008 and automatically detected in CMake.
+    // CUDA is enabled by default everywhere because the automatic detection hasn't been implemented yet.
+    //
+    // Always use the Release configuration in VC++.
 
 #endif
 
@@ -74,7 +75,7 @@
 // but keep in mind that this is a factor of application memory usage
 #define MAX_DIST                (1<<13) // 2^13 = 8192 = 81.92 Angstroms. Maximum distance in 100ths of an Angstrom.
 #define NBCUTOFF                8       // non-bond cutoff = 8 Angstroms.
-#define AG_MAX_ATOMS            ((1<<31)-1) // 2^31 - 1. Maximum number of atoms in macromolecule.
+#define AG_MAX_ATOMS            ((1u<<31)-1) // 2^31 - 1. Maximum number of atoms in macromolecule.
 #define A_DIVISOR               100     // Angstrom is divided by this in the look-up table.
 #define MAX_LEN_AUTOGRID_TYPE   7
 #define NUM_ALL_TYPES           32      // TODO: IS THIS REASONABLE???

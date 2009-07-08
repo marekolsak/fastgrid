@@ -332,7 +332,12 @@ static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydr
 static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 {
     // Find distance^2 between two closest atoms
+    // TODO: rewrite this using kd-tree
+#if defined(AG_OPENMP)
     int subsets = omp_get_max_threads()*4;
+#else
+    int subsets = 1;
+#endif
     int countPerSubset = Mathi::Max(1, int(Mathd::Ceil(double(input->numReceptorAtoms) / subsets)));
     double *minDistances = new double[subsets];
     for (int s = 0; s < subsets; s++)
@@ -362,6 +367,7 @@ static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
 
     delete [] minDistances;
 
+    // Calculate max atoms per cell
     double minAtomRadius = sqrt(minDistanceSq)/2;
     double minAtomVolume = (4.0/3.0) * 3.14159265358979323846 * minAtomRadius;
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;

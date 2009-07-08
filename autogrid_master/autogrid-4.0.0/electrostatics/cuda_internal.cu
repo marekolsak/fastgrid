@@ -22,6 +22,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#if defined(AG_CUDA)
 using namespace std;
 #include "cuda_internal.h"
 
@@ -179,7 +180,7 @@ void setEpsilonTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc)
     epsilonTexture.normalized = true;
     epsilonTexture.filterMode = cudaFilterModePoint;
     epsilonTexture.addressMode[0] = cudaAddressModeClamp;
-    
+
     CUDA_SAFE_CALL(cudaBindTextureToArray(&epsilonTexture, ptr, desc));
 #endif
 }
@@ -208,4 +209,4 @@ void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, bool unrollLoop, b
         else
             CUDA_SAFE_KERNEL((calcGridPoints1<CONSTANT_DIEL><<<grid, block, stream>>>()));
 }
-
+#endif

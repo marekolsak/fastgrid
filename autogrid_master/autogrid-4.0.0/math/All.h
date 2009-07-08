@@ -22,20 +22,7 @@
 // TODO: translate all czech comments into english
 
 #pragma once
-
-/*#if defined(_MSC_VER)
-    #if !defined(RUNE_STATIC)
-        #if defined(RUNEMATH_EXPORTS)
-            #define RUNEMATH_API __declspec(dllexport)
-        #else
-            #define RUNEMATH_API __declspec(dllimport)
-        #endif
-    #else
-        #define RUNEMATH_API
-    #endif
-#else*/
-    #define RUNEMATH_API
-//#endif
+#define RUNEMATH_API
 
 #if defined(_MSC_VER)
     // disable the warning: nameless struct/union
@@ -50,21 +37,11 @@
 #include "UnionCast.h"
 
 // Basic
-#include "Half.h"
 #include "Math.h"
 
 // Vectors
-#if defined(_MSC_VER)
-    #include "Geometric/Vec2Content.h"
-#endif
 #include "Geometric/Vec2.h"
-#if defined(_MSC_VER)
-    #include "Geometric/Vec3Content.h"
-#endif
 #include "Geometric/Vec3.h"
-#if defined(_MSC_VER)
-    #include "Geometric/Vec4Content.h"
-#endif
 #include "Geometric/Vec4.h"
 
 // 2D

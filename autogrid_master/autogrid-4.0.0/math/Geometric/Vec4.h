@@ -26,16 +26,6 @@ namespace Rune
     /**
         Ctyrrozmerny vektor
     **************************************************************************************************/
-#if defined(_MSC_VER)
-    template<typename T>
-    class Vec4 : public Vec4Content<T>
-    {
-    public:
-        typedef Rune::Vec2<T> Vec2;
-        typedef Rune::Vec3<T> Vec3;
-
-        operator Vec3() const                           { return xyz; } // This implicit conversion should not be allowed!
-#else
     template<typename T>
     class Vec4
     {
@@ -46,7 +36,6 @@ namespace Rune
         T x, y, z, w;
 
         operator Vec3() const                           { return Vec3(x, y, z); } // This implicit conversion should not be allowed!
-#endif
 
         Vec4()                                          {}
         Vec4(T f)                                       { x = f; y = f; z = f; w = f; }

@@ -23,7 +23,6 @@ SET(AUTOGRID_SOURCES
     ./math/Geometric/Sphere3.cpp
     ./math/Geometric/Matrix3.cpp
     ./math/Geometric/Ray2.cpp
-    ./math/Geometric/Vec3.cpp
     ./math/Geometric/AxisAlignedBox3.cpp
     ./math/Geometric/Vertex3.cpp
     ./math/Geometric/Matrix4.cpp
@@ -35,7 +34,6 @@ SET(AUTOGRID_SOURCES
     ./math/Geometric/Ray3.cpp
     ./math/Geometric/Quaternion.cpp
     ./math/Geometric/Intersection3.cpp
-    ./math/Half.cpp
 
     ./times.cpp
     ./desolvexpfunc.cpp

@@ -26,18 +26,6 @@ namespace Rune
     /**
         Trirozmerny vektor
     **************************************************************************************************/
-#if defined(_MSC_VER)
-    template<typename T, int spaceXY = 0, int spaceYZ = 0>
-    class Vec3 : public Vec3Content<T, spaceXY, spaceYZ>
-    {
-    public:
-        template<int xspaceXY, int xspaceYZ>
-        Vec3(const Vec3<T, xspaceXY, xspaceYZ> &v)      { x = v.x; y = v.y; z = v.z; }
-
-        template<typename U, int xspaceXY, int xspaceYZ>
-        explicit Vec3(const Vec3<U, xspaceXY, xspaceYZ> &v) { x = T(v.x); y = T(v.y); z = T(v.z); }
-
-#else
     template<typename T>
     class Vec3
     {
@@ -46,7 +34,6 @@ namespace Rune
 
         template<typename U>
         explicit Vec3(const Vec3<U> &v) { x = T(v.x); y = T(v.y); z = T(v.z); }
-#endif
 
         typedef Rune::Vec2<T> Vec2;
 
