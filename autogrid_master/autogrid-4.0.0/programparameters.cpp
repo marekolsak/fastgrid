@@ -51,7 +51,8 @@
     #define CUDA_STATUS ST_DISABLED
 #endif
 
-ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), benchmark(false), nns(true), cutoffGrid(true), cuda(true), cudaUnroll(true)
+ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), benchmark(false), nns(true),
+    cutoffGrid(true), cuda(true), cudaUnroll(true), cudaThread(true)
 {
     programName[0] = 0;
     gridParameterFilename[0] = 0;
@@ -65,62 +66,59 @@ void ProgramParameters::parse(int argc, char **argv)
     strncpy(programName, argv[0], MAX_CHARS);
 
     // Loop over arguments
-    while(argc > 1)
+    while (argc > 1)
     {
-        if      (strncmp(argv[1], "-u", 2) == 0 ||
-                 strncmp(argv[1], "--help", 6) == 0)
+        if      (strcmp(argv[1], "-u") == 0 ||
+                 strcmp(argv[1], "--help") == 0)
         {
             fprintf(stderr, "Usage: %s [OPTIONS]\n"
                             "\n"
                             "Stream control:\n"
-                            "  -p FILE           read grid parameters from FILE\n"
                             "  -l FILE           log to FILE\n"
+                            "  -p FILE           read grid parameters from FILE\n"
                             "\n"
                             "Miscellaneous:\n"
-                            "  -u, --help        display this help and exit\n"
-                            "  -d, --debug       print additional debug information\n"
                             "      --benchmark   print execution times to standard error output\n"
-                            "      --no-nns      disable the nearest-neighbor-search optimization\n"
-                            "      --no-cogrid   disable the cutoff-grid optimization\n"
+                            "  -d, --debug       print additional debug information\n"
+                            "  -u, --help        display this help and exit\n"
                             "      --omp N       set OpenMP to use N threads at most" OMP_IGNORED "\n"
-                            "      --no-cuda     disable CUDA, use the CPU codepath instead" CUDA_IGNORED "\n"
                             "      --cuda-enum   enumerate all CUDA devices and exit" CUDA_IGNORED "\n"
                             "      --cuda-dev N  use a CUDA device number N (default: 0)" CUDA_IGNORED "\n"
+                            "      --no-cuda     disable CUDA, use the CPU codepath instead" CUDA_IGNORED "\n"
+                            "\n"
+                            "Advanced:\n"
+                            "      --no-nns      disable the nearest-neighbor-search optimization\n"
+                            "      --no-cogrid   disable the cutoff-grid optimization\n"
                             "      --cuda-no-unroll  this may increase performance for small gridmaps" CUDA_IGNORED "\n"
+                            "      --no-cuda-thread  disable running a CUDA context in a separate thread" CUDA_IGNORED "\n"
                             "\n"
                             "Compiled with OpenMP " OMP_STATUS ".\n"
                             "Compiled with CUDA " CUDA_STATUS ".\n"
                             "\n", programName);
             throw ExitProgram(0);
         }
-        else if (strncmp(argv[1], "-d", 2) == 0 ||
-                 strncmp(argv[1], "--debug", 7) == 0)
+        else if (strcmp(argv[1], "-d") == 0 ||
+                 strcmp(argv[1], "--debug") == 0)
             ++debug;
-        else if (strncmp(argv[1], "-l", 2) == 0)
+        else if (strcmp(argv[1], "-l") == 0)
         {
             strncpy(logFilename, argv[2], MAX_CHARS);
             ++argv;
             --argc;
         }
-        else if (strncmp(argv[1], "-p", 2) == 0)
+        else if (strcmp(argv[1], "-p") == 0)
         {
             strncpy(gridParameterFilename, argv[2], MAX_CHARS);
             ++argv;
             --argc;
         }
-        else if (strncmp(argv[1], "--benchmark", 11) == 0)
-        {
+        else if (strcmp(argv[1], "--benchmark") == 0)
             benchmark = true;
-        }
-        else if (strncmp(argv[1], "--no-nns", 8) == 0)
-        {
+        else if (strcmp(argv[1], "--no-nns") == 0)
             nns = false;
-        }
-        else if (strncmp(argv[1], "--no-cogrid", 11) == 0)
-        {
+        else if (strcmp(argv[1], "--no-cogrid") == 0)
             cutoffGrid = false;
-        }
-        else if (strncmp(argv[1], "--omp", 5) == 0)
+        else if (strcmp(argv[1], "--omp") == 0)
         {
 #if defined(AG_OPENMP)
             int n;
@@ -135,11 +133,9 @@ void ProgramParameters::parse(int argc, char **argv)
             ++argv;
             --argc;
         }
-        else if (strncmp(argv[1], "--no-cuda", 9) == 0)
-        {
+        else if (strcmp(argv[1], "--no-cuda") == 0)
             cuda = false;
-        }
-        else if (strncmp(argv[1], "--cuda-enum", 11) == 0)
+        else if (strcmp(argv[1], "--cuda-enum") == 0)
         {
 #if defined(AG_CUDA)
             // Get a device count
@@ -162,9 +158,8 @@ void ProgramParameters::parse(int argc, char **argv)
 #endif
             throw ExitProgram(0);
         }
-        else if (strncmp(argv[1], "--cuda-dev", 10) == 0)
+        else if (strcmp(argv[1], "--cuda-dev") == 0)
         {
-#if defined(AG_CUDA)
             int n;
             if (sscanf(argv[2], "%i", &n) == 1)
                 deviceID = n;
@@ -173,16 +168,13 @@ void ProgramParameters::parse(int argc, char **argv)
                 fprintf(stderr, "%s: '%s' is not a number\n", programName, argv[2]);
                 throw ExitProgram(1);
             }
-#endif
             ++argv;
             --argc;
         }
-        else if (strncmp(argv[1], "--cuda-no-unroll", 16) == 0)
-        {
-#if defined(AG_CUDA)
+        else if (strcmp(argv[1], "--cuda-no-unroll") == 0)
             cudaUnroll = false;
-#endif
-        }
+        else if (strcmp(argv[1], "--no-cuda-thread") == 0)
+            cudaThread = false;
         else
         {
             fprintf(stderr, "%s: unknown switch '%s'\n", programName, argv[1]);

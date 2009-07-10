@@ -377,17 +377,18 @@ private:
 void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
 {
     if (programParams.useCUDA())
-    {
-        // Create and run the thread
-        CudaThread *thread = new CudaThread(input, programParams, elecMap);
-        thread->start();
-        return thread;
-    }
+        if (programParams.useCUDAThread())
+        {
+            // Create and start the thread
+            CudaThread *thread = new CudaThread(input, programParams, elecMap);
+            thread->start();
+            return thread;
+        }
+        else
+            calculateElectrostaticMapCUDA(input, programParams, elecMap);
     else
-    {
         calculateElectrostaticMapCPU(input, programParams, elecMap);
-        return 0;
-    }
+    return 0;
 }
 
 void synchronizeCalculation(void *handle)

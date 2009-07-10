@@ -37,6 +37,7 @@ public:
     bool useNNS() const                             { return nns; }
     bool useCutoffGrid() const                      { return cutoffGrid; }
     bool useCUDA() const                            { return cuda; }
+    bool useCUDAThread() const                      { return cudaThread; }
     bool unrollLoopCUDA() const                     { return cudaUnroll; }
     int getDeviceID() const                         { return deviceID; }
 
@@ -45,7 +46,7 @@ private:
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
     int debug, deviceID;
-    bool benchmark, nns, cutoffGrid, cuda, cudaUnroll;
+    bool benchmark, nns, cutoffGrid, cuda, cudaUnroll, cudaThread;
 
     void parse(int argc, char **argv);
 };
