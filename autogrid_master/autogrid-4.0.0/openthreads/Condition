@@ -78,12 +78,12 @@ private:
     /**
      *  Private copy constructor, to prevent tampering.
      */
-    Condition(const Condition &c) {};
+    Condition(const Condition &) {};
 
     /**
      *  Private copy assignment, to prevent tampering.
      */
-    Condition &operator=(const Condition &c) {return *(this);};
+    Condition &operator=(const Condition &) {return *(this);};
 
     /**
      *  Implementation-specific data

@@ -67,12 +67,12 @@ private:
     /**
      *  Private copy constructor, to prevent tampering.
      */
-    Barrier(const Barrier &b) {};
+    Barrier(const Barrier &) {};
 
     /**
      *  Private copy assignment, to prevent tampering.
      */
-    Barrier &operator=(const Barrier &b) {return *(this);};
+    Barrier &operator=(const Barrier &) {return *(this);};
 
     /**
      *  Implementation-specific private data.

@@ -24,6 +24,10 @@
 //		Changed names LO, HI to ANN_LO, ANN_HI
 //----------------------------------------------------------------------
 
+#if defined(_MSC_VER)
+    #pragma warning (disable: 4127)
+#endif
+
 #include "kd_search.h"					// kd-search declarations
 
 //----------------------------------------------------------------------
@@ -169,7 +173,7 @@ void ANNkd_split::ann_search(ANNdist box_dist)
 //		some fine tuning to replace indexing by pointer operations.
 //----------------------------------------------------------------------
 
-void ANNkd_leaf::ann_search(ANNdist box_dist)
+void ANNkd_leaf::ann_search(ANNdist)
 {
 	register ANNdist dist;				// distance to data point
 	register ANNcoord* pp;				// data coordinate pointer

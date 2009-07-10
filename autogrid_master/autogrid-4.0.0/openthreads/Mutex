@@ -74,12 +74,12 @@ private:
     /**
      *  Private copy constructor, to prevent tampering.
      */
-    Mutex(const Mutex &m) {};
+    Mutex(const Mutex &) {};
 
     /**
      *  Private copy assignment, to prevent tampering.
      */
-    Mutex &operator=(const Mutex &m) {return *(this);};
+    Mutex &operator=(const Mutex &) {return *(this);};
 
     /**
      *  Implementation-specific private data.

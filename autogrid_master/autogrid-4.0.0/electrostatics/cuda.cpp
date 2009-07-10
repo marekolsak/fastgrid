@@ -87,44 +87,15 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     if (programParams.unrollLoopCUDA())
     {
         numGridPointsPerKernel = 4;
-
         if (input->distDepDiel)
-        {
-#if DDD_PROFILE == DDD_GLOBALMEM
             dimBlock = dim3(16, 16);
-#elif DDD_PROFILE == DDD_TEXTUREMEM
-            dimBlock = dim3(16, 16);
-#elif DDD_PROFILE == DDD_INPLACE
-            dimBlock = dim3(16, 16);
-#elif DDD_PROFILE == DDD_CONSTMEM
-            dimBlock = dim3(16, 16);
-#else
-            Error?
-#endif
-        }
         else
             dimBlock = dim3(16, 4);
     }
     else
     {
         numGridPointsPerKernel = 1;
-
-        if (input->distDepDiel)
-        {
-#if DDD_PROFILE == DDD_GLOBALMEM
-            dimBlock = dim3(16, 24);
-#elif DDD_PROFILE == DDD_TEXTUREMEM
-            dimBlock = dim3(16, 24);
-#elif DDD_PROFILE == DDD_INPLACE
-            dimBlock = dim3(16, 24);
-#elif DDD_PROFILE == DDD_CONSTMEM
-            dimBlock = dim3(16, 24);
-#else
-            Error?
-#endif
-        }
-        else
-            dimBlock = dim3(16, 24);
+        dimBlock = dim3(16, 24);
     }
 
     // Pad/align the grid to a size of the grid block
@@ -150,18 +121,15 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
     // Allocate the lookup table for distance-dependent dielectric
     float *epsilonDevice = 0;
-#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM) || (DDD_PROFILE == DDD_TEXTUREMEM)
-    float *epsilonHost = 0;
+#if DDD_PROFILE == DDD_TEXTUREMEM
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-    cudaArray *epsilonArray;
+    float *epsilonHost = 0;
+    cudaArray *epsilonArray = 0;
     if (input->distDepDiel)
     {
-    #if DDD_PROFILE == DDD_GLOBALMEM
-        CUDA_SAFE_CALL(cudaMalloc((void**)&epsilonDevice, sizeof(float) * MAX_DIST));
-    #elif DDD_PROFILE == DDD_TEXTUREMEM
-        // Allocate the texture for distance-dependent dielectric
+        // Allocate the texture for distance-dependent dielectric on the GPU...
         CUDA_SAFE_CALL(cudaMallocArray(&epsilonArray, &channelDesc, MAX_DIST, 1));
-    #endif
+        // ... and in page-locked system memory
         CUDA_SAFE_CALL(cudaMallocHost((void**)&epsilonHost, sizeof(float) * MAX_DIST));
     }
 #endif
@@ -170,19 +138,15 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     // Elements in the area of padding will stay uninitialized
     myCudaCopyGridMapPaddedAsync(energiesDevice, numGridPointsPadded, energiesHost, input->numGridPoints, cudaMemcpyHostToDevice, stream);
 
-#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM) || (DDD_PROFILE == DDD_TEXTUREMEM)
+#if DDD_PROFILE == DDD_TEXTUREMEM
     if (input->distDepDiel)
     {
-        // Convert doubles to floats
+        // Convert doubles to floats and save them to page-locked system memory
         std::transform(input->epsilon, input->epsilon + MAX_DIST, epsilonHost, typecast<float, double>);
 
-    #if DDD_PROFILE == DDD_GLOBALMEM
-        // Copy the epsilon table to global memory
-        CUDA_SAFE_CALL(cudaMemcpyAsync(epsilonDevice, epsilonHost, sizeof(float) * MAX_DIST, cudaMemcpyHostToDevice, stream));
-    #elif DDD_PROFILE == DDD_TEXTUREMEM
+        // Copy floats from the page-locked memory to the GPU
         CUDA_SAFE_CALL(cudaMemcpyToArrayAsync(epsilonArray, 0, 0, epsilonHost, sizeof(float) * MAX_DIST, cudaMemcpyHostToDevice, stream));
         setEpsilonTexture(epsilonArray, &channelDesc);
-    #endif
     }
 #endif
 
@@ -199,9 +163,6 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     params->gridSpacing = float(input->gridSpacing);
     params->gridSpacingCoalesced = params->gridSpacing * 16;
     params->epsilonParam = epsilonDevice;
-#if DDD_PROFILE == DDD_CONSTMEM
-    params->epsilonParam = epsilonHost;
-#endif
     params->energiesDevice = energiesDevice;
     params->numGridPointsDiv2XY = make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y);
     setGridMapParametersAsyncCUDA(&params->numGridPointsPaddedX, &params->numGridPointsDiv2XY, &params->gridSpacing, &params->gridSpacingCoalesced,
@@ -314,15 +275,11 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         CUDA_SAFE_CALL(cudaEventDestroy(end));
     }
 
-#if (DDD_PROFILE == DDD_GLOBALMEM) || (DDD_PROFILE == DDD_CONSTMEM) || (DDD_PROFILE == DDD_TEXTUREMEM)
+#if DDD_PROFILE == DDD_TEXTUREMEM
     if (input->distDepDiel)
     {
         // Free the epsilon tables
-    #if DDD_PROFILE == DDD_GLOBALMEM
-        CUDA_SAFE_CALL(cudaFree(epsilonDevice));
-    #elif DDD_PROFILE == DDD_TEXTUREMEM
         CUDA_SAFE_CALL(cudaFreeArray(epsilonArray));
-    #endif
         CUDA_SAFE_CALL(cudaFreeHost(epsilonHost));
     }
 #endif

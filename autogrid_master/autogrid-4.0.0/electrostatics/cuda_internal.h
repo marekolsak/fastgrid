@@ -26,25 +26,16 @@
 #include <cuda_runtime_api.h>
 #include <vector_functions.h>
 
+#define DDD_TEXTUREMEM  1
+#define DDD_INPLACE     2
 
-#define DDD_GLOBALMEM   1
-#define DDD_TEXTUREMEM  2
-#define DDD_INPLACE     3
-#define DDD_CONSTMEM    4
-
-//#define DDD_PROFILE DDD_GLOBALMEM
 #define DDD_PROFILE DDD_TEXTUREMEM
 //#define DDD_PROFILE DDD_INPLACE
-//#define DDD_PROFILE DDD_CONSTMEM
 
 // Define a number of atoms per kernel
-#if DDD_PROFILE == DDD_CONSTMEM
-    #define NUM_ATOMS_PER_KERNEL 2000
-#else
-    #define NUM_ATOMS_PER_KERNEL 4000
-#endif
+#define NUM_ATOMS_PER_KERNEL 4000
 
-
+// Functions
 void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY,
                                    const float *gridSpacing, const float *gridSpacingCoalesced,
                                    float **epsilon, float **outEnergies, cudaStream_t stream);

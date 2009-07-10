@@ -24,6 +24,10 @@
 //		Added fixed-radius kNN search
 //----------------------------------------------------------------------
 
+#if defined(_MSC_VER)
+    #pragma warning (disable: 4127)
+#endif
+
 #include "../ANNx.h"					// all ANN includes
 #include "pr_queue_k.h"					// k element priority queue
 
@@ -56,7 +60,7 @@ void ANNbruteForce::annkSearch(			// approx k near neighbor search
 	int					k,				// number of near neighbors to return
 	ANNidxArray			nn_idx,			// nearest neighbor indices (returned)
 	ANNdistArray		dd,				// dist to near neighbors (returned)
-	double				eps)			// error bound (ignored)
+	double				   )			// error bound (ignored)
 {
 	ANNmin_k mk(k);						// construct a k-limited priority queue
 	int i;
@@ -83,7 +87,7 @@ int ANNbruteForce::annkFRSearch(		// approx fixed-radius kNN search
 	int					k,				// number of near neighbors to return
 	ANNidxArray			nn_idx,			// nearest neighbor array (returned)
 	ANNdistArray		dd,				// dist to near neighbors (returned)
-	double				eps)			// error bound
+	double				   )			// error bound
 {
 	ANNmin_k mk(k);						// construct a k-limited priority queue
 	int i;

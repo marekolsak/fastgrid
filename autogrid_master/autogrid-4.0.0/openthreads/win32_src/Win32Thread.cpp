@@ -89,7 +89,7 @@ namespace OpenThreads {
 		//-------------------------------------------------------------------------
 		// Print information related to thread schduling parameters.
 		//
-		static void PrintThreadSchedulingInfo(Thread *thread) {
+		static void PrintThreadSchedulingInfo(Thread *) {
 			// NO-OP
 		}
 
