@@ -26,7 +26,7 @@
 #if !defined(_WIN32)
     #include <unistd.h>
     #include <cstdio>
-    #include "exceptions.h"
+    #include "Exceptions.h"
 #endif
 
 int getClocksPerSec()

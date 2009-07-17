@@ -41,19 +41,19 @@ SET(AUTOGRID_SOURCES
     ./openthreads/pthread_src/PThreadMutex.c++
 
     ./times.cpp
-    ./desolvexpfunc.cpp
-    ./inputdataloader.cpp
-    ./parameterlibrary.cpp
-    ./pairwiseinteractionenergies.cpp
+    ./DesolvExpFunc.cpp
+    ./InputDataLoader.cpp
+    ./ParameterLibrary.cpp
+    ./PairwiseInteractionEnergies.cpp
     ./main.cpp
-    ./bondvectors.cpp
-    ./logfile.cpp
-    ./calculategridmaps.cpp
-    ./programparameters.cpp
-    ./utils.cpp
-    ./gridmap.cpp
+    ./BondVectors.cpp
+    ./LogFile.cpp
+    ./CalculateGridmaps.cpp
+    ./ProgramParameters.cpp
+    ./Utils.cpp
+    ./GridMap.cpp
 
-    ./electrostatics/cpu.cpp
+    ./electrostatics/Cpu.cpp
 )
 
 ADD_DEFINITIONS(-DLinux)
@@ -75,8 +75,12 @@ FIND_PACKAGE(CUDA)
     SET(AUTOGRID_SOURCES
         ${AUTOGRID_SOURCES}
 
-        ./electrostatics/cuda.cpp
-        ./electrostatics/cuda_internal.cu
+        ./electrostatics/Cuda.cpp
+        ./electrostatics/Cuda_internal.cu
+        ./electrostatics/CudaConstantMemory.cpp
+        ./electrostatics/CudaEvents.cpp
+        ./electrostatics/CudaFloatTexture1D.cpp
+        ./electrostatics/CudaGridMap.cpp
     )
 
     CUDA_ADD_EXECUTABLE(autogrid4 ${AUTOGRID_SOURCES})

@@ -55,7 +55,7 @@
     #if defined(AG_OPENMP)
         #include <omp.h>
     #endif
-    #include "math.h"
+    #include "Math.h"
 
     // These options needs to be specified in the command-line arguments of your
     // compiler (G++, CMake) or in the project settings (VC++):
