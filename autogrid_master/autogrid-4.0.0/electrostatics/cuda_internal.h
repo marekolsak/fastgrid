@@ -25,28 +25,28 @@
 #pragma once
 #include <cuda_runtime_api.h>
 #include <vector_functions.h>
-
-#define DDD_TEXTUREMEM  1
-#define DDD_INPLACE     2
-
-#define DDD_PROFILE DDD_TEXTUREMEM
-//#define DDD_PROFILE DDD_INPLACE
+#include "cudautils.h"
 
 // Define a number of atoms per kernel
-#define NUM_ATOMS_PER_KERNEL 4000
+#define NUM_ATOMS_PER_KERNEL                4000
+#define NUM_ATOMS_PER_KERNEL_DDD_CONSTMEM   2000
+
+typedef __global__ void (*KernelProc)();
 
 // Functions
-void setGridMapParametersAsyncCUDA(const int *numGridPointsX, const int2 *numGridPointsDiv2XY,
-                                   const float *gridSpacing, const float *gridSpacingCoalesced,
-                                   float **epsilon, float **outEnergies, cudaStream_t stream);
-void setEpsilonTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
-void setGridMapSliceParametersAsyncCUDA(const int *outputIndexZBase, cudaStream_t stream);
-void setGridMapKernelParametersAsyncCUDA(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
-void callKernelAsyncCUDA(const dim3 &grid, const dim3 &block, bool unrollLoop, bool distDepDiel, cudaStream_t stream);
+void ciSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
+                                 const float *gridSpacing, const float *gridSpacingCoalesced,
+                                 float **deviceEnergies, cudaStream_t stream);
+void ciSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
+void ciSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream);
+void ciSetGridMapKernelParametersAsync(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
+
+KernelProc ciGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSlicesSeparately, bool unrollLoop);
+void ciCallKernelAsync(KernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define CUDA_SAFE_CALL(call) checkErrorCUDA((call), __FILE__, __LINE__, __FUNCTION__, #call)
-#define CUDA_SAFE_KERNEL(call) checkErrorCUDA(((call), cudaGetLastError()), __FILE__, __LINE__, __FUNCTION__, #call)
+#define CUDA_SAFE_CALL(call) ciCheckError((call), __FILE__, __LINE__, __FUNCTION__, #call)
+#define CUDA_SAFE_KERNEL(call) ciCheckError(((call), cudaGetLastError()), __FILE__, __LINE__, __FUNCTION__, #call)
 
-void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code);
+void ciCheckError(cudaError e, const char *file, int line, const char *func, const char *code);

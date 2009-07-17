@@ -24,279 +24,140 @@
 
 #if defined(AG_CUDA)
 #include "electrostatics.h"
-#include "cuda_internal.h"
+#include "cudaevents.h"
+#include "cudagridmap.h"
+#include "cudafloattexture1d.h"
+#include "cudaconstantmemory.h"
 #include "../exceptions.h"
 #include "../openthreads/Thread"
 #include <algorithm>
-#include <cstring>
 
-template<typename TDst, typename TSrc>
-static TDst typecast(TSrc a)
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void setupSliceThreadBlocks(int numThreads, int numGridPointsPerThread, const Vec3i &numGridPoints,
+                                   Vec3i *numGridPointsPadded, dim3 *dimGrid, dim3 *dimBlock)
 {
-    return TDst(a);
+    if (numThreads % 16 != 0)
+        throw ExitProgram(0xbad);
+
+    // One slice at a time
+    dimBlock->x = 16;
+    dimBlock->y = numThreads / dimBlock->x;
+
+    // Pad/align the grid to a size of the grid block
+    numGridPointsPadded->x = align(numGridPoints.x, dimBlock->x * numGridPointsPerThread);
+    numGridPointsPadded->y = align(numGridPoints.y, dimBlock->y);
+    numGridPointsPadded->z = numGridPoints.z;
+    dimGrid->x = numGridPointsPadded->x / (dimBlock->x * numGridPointsPerThread);
+    dimGrid->y = numGridPointsPadded->y / dimBlock->y;
 }
 
-void myCudaCopyGridMapPaddedAsync(float *dst, const Vec3i &numGridPointsDst, const float *src, const Vec3i &numGridPointsSrc, cudaMemcpyKind kind, cudaStream_t stream)
+static void setupGridThreadBlocks(int numThreads, int numGridPointsPerThread, const Vec3i &numGridPoints,
+                                  Vec3i *numGridPointsPadded, dim3 *dimGrid, dim3 *dimBlock)
 {
-    Vec3i numGridPointsMin = Vec3i(Mathi::Min(numGridPointsDst.x, numGridPointsSrc.x),
-                                   Mathi::Min(numGridPointsDst.y, numGridPointsSrc.y),
-                                   Mathi::Min(numGridPointsDst.z, numGridPointsSrc.z));
-    int numGridPointsDstXMulY = numGridPointsDst.x*numGridPointsDst.y;
-    int numGridPointsSrcXMulY = numGridPointsSrc.x*numGridPointsSrc.y;
-
-    for (int z = 0; z < numGridPointsMin.z; z++)
-    {
-        // Set the base of output indices from z
-        int outputIndexZBaseDst = z * numGridPointsDstXMulY;
-        int outputIndexZBaseSrc = z * numGridPointsSrcXMulY;
-
-        for (int y = 0; y < numGridPointsMin.y; y++)
-        {
-            // Set the base of output indices from (z,y)
-            int outputIndexZYBaseDst = outputIndexZBaseDst + y * numGridPointsDst.x;
-            int outputIndexZYBaseSrc = outputIndexZBaseSrc + y * numGridPointsSrc.x;
-
-            // Copy one row in axis X
-            CUDA_SAFE_CALL(cudaMemcpyAsync(dst + outputIndexZYBaseDst, src + outputIndexZYBaseSrc, sizeof(float) * numGridPointsMin.x, kind, stream));
-        }
-    }
+    setupSliceThreadBlocks(numThreads, numGridPointsPerThread, numGridPoints, numGridPointsPadded, dimGrid, dimBlock);
+    dimGrid->x *= numGridPointsPadded->z;
 }
 
-static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, KernelProc kernelProc,
+                       const dim3 &dimGrid, const dim3 &dimBlock, cudaStream_t stream)
 {
-    // Set a device
-    CUDA_SAFE_CALL(cudaSetDevice(programParams.getDeviceID()));
+    constMem.setAtomConstMem(atomSubsetIndex); // Move atoms to the constant memory
 
-    // Create a CUDA stream
-    cudaStream_t stream = 0;
+    // Calculate the entire grid for the given subset of atoms
+    ciCallKernelAsync(kernelProc, dimGrid, dimBlock, stream);
+}
+
+static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)
+{
+    cudaStream_t stream;
+
+    CUDA_SAFE_CALL(cudaSetDevice(programParams->getDeviceIDCUDA()));
     CUDA_SAFE_CALL(cudaStreamCreate(&stream));
+    CudaEvents events(programParams->benchmarkEnabled(), stream);
 
-    // Create CUDA events
-    cudaEvent_t init = 0, calc = 0, finalize = 0, end = 0;
-    if (programParams.benchmarkEnabled())
+    // Determine a number of threads per block and a number of grid points calculated in each thread
+    int numThreads;
+    int numGridPointsPerThread;
+    if (programParams->unrollLoopCUDA())
     {
-        CUDA_SAFE_CALL(cudaEventCreate(&init));
-        CUDA_SAFE_CALL(cudaEventCreate(&calc));
-        CUDA_SAFE_CALL(cudaEventCreate(&finalize));
-        CUDA_SAFE_CALL(cudaEventCreate(&end));
-    }
-
-    // Determine the block size
-    int numGridPointsPerKernel;
-    dim3 dimBlock;
-    if (programParams.unrollLoopCUDA())
-    {
-        numGridPointsPerKernel = 4;
-        if (input->distDepDiel)
-            dimBlock = dim3(16, 16);
-        else
-            dimBlock = dim3(16, 4);
+        numThreads = input->distDepDiel ? 16*16 : 16*4;
+        numGridPointsPerThread = 4;
     }
     else
     {
-        numGridPointsPerKernel = 1;
-        dimBlock = dim3(16, 24);
+        numThreads = 16*24;
+        numGridPointsPerThread = 1;
     }
 
-    // Pad/align the grid to a size of the grid block
-    Vec3i numGridPointsPadded(align(input->numGridPoints.x, dimBlock.x * numGridPointsPerKernel),
-                              align(input->numGridPoints.y, dimBlock.y),
-                              input->numGridPoints.z);
-    int numGridPointsPerMapPadded = numGridPointsPadded.Cube();
-    dim3 dimGrid(numGridPointsPadded.x / (dimBlock.x * numGridPointsPerKernel),
-                 numGridPointsPadded.y / dimBlock.y);
+    // Calculate the size of the padded grid and determine dimensions of thread blocks and the overall thread grid
+    Vec3i numGridPointsPadded;
+    dim3 dimGrid, dimBlock;
+    if (programParams->calcSlicesSeparatelyCUDA())
+        setupSliceThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
+                               &numGridPointsPadded, &dimGrid, &dimBlock);
+    else
+        setupGridThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
+                              &numGridPointsPadded, &dimGrid, &dimBlock);
 
-    // Record the init event
-    if (programParams.benchmarkEnabled())
-        CUDA_SAFE_CALL(cudaEventRecord(init, stream));
+    events.recordInitialization();
 
-    // Allocate the padded grid in global memory
-    float *energiesDevice = 0;
-    CUDA_SAFE_CALL(cudaMalloc((void**)&energiesDevice, sizeof(float) * numGridPointsPerMapPadded));
+    // Create a padded gridmap on the GPU
+    CudaGridMap grid(input->numGridPoints, numGridPointsPadded, elecMap->energies, stream);
 
-    // Convert doubles to floats and save them in page-locked memory
-    float *energiesHost = 0;
-    CUDA_SAFE_CALL(cudaMallocHost((void**)&energiesHost, sizeof(float) *input->numGridPointsPerMap));
-    std::transform(elecMap.energies, elecMap.energies + input->numGridPointsPerMap, energiesHost, typecast<float, double>);
+    // Create a texture for distance-dependent dielectric
+    CudaFloatTexture1D *texture = 0;
+    if (input->distDepDiel && programParams->getDDDKindCUDA() == DistanceDependentDiel_TextureMem)
+        texture = new CudaFloatTexture1D(MAX_DIST, input->epsilon, BindToKernel, stream);
 
-    // Allocate the lookup table for distance-dependent dielectric
-    float *epsilonDevice = 0;
-#if DDD_PROFILE == DDD_TEXTUREMEM
-    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-    float *epsilonHost = 0;
-    cudaArray *epsilonArray = 0;
-    if (input->distDepDiel)
-    {
-        // Allocate the texture for distance-dependent dielectric on the GPU...
-        CUDA_SAFE_CALL(cudaMallocArray(&epsilonArray, &channelDesc, MAX_DIST, 1));
-        // ... and in page-locked system memory
-        CUDA_SAFE_CALL(cudaMallocHost((void**)&epsilonHost, sizeof(float) * MAX_DIST));
-    }
-#endif
+    // This makes use of constant memory easier
+    CudaConstantMemory constMem(stream);
+    constMem.setGridMapParameters(input->numGridPointsDiv2, input->gridSpacing,
+                                  numGridPointsPadded, grid.getEnergiesDevicePtr());
 
-    // Copy the initial energies from the original grid to the padded one in global memory
-    // Elements in the area of padding will stay uninitialized
-    myCudaCopyGridMapPaddedAsync(energiesDevice, numGridPointsPadded, energiesHost, input->numGridPoints, cudaMemcpyHostToDevice, stream);
+    KernelProc kernelProc = ciGetKernelProc(input->distDepDiel, programParams->getDDDKindCUDA(),
+                                            programParams->calcSlicesSeparatelyCUDA(),
+                                            programParams->unrollLoopCUDA());
 
-#if DDD_PROFILE == DDD_TEXTUREMEM
-    if (input->distDepDiel)
-    {
-        // Convert doubles to floats and save them to page-locked system memory
-        std::transform(input->epsilon, input->epsilon + MAX_DIST, epsilonHost, typecast<float, double>);
-
-        // Copy floats from the page-locked memory to the GPU
-        CUDA_SAFE_CALL(cudaMemcpyToArrayAsync(epsilonArray, 0, 0, epsilonHost, sizeof(float) * MAX_DIST, cudaMemcpyHostToDevice, stream));
-        setEpsilonTexture(epsilonArray, &channelDesc);
-    }
-#endif
-
-    // Set some variables in constant memory
-    struct Params
-    {
-        float gridSpacing, gridSpacingCoalesced;
-        float *epsilonParam, *energiesDevice;
-        int2 numGridPointsDiv2XY;
-        int numGridPointsPaddedX;
-    } *params;
-    CUDA_SAFE_CALL(cudaMallocHost((void**)&params, sizeof(Params)));
-    params->numGridPointsPaddedX = numGridPointsPadded.x;
-    params->gridSpacing = float(input->gridSpacing);
-    params->gridSpacingCoalesced = params->gridSpacing * 16;
-    params->epsilonParam = epsilonDevice;
-    params->energiesDevice = energiesDevice;
-    params->numGridPointsDiv2XY = make_int2(input->numGridPointsDiv2.x, input->numGridPointsDiv2.y);
-    setGridMapParametersAsyncCUDA(&params->numGridPointsPaddedX, &params->numGridPointsDiv2XY, &params->gridSpacing, &params->gridSpacingCoalesced,
-                                  &params->epsilonParam, &params->energiesDevice, stream);
-
-    // The number of subsets we divide atoms into. Each kernel invocation contains only a subset of atoms,
+    // The number of subsets we divide atoms into. Each kernel execution contains only a subset of atoms,
     // which is limited by the size of constant memory.
-    int numAtomSubsets = (input->numReceptorAtoms - 1) / NUM_ATOMS_PER_KERNEL + 1;
+    int numAtomsPerKernel = programParams->getDDDKindCUDA() == DistanceDependentDiel_ConstMem ?
+                            NUM_ATOMS_PER_KERNEL_DDD_CONSTMEM : NUM_ATOMS_PER_KERNEL;
+    int numAtomSubsets = (input->numReceptorAtoms - 1) / numAtomsPerKernel + 1;
 
-    // Reserve memory for each output index of a slice. We can't pass stack pointers to functions since the calls are asynchronous.
-    int *outputIndexZBase;
-    CUDA_SAFE_CALL(cudaMallocHost((void**)&outputIndexZBase, sizeof(int) * input->numGridPoints.z));
+    // Initialize storage for atoms in page-locked system memory
+    constMem.initAtoms(numAtomsPerKernel, numAtomSubsets, programParams->calcSlicesSeparatelyCUDA(),
+                       input->receptorAtom, input->numReceptorAtoms);
 
-    // Reserve memory for each kernel invocation. The same reason as above.
-    struct AtomConstMem
-    {
-        int numAtoms;
-        float4 atoms[NUM_ATOMS_PER_KERNEL];
+    events.recordStartCalculation();
 
-    } *atomConstMem;
-    CUDA_SAFE_CALL(cudaMallocHost((void**)&atomConstMem, sizeof(AtomConstMem) * input->numGridPoints.z * numAtomSubsets));
-
-    // Precalculate X*Y
-    int numGridPointsPaddedXMulY = numGridPointsPadded.x*numGridPointsPadded.y;
-
-    // Record the calc event
-    if (programParams.benchmarkEnabled())
-        CUDA_SAFE_CALL(cudaEventRecord(calc, stream));
-
-    // For each Z
-    for (int z = 0; z < input->numGridPoints.z; z++)
-    {
-        // Set the base of output index
-        int *outputIndexZBasePtr = outputIndexZBase + z;
-        *outputIndexZBasePtr = z * numGridPointsPaddedXMulY;
-        setGridMapSliceParametersAsyncCUDA(outputIndexZBasePtr, stream);
-
-        // Calculate the Z coord of this grid point
-        double gridPosZ = (z - input->numGridPointsDiv2.z) * params->gridSpacing;
-
-        // Set the pointer to memory of this slice
-        AtomConstMem *atomConstMemZBase = atomConstMem + z * numAtomSubsets;
-
-        // For each subset NUM_ATOMS_PER_KERNEL long
-        for (int iaStart = 0, i = 0; iaStart < input->numReceptorAtoms; iaStart += NUM_ATOMS_PER_KERNEL, i++)
+    // Do the gridmap calculation...
+    if (programParams->calcSlicesSeparatelyCUDA())
+        // For each Z
+        for (int z = 0; z < input->numGridPoints.z; z++)
         {
-            int numAtoms = Mathi::Min(input->numReceptorAtoms - iaStart, NUM_ATOMS_PER_KERNEL);
-
-            AtomConstMem &thisAtomConstMem = atomConstMemZBase[i];
-            thisAtomConstMem.numAtoms = numAtoms;
-
-            // For each atom in the subset
-            for (int ia = 0; ia < numAtoms; ia++)
-            {
-                const Vec4d &atom = input->receptorAtom[iaStart + ia];
-
-                // Copy X, Y and the charge, precalculate distanceZ^2
-                thisAtomConstMem.atoms[ia].x = float(atom.x);
-                thisAtomConstMem.atoms[ia].y = float(atom.y);
-                thisAtomConstMem.atoms[ia].z = float(Mathd::Sqr(atom.z - gridPosZ)); // Precalculate (Z - gridPosZ)^2
-                thisAtomConstMem.atoms[ia].w = float(atom.w);
-            }
-
-            // Move atoms to the constant memory
-            setGridMapKernelParametersAsyncCUDA(&thisAtomConstMem.numAtoms, thisAtomConstMem.atoms, stream);
-
-            // Calculate the slice of the grid for the given subset of atoms
-            callKernelAsyncCUDA(dimGrid, dimBlock, programParams.unrollLoopCUDA(), input->distDepDiel, stream);
+            constMem.setZSlice(z);
+            for (int i = 0; i < numAtomSubsets; i++)
+                callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream);
         }
-    }
+    else // !calcSlicesSeparately
+        for (int i = 0; i < numAtomSubsets; i++)
+            callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream);
 
-    // Record the finalize event
-    if (programParams.benchmarkEnabled())
-        CUDA_SAFE_CALL(cudaEventRecord(finalize, stream));
-
-    // Copy output energies from the device to the host
-    myCudaCopyGridMapPaddedAsync(energiesHost, input->numGridPoints, energiesDevice, numGridPointsPadded, cudaMemcpyDeviceToHost, stream);
-
-    // Record the end event, synchronize
-    if (programParams.benchmarkEnabled())
-        CUDA_SAFE_CALL(cudaEventRecord(end, stream));
+    // Finalize
+    events.recordEndCalculation();
+    grid.copyFromDeviceToHost();
+    events.recordFinalization();
     CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+    events.printTimes(input, numGridPointsPadded.Cube());
+    grid.readFromHost(elecMap->energies);
 
-    // Convert floats to doubles and save them in the elecMap object
-    std::transform(energiesHost, energiesHost + input->numGridPointsPerMap, elecMap.energies, typecast<double, float>);
+    delete texture;
 
-    // Calculate and print times
-    if (programParams.benchmarkEnabled())
-    {
-        float initTime, calcTime, finalizeTime;
-        CUDA_SAFE_CALL(cudaEventElapsedTime(&initTime,     init,     calc));
-        CUDA_SAFE_CALL(cudaEventElapsedTime(&calcTime,     calc,     finalize));
-        CUDA_SAFE_CALL(cudaEventElapsedTime(&finalizeTime, finalize, end));
-        double seconds = double(calcTime) / 1000;
-        double atoms = input->numReceptorAtoms * double(input->numGridPointsPerMap);
-        double atomsPadded = input->numReceptorAtoms * double(numGridPointsPerMapPadded);
-        double atomsPerSec = atoms / seconds;
-        double atomsPerSecPadded = atomsPadded / seconds;
-        fprintf(stderr, "CUDA Initialization: %i ms\n"
-                        "CUDA Kernels: %i ms\n"
-                        "CUDA Finalization: %i ms\n",
-                        int(initTime), int(calcTime), int(finalizeTime));
-        fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
-        fprintf(stderr, "Electrostatics performance: %i million atoms/s (including grid points added by padding)\n", int(atomsPerSecPadded / 1000000));
-
-        // Destroy the events
-        CUDA_SAFE_CALL(cudaEventDestroy(init));
-        CUDA_SAFE_CALL(cudaEventDestroy(calc));
-        CUDA_SAFE_CALL(cudaEventDestroy(finalize));
-        CUDA_SAFE_CALL(cudaEventDestroy(end));
-    }
-
-#if DDD_PROFILE == DDD_TEXTUREMEM
-    if (input->distDepDiel)
-    {
-        // Free the epsilon tables
-        CUDA_SAFE_CALL(cudaFreeArray(epsilonArray));
-        CUDA_SAFE_CALL(cudaFreeHost(epsilonHost));
-    }
-#endif
-
-    CUDA_SAFE_CALL(cudaFreeHost(params));
-    CUDA_SAFE_CALL(cudaFreeHost(atomConstMem));
-    CUDA_SAFE_CALL(cudaFreeHost(outputIndexZBase));
-
-    // Free energies
-    CUDA_SAFE_CALL(cudaFree(energiesDevice));
-    CUDA_SAFE_CALL(cudaFreeHost(energiesHost));
-
-    // Destroy the stream
     CUDA_SAFE_CALL(cudaStreamDestroy(stream));
 }
 
-void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, const char *code)
+void ciCheckError(cudaError e, const char *file, int line, const char *func, const char *code)
 {
     if (e != cudaSuccess)
     {
@@ -309,7 +170,8 @@ void checkErrorCUDA(cudaError e, const char *file, int line, const char *func, c
         if (strstr(str, "launch fail"))
             throw ExitProgram(0xbad);
     }
-}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
@@ -317,12 +179,12 @@ void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameter
 class CudaThread : public OpenThreads::Thread
 {
 public:
-    CudaThread(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
-        : input(input), programParams(&programParams), elecMap(&elecMap) {}
+    CudaThread(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)
+        : input(input), programParams(programParams), elecMap(elecMap) {}
 
     virtual void run()
     {
-        calculateElectrostaticMapCUDA(input, *programParams, *elecMap);
+        calculateElectrostaticMapCUDA(input, programParams, elecMap);
     }
 
 private:
@@ -337,12 +199,12 @@ void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParame
         if (programParams.useCUDAThread())
         {
             // Create and start the thread
-            CudaThread *thread = new CudaThread(input, programParams, elecMap);
+            CudaThread *thread = new CudaThread(input, &programParams, &elecMap);
             thread->start();
             return thread;
         }
         else
-            calculateElectrostaticMapCUDA(input, programParams, elecMap);
+            calculateElectrostaticMapCUDA(input, &programParams, &elecMap);
     else
         calculateElectrostaticMapCPU(input, programParams, elecMap);
     return 0;

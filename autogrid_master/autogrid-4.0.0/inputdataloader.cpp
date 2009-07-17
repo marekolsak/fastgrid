@@ -440,7 +440,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                                        "Number of grid points in z-direction:\t%d\n\n",
                                        numGridPoints.x, numGridPoints.y, numGridPoints.z);
 
-                numGridPointsPerMap = numGridPoints.x * numGridPoints.y * numGridPoints.z;
+                numGridPointsPerMap = numGridPoints.Cube();
             }
             break;
 

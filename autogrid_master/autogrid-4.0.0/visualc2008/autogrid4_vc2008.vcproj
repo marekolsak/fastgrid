@@ -702,18 +702,45 @@
 				<File
 					RelativePath="..\electrostatics\cuda_internal.cu"
 					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="CUDA Build Rule"
-							Defines="AG_CUDA"
-							TypeInfo="true"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
 					RelativePath="..\electrostatics\cuda_internal.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudaconstantmemory.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudaconstantmemory.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudaevents.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudaevents.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudafloattexture1d.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudafloattexture1d.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudagridmap.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudagridmap.h"
+					>
+				</File>
+				<File
+					RelativePath="..\electrostatics\cudautils.h"
 					>
 				</File>
 				<File

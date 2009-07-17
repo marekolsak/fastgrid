@@ -37,19 +37,19 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
         // gridPos contains the current grid point
         Vec3d gridPos;
         gridPos.z = (z - input->numGridPointsDiv2.z) * input->gridSpacing;
-        int outputIndexZBase = z * input->numGridPoints.x*input->numGridPoints.y;
+        int outputOffsetZBase = z * input->numGridPoints.x*input->numGridPoints.y;
 
         // Y axis
         for (int y = 0; y < input->numGridPoints.y; y++)
         {
             gridPos.y = (y - input->numGridPointsDiv2.y) * input->gridSpacing;
-            int outputIndexZYBase = outputIndexZBase + y * input->numGridPoints.x;
+            int outputOffsetZYBase = outputOffsetZBase + y * input->numGridPoints.x;
 
             // X axis
             for (int x = 0; x < input->numGridPoints.x; x++)
             {
                 gridPos.x = (x - input->numGridPointsDiv2.x) * input->gridSpacing;
-                int outputIndex = outputIndexZYBase + x;
+                int outputIndex = outputOffsetZYBase + x;
 
                 double energy = elecMap.energies[outputIndex];
 

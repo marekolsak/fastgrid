@@ -24,6 +24,7 @@
 
 #pragma once
 #include "autogrid.h"
+#include "electrostatics/cudautils.h"
 
 class ProgramParameters
 {
@@ -38,16 +39,24 @@ public:
     bool useCutoffGrid() const                      { return cutoffGrid; }
     bool useCUDA() const                            { return cuda; }
     bool useCUDAThread() const                      { return cudaThread; }
-    bool calcCUDAOneSlice() const                   { return cudaOneSlice; }
+    bool calcSlicesSeparatelyCUDA() const           { return calcSlicesSeparately; }
     bool unrollLoopCUDA() const                     { return cudaUnroll; }
-    int getDeviceID() const                         { return deviceID; }
+    int getDeviceIDCUDA() const                     { return deviceID; }
+    DielectricKind getDDDKindCUDA() const           { return cudaDDDKind; }
 
 private:
     char programName[MAX_CHARS];
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
     int debug, deviceID;
-    bool benchmark, nns, cutoffGrid, cuda, cudaUnroll, cudaThread, cudaOneSlice;
+    bool benchmark, nns, cutoffGrid, cuda, cudaUnroll, cudaThread, calcSlicesSeparately;
+    DielectricKind cudaDDDKind;
 
     void parse(int argc, char **argv);
+    void cudaEnumDevicesAndExit();
+    void readParamString(int *argc, char ***argv, char *out);
+    int readParamInt(int *argc, char ***argv);
+    void printHelpAndExit();
+    bool cmp(const char *s1, const char *s2);
+    bool cmp2(const char *s1, const char *s2, const char *s3);
 };

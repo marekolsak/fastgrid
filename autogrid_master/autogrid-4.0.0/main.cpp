@@ -147,7 +147,7 @@ void autogridMain(int argc, char **argv)
     // Inititializing arrays of output energies
     gridmaps.prepareGridmaps(input->numGridPointsPerMap);
 
-    // TODO: add a smarter mechanism of checking for the available disk space, we need to know it as soon as possible.
+    // TODO: add a smarter mechanism of checking for the available disk space, we need to know that as soon as possible.
     // the formerly implemented checks in the middle of calculations were done too late
 
     // Loading the parameter library from the file
