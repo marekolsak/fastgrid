@@ -23,13 +23,13 @@
 */
 
 #pragma once
-#include "Cuda_internal.h"
+#include "cuda_internal/Interface.h"
 
 // One-channel 1D float texture
 class CudaFloatTexture1D
 {
 public:
-    CudaFloatTexture1D(int width, const double *data, CudaAction action, cudaStream_t stream);
+    CudaFloatTexture1D(int width, const double *data, CudaAction action, cudaStream_t stream, CudaInternalAPI *api);
     ~CudaFloatTexture1D();
     cudaArray *getDeviceArray() { return deviceArray; }
 

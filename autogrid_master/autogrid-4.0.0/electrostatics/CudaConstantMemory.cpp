@@ -30,7 +30,7 @@ struct CudaConstantMemory::AtomsConstMem
     float4 atoms[4096];
 };
 
-CudaConstantMemory::CudaConstantMemory(cudaStream_t stream): atomsHost(0), stream(stream),
+CudaConstantMemory::CudaConstantMemory(cudaStream_t stream, CudaInternalAPI *api): api(api), atomsHost(0), stream(stream),
     zOffsetArray(0), numAtomSubsets(1), currentZSlice(0)
 {
     CUDA_SAFE_CALL(cudaMallocHost((void**)&paramsHost, sizeof(Params)));
@@ -54,15 +54,14 @@ void CudaConstantMemory::setGridMapParameters(const Vec3i &numGridPointsDiv2, do
     params.energiesDevice = energiesDevice;
     params.numGridPointsDiv2 = make_int3(numGridPointsDiv2.x, numGridPointsDiv2.y, numGridPointsDiv2.z);
     *paramsHost = params;
-    ciSetGridMapParametersAsync(&paramsHost->numGridPointsPadded, &paramsHost->numGridPointsDiv2,
-                                &paramsHost->gridSpacing, &paramsHost->gridSpacingCoalesced,
-                                &paramsHost->energiesDevice, stream);
+    api->setGridMapParametersAsync(&paramsHost->numGridPointsPadded, &paramsHost->numGridPointsDiv2,
+                                   &paramsHost->gridSpacing, &paramsHost->gridSpacingCoalesced,
+                                   &paramsHost->energiesDevice, stream);
 }
 
-void CudaConstantMemory::initAtoms(int numAtomsPerKernel, int numAtomSubsets, bool calculateSlicesSeparately,
-                                   const Vec4d *atoms, int numAtoms)
+void CudaConstantMemory::initAtoms(const Vec4d *atoms, int numAtoms, bool calculateSlicesSeparately)
 {
-    this->numAtomSubsets = numAtomSubsets;
+    numAtomSubsets = (numAtoms - 1) / api->numAtomsPerKernel + 1;
     int kernelCalls = calculateSlicesSeparately ? params.numGridPointsPadded.z : 1;
     CUDA_SAFE_CALL(cudaMallocHost((void**)&atomsHost, sizeof(AtomsConstMem) * kernelCalls * numAtomSubsets));
 
@@ -79,9 +78,9 @@ void CudaConstantMemory::initAtoms(int numAtomsPerKernel, int numAtomSubsets, bo
             double gridPosZ = (z - params.numGridPointsDiv2.z) * params.gridSpacing;
 
             // For each subset numAtomsPerKernel long
-            for (int iaStart = 0, i = 0; iaStart < numAtoms; iaStart += numAtomsPerKernel, i++)
+            for (int iaStart = 0, i = 0; iaStart < numAtoms; iaStart += api->numAtomsPerKernel, i++)
             {
-                int numAtomsInSubset = Mathi::Min(numAtoms - iaStart, numAtomsPerKernel);
+                int numAtomsInSubset = Mathi::Min(numAtoms - iaStart, api->numAtomsPerKernel);
 
                 AtomsConstMem &thisAtomConstMem = atomConstMemZBase[i];
                 thisAtomConstMem.numAtoms = numAtomsInSubset;
@@ -103,9 +102,9 @@ void CudaConstantMemory::initAtoms(int numAtomsPerKernel, int numAtomSubsets, bo
     else // Initialize atoms for later calculating the entire gridmap in one kernel call
     {
         // For each subset numAtomsPerKernel long
-        for (int iaStart = 0, i = 0; iaStart < numAtoms; iaStart += numAtomsPerKernel, i++)
+        for (int iaStart = 0, i = 0; iaStart < numAtoms; iaStart += api->numAtomsPerKernel, i++)
         {
-            int numAtomsInSubset = Mathi::Min(numAtoms - iaStart, numAtomsPerKernel);
+            int numAtomsInSubset = Mathi::Min(numAtoms - iaStart, api->numAtomsPerKernel);
 
             AtomsConstMem &thisAtomConstMem = atomsHost[i];
             thisAtomConstMem.numAtoms = numAtomsInSubset;
@@ -141,11 +140,11 @@ void CudaConstantMemory::setZSlice(int z)
     currentZSlice = z;
 
     // Set an offset of output index to constant memory
-    ciSetGridMapSliceParametersAsync(zOffsetArray + z, stream);
+    api->setGridMapSliceParametersAsync(zOffsetArray + z, stream);
 }
 
 void CudaConstantMemory::setAtomConstMem(int atomSubsetIndex)
 {
     AtomsConstMem *thisAtomConstMem = atomsHost + currentZSlice * numAtomSubsets + atomSubsetIndex;
-    ciSetGridMapKernelParametersAsync(&thisAtomConstMem->numAtoms, thisAtomConstMem->atoms, stream);
+    api->setGridMapKernelParametersAsync(&thisAtomConstMem->numAtoms, thisAtomConstMem->atoms, stream);
 }

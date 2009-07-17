@@ -23,7 +23,7 @@
 */
 
 #pragma once
-#include "Cuda_internal.h"
+#include "cuda_internal/Interface.h"
 #include "../autogrid.h"
 
 // This class takes care of uploading data asynchronously to constant memory on the GPU,
@@ -31,14 +31,17 @@
 class CudaConstantMemory
 {
 public:
-    CudaConstantMemory(cudaStream_t stream);
+    CudaConstantMemory(cudaStream_t stream, CudaInternalAPI *api);
     ~CudaConstantMemory();
     void setGridMapParameters(const Vec3i &numGridPointsDiv2, double gridSpacing,
                               const Vec3i &numGridPointsPadded, float *energiesDevice);
-    void initAtoms(int numAtomsPerKernel, int numAtomSubsets, bool calculateSlicesSeparately,
-                   const Vec4d *atoms, int numAtoms); // must be called only once and after setGridMapParameters
+
+    // this must be called only once and after setGridMapParameters
+    void initAtoms(const Vec4d *atoms, int numAtoms, bool calculateSlicesSeparately); 
+    int getNumAtomSubsets() const { return numAtomSubsets; } // should be called after initAtoms
+
     void setZSlice(int z); // should be called before setAtomConstMem if used at all
-    void setAtomConstMem(int atomSubsetIndex);
+    void setAtomConstMem(int atomSubsetIndex); // copies atoms to constant memory
 
 private:
     struct Params
@@ -51,6 +54,7 @@ private:
 
     struct AtomsConstMem;
 
+    CudaInternalAPI *api;
     Params *paramsHost, params;
     AtomsConstMem *atomsHost;
     cudaStream_t stream;

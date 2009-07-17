@@ -24,7 +24,7 @@
 
 #pragma once
 #include "../InputData.h"
-#include "Cuda_internal.h"
+#include "cuda_internal/Interface.h"
 
 // This class records asynchronous CUDA events, prints execution times between two consecutive events,
 // and determines and prints calculated atoms per second.

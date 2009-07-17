@@ -25,7 +25,7 @@
 #include "CudaFloatTexture1D.h"
 #include <algorithm>
 
-CudaFloatTexture1D::CudaFloatTexture1D(int width, const double *data, CudaAction action, cudaStream_t stream)
+CudaFloatTexture1D::CudaFloatTexture1D(int width, const double *data, CudaAction action, cudaStream_t stream, CudaInternalAPI *api)
 {
     channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
 
@@ -41,7 +41,7 @@ CudaFloatTexture1D::CudaFloatTexture1D(int width, const double *data, CudaAction
     CUDA_SAFE_CALL(cudaMemcpyToArrayAsync(deviceArray, 0, 0, hostMem, sizeof(float) * width, cudaMemcpyHostToDevice, stream));
 
     if (action == BindToKernel)
-        ciSetDistDepDielTexture(deviceArray, &channelDesc);
+        api->setDistDepDielTexture(deviceArray, &channelDesc);
 }
 
 CudaFloatTexture1D::~CudaFloatTexture1D()

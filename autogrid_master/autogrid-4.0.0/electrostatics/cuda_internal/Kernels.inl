@@ -22,11 +22,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-using namespace std;
-#include "Cuda_internal.h"
+#include "Interface.h"
 
 #define AG_CALLCONV __device__
-#include "../autogrid.h"
+#include "../../autogrid.h"
 #include <cstdio>
 
 // Static parameters
@@ -34,10 +33,15 @@ static texture<float, 1, cudaReadModeElementType> epsilonTexture;
 static __constant__ int3 numGridPoints, numGridPointsDiv2;
 static __constant__ float gridSpacing, gridSpacingCoalesced;
 static __constant__ float *deviceEnergies;
+#if defined(USE_DDD_CONSTMEM)
+static __constant__ float epsilon[MAX_DIST];
+#else
+static __constant__ float *epsilon;
+#endif
 
 // Atoms
 static __constant__ int numAtoms;
-static __constant__ float4 atoms[NUM_ATOMS_PER_KERNEL]; // {x, y, (z-gridPosZ)^2, charge}
+static __constant__ float4 atoms[STD_NUM_ATOMS_PER_KERNEL]; // {x, y, z, charge}
 
 // Per-slice parameters
 static __constant__ int outputOffsetZBase;
@@ -52,18 +56,24 @@ static inline __device__ void initialize(float3 &gridPos, int &outputIndex);
 template<int CalcGranularity>
 static inline __device__ float calc_dzSq(float gridPosZ, float atomZ);
 
+// Get dielectric using the lookup table
+static inline __device__ float lookupEpsilonTable(float invR)
+{
+    return epsilon[min(int(A_DIVISOR / invR), MAX_DIST-1)];
+}
+
 // Distance dependent dielectric - global memory
 template<>
 static inline __device__ float distanceDependentDiel<DistanceDependentDiel_GlobalMem>(float invR)
 {
-    return 1; // TODO
+    return lookupEpsilonTable(invR);
 }
 
 // Distance dependent dielectric - constant memory
 template<>
 static inline __device__ float distanceDependentDiel<DistanceDependentDiel_ConstMem>(float invR)
 {
-    return 1; // TODO
+    return lookupEpsilonTable(invR);
 }
 
 // Distance dependent dielectric - texture memory
@@ -200,18 +210,18 @@ static __global__ void calcSlice_4Points()
     deviceEnergies[outputIndex] += energy3;
 }
 
-void ciSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
+void stdSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
                                  const float *gridSpacing, const float *gridSpacingCoalesced,
                                  float **deviceEnergies, cudaStream_t stream)
 {
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPoints",        numGridPoints,        sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numGridPointsDiv2",    numGridPointsDiv2,    sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacing",          gridSpacing,          sizeof(float),  0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("gridSpacingCoalesced", gridSpacingCoalesced, sizeof(float),  0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("deviceEnergies",       deviceEnergies,       sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numGridPoints,        numGridPoints,        sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numGridPointsDiv2,    numGridPointsDiv2,    sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::gridSpacing,          gridSpacing,          sizeof(float),  0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::gridSpacingCoalesced, gridSpacingCoalesced, sizeof(float),  0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::deviceEnergies,       deviceEnergies,       sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
 }
 
-void ciSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc)
+void stdSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc)
 {
     epsilonTexture.normalized = true;
     epsilonTexture.filterMode = cudaFilterModePoint;
@@ -220,33 +230,75 @@ void ciSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *
     CUDA_SAFE_CALL(cudaBindTextureToArray(&epsilonTexture, ptr, desc));
 }
 
-void ciSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream)
+void stdSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream)
 {
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("outputOffsetZBase", outputOffsetZBase, sizeof(int), 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::outputOffsetZBase, outputOffsetZBase, sizeof(int), 0, cudaMemcpyHostToDevice, stream));
 }
 
-void ciSetGridMapKernelParametersAsync(const int *numAtoms, const float4 *atoms, cudaStream_t stream)
+void stdSetGridMapKernelParametersAsync(const int *numAtoms, const float4 *atoms, cudaStream_t stream)
 {
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("atoms",    atoms,    sizeof(float4) * *numAtoms, 0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync("numAtoms", numAtoms, sizeof(int),                0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::atoms,    atoms,    sizeof(float4) * *numAtoms, 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numAtoms, numAtoms, sizeof(int),                0, cudaMemcpyHostToDevice, stream));
 }
 
-void ciCallKernelAsync(KernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream)
+void stdCallKernelAsync(CudaKernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream)
 {
     CUDA_SAFE_KERNEL((kernel<<<grid, block, stream>>>()));
 }
 
-KernelProc ciGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSlicesSeparately, bool unrollLoop)
+CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSlicesSeparately, bool unrollLoop)
 {
+#if defined(USE_DDD_CONSTMEM)
+
     if (calcSlicesSeparately)
         if (unrollLoop)
+        {
+            if (distDepDiel)
+                switch (dddKind)
+                {
+                case DistanceDependentDiel_ConstMem:
+                    return calcSlice_4Points<DistanceDependentDiel_ConstMem, CalcOneSlice>;
+                }
+        }
+        else
+        {
+            if (distDepDiel)
+                switch (dddKind)
+                {
+                case DistanceDependentDiel_ConstMem:
+                    return calcSlice_1Point<DistanceDependentDiel_ConstMem, CalcOneSlice>;
+                }
+        }
+    else
+        if (unrollLoop)
+        {
+            if (distDepDiel)
+                switch (dddKind)
+                {
+                case DistanceDependentDiel_ConstMem:
+                    return calcSlice_4Points<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
+                }
+        }
+        else
+        {
+            if (distDepDiel)
+                switch (dddKind)
+                {
+                case DistanceDependentDiel_ConstMem:
+                    return calcSlice_1Point<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
+                }
+        }
+
+#else
+
+    if (calcSlicesSeparately)
+        if (unrollLoop)
+        {
             if (distDepDiel)
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
                     return calcSlice_4Points<DistanceDependentDiel_GlobalMem, CalcOneSlice>;
-                case DistanceDependentDiel_ConstMem:
-                    return calcSlice_4Points<DistanceDependentDiel_ConstMem, CalcOneSlice>;
                 case DistanceDependentDiel_TextureMem:
                     return calcSlice_4Points<DistanceDependentDiel_TextureMem, CalcOneSlice>;
                 case DistanceDependentDiel_InPlace:
@@ -254,14 +306,14 @@ KernelProc ciGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSl
                 }
             else
                 return calcSlice_4Points<ConstantDiel, CalcOneSlice>;
+        }
         else
+        {
             if (distDepDiel)
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
                     return calcSlice_1Point<DistanceDependentDiel_GlobalMem, CalcOneSlice>;
-                case DistanceDependentDiel_ConstMem:
-                    return calcSlice_1Point<DistanceDependentDiel_ConstMem, CalcOneSlice>;
                 case DistanceDependentDiel_TextureMem:
                     return calcSlice_1Point<DistanceDependentDiel_TextureMem, CalcOneSlice>;
                 case DistanceDependentDiel_InPlace:
@@ -269,15 +321,15 @@ KernelProc ciGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSl
                 }
             else
                 return calcSlice_1Point<ConstantDiel, CalcOneSlice>;
+        }
     else
         if (unrollLoop)
+        {
             if (distDepDiel)
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
                     return calcSlice_4Points<DistanceDependentDiel_GlobalMem, CalcEntireGrid>;
-                case DistanceDependentDiel_ConstMem:
-                    return calcSlice_4Points<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
                 case DistanceDependentDiel_TextureMem:
                     return calcSlice_4Points<DistanceDependentDiel_TextureMem, CalcEntireGrid>;
                 case DistanceDependentDiel_InPlace:
@@ -285,14 +337,14 @@ KernelProc ciGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSl
                 }
             else
                 return calcSlice_4Points<ConstantDiel, CalcEntireGrid>;
+        }
         else
+        {
             if (distDepDiel)
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
                     return calcSlice_1Point<DistanceDependentDiel_GlobalMem, CalcEntireGrid>;
-                case DistanceDependentDiel_ConstMem:
-                    return calcSlice_1Point<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
                 case DistanceDependentDiel_TextureMem:
                     return calcSlice_1Point<DistanceDependentDiel_TextureMem, CalcEntireGrid>;
                 case DistanceDependentDiel_InPlace:
@@ -300,5 +352,9 @@ KernelProc ciGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSl
                 }
             else
                 return calcSlice_1Point<ConstantDiel, CalcEntireGrid>;
+        }
+
+#endif
+
     return 0;
 }

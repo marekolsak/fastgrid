@@ -60,17 +60,22 @@ static void setupGridThreadBlocks(int numThreads, int numGridPointsPerThread, co
     dimGrid->x *= numGridPointsPadded->z;
 }
 
-static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, KernelProc kernelProc,
-                       const dim3 &dimGrid, const dim3 &dimBlock, cudaStream_t stream)
+static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, CudaKernelProc kernelProc,
+                       const dim3 &dimGrid, const dim3 &dimBlock, cudaStream_t stream,
+                       CudaInternalAPI &api)
 {
     constMem.setAtomConstMem(atomSubsetIndex); // Move atoms to the constant memory
 
     // Calculate the entire grid for the given subset of atoms
-    ciCallKernelAsync(kernelProc, dimGrid, dimBlock, stream);
+    api.callKernelAsync(kernelProc, dimGrid, dimBlock, stream);
 }
 
 static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)
 {
+    // Get the CUDA Internal API used to set variables stored in constant memory, samplers, and to call kernels
+    CudaInternalAPI api;
+    getCudaInternalAPI(programParams->getDDDKindCUDA(), api);
+
     cudaStream_t stream;
 
     CUDA_SAFE_CALL(cudaSetDevice(programParams->getDeviceIDCUDA()));
@@ -109,26 +114,21 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     // Create a texture for distance-dependent dielectric
     CudaFloatTexture1D *texture = 0;
     if (input->distDepDiel && programParams->getDDDKindCUDA() == DistanceDependentDiel_TextureMem)
-        texture = new CudaFloatTexture1D(MAX_DIST, input->epsilon, BindToKernel, stream);
+        texture = new CudaFloatTexture1D(MAX_DIST, input->epsilon, BindToKernel, stream, &api);
 
-    // This makes use of constant memory easier
-    CudaConstantMemory constMem(stream);
+    // This class makes use of constant memory easier
+    CudaConstantMemory constMem(stream, &api);
     constMem.setGridMapParameters(input->numGridPointsDiv2, input->gridSpacing,
                                   numGridPointsPadded, grid.getEnergiesDevicePtr());
 
-    KernelProc kernelProc = ciGetKernelProc(input->distDepDiel, programParams->getDDDKindCUDA(),
-                                            programParams->calcSlicesSeparatelyCUDA(),
-                                            programParams->unrollLoopCUDA());
-
-    // The number of subsets we divide atoms into. Each kernel execution contains only a subset of atoms,
-    // which is limited by the size of constant memory.
-    int numAtomsPerKernel = programParams->getDDDKindCUDA() == DistanceDependentDiel_ConstMem ?
-                            NUM_ATOMS_PER_KERNEL_DDD_CONSTMEM : NUM_ATOMS_PER_KERNEL;
-    int numAtomSubsets = (input->numReceptorAtoms - 1) / numAtomsPerKernel + 1;
+    // Get a CUDA kernel function according to parameters
+    CudaKernelProc kernelProc = api.getKernelProc(input->distDepDiel, programParams->getDDDKindCUDA(),
+                                                  programParams->calcSlicesSeparatelyCUDA(),
+                                                  programParams->unrollLoopCUDA());
 
     // Initialize storage for atoms in page-locked system memory
-    constMem.initAtoms(numAtomsPerKernel, numAtomSubsets, programParams->calcSlicesSeparatelyCUDA(),
-                       input->receptorAtom, input->numReceptorAtoms);
+    constMem.initAtoms(input->receptorAtom, input->numReceptorAtoms, programParams->calcSlicesSeparatelyCUDA());
+    int numAtomSubsets = constMem.getNumAtomSubsets();
 
     events.recordStartCalculation();
 
@@ -139,11 +139,11 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         {
             constMem.setZSlice(z);
             for (int i = 0; i < numAtomSubsets; i++)
-                callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream);
+                callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream, api);
         }
     else // !calcSlicesSeparately
         for (int i = 0; i < numAtomSubsets; i++)
-            callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream);
+            callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream, api);
 
     // Finalize
     events.recordEndCalculation();
@@ -156,21 +156,6 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     delete texture;
 
     CUDA_SAFE_CALL(cudaStreamDestroy(stream));
-}
-
-void ciCheckError(cudaError e, const char *file, int line, const char *func, const char *code)
-{
-    if (e != cudaSuccess)
-    {
-        const char *str = cudaGetErrorString(e);
-        fprintf(stderr, "CUDA error: '%s'\n"
-                        "        in file '%s'\n"
-                        "        in line %i\n"
-                        "        in function '%s'\n"
-                        "        in code '%s'\n", str, file, line, func, code);
-        if (strstr(str, "launch fail"))
-            throw ExitProgram(0xbad);
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

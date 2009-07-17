@@ -23,26 +23,17 @@
 */
 
 #pragma once
-#include "cuda_internal/Interface.h"
-#include "../autogrid.h"
+#include "Interface.h"
+// dddcm = Distance Dependent Dielectric in Constant Memory
 
-// This class implements a gridmap representation on the GPU and takes care of padding.
-class CudaGridMap
-{
-public:
-    // The constructor creates the gridmap, and copies it to the GPU (asynchronous)
-    CudaGridMap(const Vec3i &numGridPoints, const Vec3i &numGridPointsPadded, const double *inputEnergies, cudaStream_t stream);
-    ~CudaGridMap();
-    void copyFromDeviceToHost(); // Copies the gridmap from the GPU to page-locked system memory (asynchronous)
-    void readFromHost(double *outputEnergies); // Saves the gridmap into outputEnergies
-    float *getEnergiesDevicePtr() { return energiesDevice; }
+#define DDDCM_NUM_ATOMS_PER_KERNEL 2000
 
-private:
-    cudaStream_t stream;
-    Vec3i numGridPoints, numGridPointsPadded;
-    float *energiesDevice, *energiesHost;
+void dddcmSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
+                                    const float *gridSpacing, const float *gridSpacingCoalesced,
+                                    float **deviceEnergies, cudaStream_t stream);
+void dddcmSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
+void dddcmSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream);
+void dddcmSetGridMapKernelParametersAsync(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
 
-    void copyGridMapPadded(float *dst,       const Vec3i &numGridPointsDst,
-                           const float *src, const Vec3i &numGridPointsSrc,
-                           cudaMemcpyKind kind);
-};
+CudaKernelProc dddcmGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSlicesSeparately, bool unrollLoop);
+void dddcmCallKernelAsync(CudaKernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream);

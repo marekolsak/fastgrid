@@ -39,6 +39,8 @@
 				PtxAsOptionV="true"
 				ExtraNvccOptions=""
 				Warning="3"
+				Optimization="0"
+				TypeInfo="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -129,6 +131,7 @@
 				ExtraNvccOptions=""
 				Defines="WIN32"
 				Warning="3"
+				TypeInfo="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -228,6 +231,7 @@
 			<Tool
 				Name="CUDA Build Rule"
 				Warning="3"
+				TypeInfo="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -313,59 +317,59 @@
 				>
 			</File>
 			<File
-				RelativePath="..\bondvectors.cpp"
+				RelativePath="..\BondVectors.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\bondvectors.h"
+				RelativePath="..\BondVectors.h"
 				>
 			</File>
 			<File
-				RelativePath="..\calculategridmaps.cpp"
+				RelativePath="..\CalculateGridmaps.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\calculategridmaps.h"
+				RelativePath="..\CalculateGridmaps.h"
 				>
 			</File>
 			<File
-				RelativePath="..\desolvexpfunc.cpp"
+				RelativePath="..\DesolvExpFunc.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\desolvexpfunc.h"
+				RelativePath="..\DesolvExpFunc.h"
 				>
 			</File>
 			<File
-				RelativePath="..\exceptions.h"
+				RelativePath="..\Exceptions.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gridmap.cpp"
+				RelativePath="..\GridMap.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\gridmap.h"
+				RelativePath="..\GridMap.h"
 				>
 			</File>
 			<File
-				RelativePath="..\inputdata.h"
+				RelativePath="..\InputData.h"
 				>
 			</File>
 			<File
-				RelativePath="..\inputdataloader.cpp"
+				RelativePath="..\InputDataLoader.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\inputdataloader.h"
+				RelativePath="..\InputDataLoader.h"
 				>
 			</File>
 			<File
-				RelativePath="..\logfile.cpp"
+				RelativePath="..\LogFile.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\logfile.h"
+				RelativePath="..\LogFile.h"
 				>
 			</File>
 			<File
@@ -373,39 +377,43 @@
 				>
 			</File>
 			<File
-				RelativePath="..\math.h"
+				RelativePath="..\Math.h"
 				>
 			</File>
 			<File
-				RelativePath="..\nearestneighborsearch3.h"
+				RelativePath="..\NearestNeighborSearch3.h"
 				>
 			</File>
 			<File
-				RelativePath="..\pairwiseinteractionenergies.cpp"
+				RelativePath="..\Octree.h"
 				>
 			</File>
 			<File
-				RelativePath="..\pairwiseinteractionenergies.h"
+				RelativePath="..\PairwiseInteractionEnergies.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\parameterlibrary.cpp"
+				RelativePath="..\PairwiseInteractionEnergies.h"
 				>
 			</File>
 			<File
-				RelativePath="..\parameterlibrary.h"
+				RelativePath="..\ParameterLibrary.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\programparameters.cpp"
+				RelativePath="..\ParameterLibrary.h"
 				>
 			</File>
 			<File
-				RelativePath="..\programparameters.h"
+				RelativePath="..\ProgramParameters.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\spatialgrid.h"
+				RelativePath="..\ProgramParameters.h"
+				>
+			</File>
+			<File
+				RelativePath="..\SpatialGrid.h"
 				>
 			</File>
 			<File
@@ -417,11 +425,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\utils.cpp"
+				RelativePath="..\Utils.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\utils.h"
+				RelativePath="..\Utils.h"
 				>
 			</File>
 			<Filter
@@ -692,61 +700,85 @@
 				Name="electrostatics"
 				>
 				<File
-					RelativePath="..\electrostatics\cpu.cpp"
+					RelativePath="..\electrostatics\Cpu.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cuda.cpp"
+					RelativePath="..\electrostatics\Cuda.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cuda_internal.cu"
+					RelativePath="..\electrostatics\CudaConstantMemory.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cuda_internal.h"
+					RelativePath="..\electrostatics\CudaConstantMemory.h"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudaconstantmemory.cpp"
+					RelativePath="..\electrostatics\CudaEvents.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudaconstantmemory.h"
+					RelativePath="..\electrostatics\CudaEvents.h"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudaevents.cpp"
+					RelativePath="..\electrostatics\CudaFloatTexture1D.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudaevents.h"
+					RelativePath="..\electrostatics\CudaFloatTexture1D.h"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudafloattexture1d.cpp"
+					RelativePath="..\electrostatics\CudaGridMap.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudafloattexture1d.h"
+					RelativePath="..\electrostatics\CudaGridMap.h"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudagridmap.cpp"
+					RelativePath="..\electrostatics\CudaUtils.h"
 					>
 				</File>
 				<File
-					RelativePath="..\electrostatics\cudagridmap.h"
+					RelativePath="..\electrostatics\Electrostatics.h"
 					>
 				</File>
-				<File
-					RelativePath="..\electrostatics\cudautils.h"
+				<Filter
+					Name="cuda_internal"
 					>
-				</File>
-				<File
-					RelativePath="..\electrostatics\electrostatics.h"
-					>
-				</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\DDDConstMemKernels.cu"
+						>
+					</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\DDDConstMemKernels.h"
+						>
+					</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\Interface.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\Interface.h"
+						>
+					</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\Kernels.inl"
+						>
+					</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\StandardKernels.cu"
+						>
+					</File>
+					<File
+						RelativePath="..\electrostatics\cuda_internal\StandardKernels.h"
+						>
+					</File>
+				</Filter>
 			</Filter>
 			<Filter
 				Name="openthreads"

@@ -22,27 +22,17 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#pragma once
-#include "cuda_internal/Interface.h"
-#include "../autogrid.h"
+using namespace std;
+#include "DDDConstMemKernels.h"
 
-// This class implements a gridmap representation on the GPU and takes care of padding.
-class CudaGridMap
-{
-public:
-    // The constructor creates the gridmap, and copies it to the GPU (asynchronous)
-    CudaGridMap(const Vec3i &numGridPoints, const Vec3i &numGridPointsPadded, const double *inputEnergies, cudaStream_t stream);
-    ~CudaGridMap();
-    void copyFromDeviceToHost(); // Copies the gridmap from the GPU to page-locked system memory (asynchronous)
-    void readFromHost(double *outputEnergies); // Saves the gridmap into outputEnergies
-    float *getEnergiesDevicePtr() { return energiesDevice; }
+#define USE_DDD_CONSTMEM
+#define STD_NUM_ATOMS_PER_KERNEL DDDCM_NUM_ATOMS_PER_KERNEL
 
-private:
-    cudaStream_t stream;
-    Vec3i numGridPoints, numGridPointsPadded;
-    float *energiesDevice, *energiesHost;
+#define stdSetGridMapParametersAsync        dddcmSetGridMapParametersAsync
+#define stdSetDistDepDielTexture            dddcmSetDistDepDielTexture
+#define stdSetGridMapSliceParametersAsync   dddcmSetGridMapSliceParametersAsync
+#define stdSetGridMapKernelParametersAsync  dddcmSetGridMapKernelParametersAsync
+#define stdGetKernelProc                    dddcmGetKernelProc
+#define stdCallKernelAsync                  dddcmCallKernelAsync
 
-    void copyGridMapPadded(float *dst,       const Vec3i &numGridPointsDst,
-                           const float *src, const Vec3i &numGridPointsSrc,
-                           cudaMemcpyKind kind);
-};
+#include "Kernels.inl"

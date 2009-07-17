@@ -22,27 +22,6 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#pragma once
-#include "cuda_internal/Interface.h"
-#include "../autogrid.h"
-
-// This class implements a gridmap representation on the GPU and takes care of padding.
-class CudaGridMap
-{
-public:
-    // The constructor creates the gridmap, and copies it to the GPU (asynchronous)
-    CudaGridMap(const Vec3i &numGridPoints, const Vec3i &numGridPointsPadded, const double *inputEnergies, cudaStream_t stream);
-    ~CudaGridMap();
-    void copyFromDeviceToHost(); // Copies the gridmap from the GPU to page-locked system memory (asynchronous)
-    void readFromHost(double *outputEnergies); // Saves the gridmap into outputEnergies
-    float *getEnergiesDevicePtr() { return energiesDevice; }
-
-private:
-    cudaStream_t stream;
-    Vec3i numGridPoints, numGridPointsPadded;
-    float *energiesDevice, *energiesHost;
-
-    void copyGridMapPadded(float *dst,       const Vec3i &numGridPointsDst,
-                           const float *src, const Vec3i &numGridPointsSrc,
-                           cudaMemcpyKind kind);
-};
+using namespace std;
+#include "StandardKernels.h"
+#include "Kernels.inl"

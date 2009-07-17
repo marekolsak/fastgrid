@@ -40,7 +40,7 @@
 #endif
 
 #if defined(AG_CUDA)
-    #include "electrostatics/Cuda_internal.h"
+    #include "electrostatics/cuda_internal/Interface.h"
     #define CUDA_STATUS ST_ENABLED
 #else
     #define CUDA_STATUS ST_DISABLED
