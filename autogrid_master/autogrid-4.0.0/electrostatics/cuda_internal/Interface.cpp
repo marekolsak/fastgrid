@@ -34,6 +34,7 @@ void getCudaInternalAPI(DielectricKind dddKind, CudaInternalAPI &api)
     {
         api.numAtomsPerKernel               = STD_NUM_ATOMS_PER_KERNEL;
         api.setDistDepDielTexture           = stdSetDistDepDielTexture;
+        api.setDistDepDielLookUpTable       = stdSetDistDepDielLookUpTable;
         api.setGridMapParametersAsync       = stdSetGridMapParametersAsync;
         api.setGridMapSliceParametersAsync  = stdSetGridMapSliceParametersAsync;
         api.setGridMapKernelParametersAsync = stdSetGridMapKernelParametersAsync;
@@ -44,6 +45,7 @@ void getCudaInternalAPI(DielectricKind dddKind, CudaInternalAPI &api)
     {
         api.numAtomsPerKernel               = DDDCM_NUM_ATOMS_PER_KERNEL;
         api.setDistDepDielTexture           = dddcmSetDistDepDielTexture;
+        api.setDistDepDielLookUpTable       = dddcmSetDistDepDielLookUpTable;
         api.setGridMapParametersAsync       = dddcmSetGridMapParametersAsync;
         api.setGridMapSliceParametersAsync  = dddcmSetGridMapSliceParametersAsync;
         api.setGridMapKernelParametersAsync = dddcmSetGridMapKernelParametersAsync;

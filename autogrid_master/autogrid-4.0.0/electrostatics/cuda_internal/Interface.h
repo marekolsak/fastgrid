@@ -39,6 +39,7 @@ struct CudaInternalAPI
                                       const float *gridSpacing, const float *gridSpacingCoalesced,
                                       float **deviceEnergies, cudaStream_t stream);
     void (*setDistDepDielTexture)(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
+    void (*setDistDepDielLookUpTable)(float **devicePtr, cudaStream_t stream);
     void (*setGridMapSliceParametersAsync)(const int *outputOffsetZBase, cudaStream_t stream);
     void (*setGridMapKernelParametersAsync)(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
 

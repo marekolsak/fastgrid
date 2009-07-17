@@ -111,15 +111,23 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     // Create a padded gridmap on the GPU
     CudaGridMap grid(input->numGridPoints, numGridPointsPadded, elecMap->energies, stream);
 
-    // Create a texture for distance-dependent dielectric
-    CudaFloatTexture1D *texture = 0;
-    if (input->distDepDiel && programParams->getDDDKindCUDA() == DistanceDependentDiel_TextureMem)
-        texture = new CudaFloatTexture1D(MAX_DIST, input->epsilon, BindToKernel, stream, &api);
-
     // This class makes use of constant memory easier
     CudaConstantMemory constMem(stream, &api);
     constMem.setGridMapParameters(input->numGridPointsDiv2, input->gridSpacing,
                                   numGridPointsPadded, grid.getEnergiesDevicePtr());
+
+    
+    CudaFloatTexture1D *texture = 0;
+    if (input->distDepDiel)
+    {
+        // Create a texture for distance-dependent dielectric if needed
+        if (programParams->getDDDKindCUDA() == DistanceDependentDiel_TextureMem)
+            texture = new CudaFloatTexture1D(MAX_DIST, input->epsilon, BindToKernel, stream, &api);
+        // Initialize global or constant memory for distance-dependent dielectric if needed
+        else if (programParams->getDDDKindCUDA() == DistanceDependentDiel_GlobalMem ||
+                 programParams->getDDDKindCUDA() == DistanceDependentDiel_ConstMem)
+             constMem.initDistDepDielLookUpTable(input->epsilon);
+    }
 
     // Get a CUDA kernel function according to parameters
     CudaKernelProc kernelProc = api.getKernelProc(input->distDepDiel, programParams->getDDDKindCUDA(),

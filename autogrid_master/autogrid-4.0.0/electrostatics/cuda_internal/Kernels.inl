@@ -210,17 +210,6 @@ static __global__ void calcSlice_4Points()
     deviceEnergies[outputIndex] += energy3;
 }
 
-void stdSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
-                                 const float *gridSpacing, const float *gridSpacingCoalesced,
-                                 float **deviceEnergies, cudaStream_t stream)
-{
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numGridPoints,        numGridPoints,        sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numGridPointsDiv2,    numGridPointsDiv2,    sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::gridSpacing,          gridSpacing,          sizeof(float),  0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::gridSpacingCoalesced, gridSpacingCoalesced, sizeof(float),  0, cudaMemcpyHostToDevice, stream));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::deviceEnergies,       deviceEnergies,       sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
-}
-
 void stdSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc)
 {
     epsilonTexture.normalized = true;
@@ -228,6 +217,26 @@ void stdSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc 
     epsilonTexture.addressMode[0] = cudaAddressModeClamp;
 
     CUDA_SAFE_CALL(cudaBindTextureToArray(&epsilonTexture, ptr, desc));
+}
+
+void stdSetDistDepDielLookUpTable(float **devicePtr, cudaStream_t stream)
+{
+#if defined(USE_DDD_CONSTMEM)
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::epsilon, *devicePtr, sizeof(float) * MAX_DIST, 0, cudaMemcpyDeviceToDevice, stream));
+#else
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::epsilon, devicePtr,  sizeof(float*),           0, cudaMemcpyHostToDevice,   stream));
+#endif
+}
+
+void stdSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
+                                  const float *gridSpacing, const float *gridSpacingCoalesced,
+                                  float **deviceEnergies, cudaStream_t stream)
+{
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numGridPoints,        numGridPoints,        sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::numGridPointsDiv2,    numGridPointsDiv2,    sizeof(int3),   0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::gridSpacing,          gridSpacing,          sizeof(float),  0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::gridSpacingCoalesced, gridSpacingCoalesced, sizeof(float),  0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::deviceEnergies,       deviceEnergies,       sizeof(float*), 0, cudaMemcpyHostToDevice, stream));
 }
 
 void stdSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream)

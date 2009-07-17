@@ -23,6 +23,7 @@
 */
 
 #include "CudaConstantMemory.h"
+#include <algorithm>
 
 struct CudaConstantMemory::AtomsConstMem
 {
@@ -31,18 +32,36 @@ struct CudaConstantMemory::AtomsConstMem
 };
 
 CudaConstantMemory::CudaConstantMemory(cudaStream_t stream, CudaInternalAPI *api): api(api), atomsHost(0), stream(stream),
-    zOffsetArray(0), numAtomSubsets(1), currentZSlice(0)
+    zOffsetArray(0), numAtomSubsets(1), currentZSlice(0), epsilonHost(0)
 {
     CUDA_SAFE_CALL(cudaMallocHost((void**)&paramsHost, sizeof(Params)));
 }
 
 CudaConstantMemory::~CudaConstantMemory()
 {
+    if (epsilonHost)
+    {
+        CUDA_SAFE_CALL(cudaFreeHost(epsilonHost));
+        CUDA_SAFE_CALL(cudaFree(params.epsilonDevice));
+    }
+
     CUDA_SAFE_CALL(cudaFreeHost(paramsHost));
     if (zOffsetArray)
         CUDA_SAFE_CALL(cudaFreeHost(zOffsetArray));
     if (atomsHost)
         CUDA_SAFE_CALL(cudaFreeHost(atomsHost));
+}
+
+void CudaConstantMemory::initDistDepDielLookUpTable(const double *epsilon)
+{
+    int size = sizeof(float) * MAX_DIST;
+    CUDA_SAFE_CALL(cudaMallocHost((void**)&epsilonHost, size));
+    CUDA_SAFE_CALL(cudaMalloc((void**)&params.epsilonDevice, size));
+    paramsHost->epsilonDevice = params.epsilonDevice;
+
+    std::transform(epsilon, epsilon + MAX_DIST, epsilonHost, typecast<float, double>);
+    CUDA_SAFE_CALL(cudaMemcpyAsync(params.epsilonDevice, epsilonHost, size, cudaMemcpyHostToDevice, stream));
+    api->setDistDepDielLookUpTable(&paramsHost->epsilonDevice, stream);
 }
 
 void CudaConstantMemory::setGridMapParameters(const Vec3i &numGridPointsDiv2, double gridSpacing,

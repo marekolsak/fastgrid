@@ -33,6 +33,7 @@ class CudaConstantMemory
 public:
     CudaConstantMemory(cudaStream_t stream, CudaInternalAPI *api);
     ~CudaConstantMemory();
+    void initDistDepDielLookUpTable(const double *epsilon);
     void setGridMapParameters(const Vec3i &numGridPointsDiv2, double gridSpacing,
                               const Vec3i &numGridPointsPadded, float *energiesDevice);
 
@@ -49,7 +50,7 @@ private:
         int3 numGridPointsDiv2;
         int3 numGridPointsPadded;
         float gridSpacing, gridSpacingCoalesced;
-        float *energiesDevice;
+        float *energiesDevice, *epsilonDevice;
     };
 
     struct AtomsConstMem;
@@ -61,6 +62,7 @@ private:
     int *zOffsetArray;
     int numAtomSubsets;
     int currentZSlice;
+    float *epsilonHost;
 
     void initZOffsetArray(); 
 };
