@@ -2363,7 +2363,7 @@ for (icoord[Z] = -ne[Z]; icoord[Z] <= ne[Z]; icoord[Z]++) {
                  * and the current receptor atom, ia...
                  */
                 for (map_index = 0;  map_index < num_atom_maps;  map_index++) {
-                    /* We do not want to change the current enrg value 
+                    /* We do not want to change the current energy value 
                      * for any covalent maps, make sure iscovalent is
                      * false... */                    
                     maptypeptr = gridmap[map_index].type;

@@ -1,8 +1,7 @@
 /*
     AutoGrid
 
-    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
-    All Rights Reserved.
+    Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
     Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -167,8 +166,8 @@ void ProgramParameters::printHelpAndExit()
                     "\n"
                     "Advanced:\n"
                     "      --cuda-ddd=g|c|t|i  set a way of calculating distance-dependent dielectric\n"
-                    "                          to either g=global memory, or c=constant memory,\n"
-                    "                          or t=texture memory, or i=in-place, default: t\n"
+                    "                          to one of the following: g=global memory, c=constant\n"
+                    "                          memory, t=texture memory, i=in-place, default: t\n"
                     "      --cuda-slices=y|n  calculate gridmap slices separately i.e. only one\n"
                     "                         gridmap slice per CUDA kernel call, default: n\n"
                     "      --cuda-thread=y|n  use a separate thread for CUDA, default: y\n"

@@ -1,8 +1,7 @@
 /*
     AutoGrid
 
-    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
-    All Rights Reserved.
+    Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
     Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -109,7 +108,11 @@ void autogridMain(int argc, char **argv)
     tms tmsJobStart;
     Clock jobStart = times(&tmsJobStart);
 
-    double versionNumber = 4.00;
+#if !defined(VERSION)
+    const char *versionNumber = "4.2.1";
+#else
+    const char *versionNumber = VERSION;
+#endif
 
     // Initialize the ProgramParameters object, which parses the command-line arguments
     ProgramParameters programParams(argc, argv);

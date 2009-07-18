@@ -1,8 +1,7 @@
 /*
     AutoGrid
 
-    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
-    All Rights Reserved.
+    Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
     Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -126,10 +125,10 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
     int length = LINE_LEN;
 
     char atom_name[6];
-    char record[7];
+    char record[LINE_LEN];
     char temp_char = ' ';
-    char token[5];
-    char xyz[5] = "xyz";
+    char token[LINE_LEN];
+    static const char xyz[] = "xyz"; // used to print headings
     FILE *receptorFile, *xyz_fileptr = 0;
 
     double q_tot = 0.0;
@@ -659,7 +658,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             if (mapIndex >= gridmaps.getNumAtomMaps())
             {
                 logFile->printErrorFormatted(ERROR,
-                    "Too many \"map\" keywords (%d);  the \"types\" command declares only %d maps.\nRemove a \"map\" keyword from the GPF.\n",
+                    "Too many \"map\" keywords (%d);  the \"ligand_types\" command declares only %d atom types.\nRemove a \"map\" keyword from the GPF.\n",
                     mapIndex + 1, gridmaps.getNumAtomMaps());
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }

@@ -1,8 +1,7 @@
 /*
     AutoGrid
 
-    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
-    All Rights Reserved.
+    Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
     Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -21,6 +20,10 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
+
+#if !defined(PACKAGE_BUGREPORT)
+#define PACKAGE_BUGREPORT "maraeo@gmail.com"
+#endif
 
 #if defined(_WIN32)
     #define WIN32_LEAN_AND_MEAN
@@ -54,7 +57,7 @@
         } \
         va_end(ap);
 
-LogFile::LogFile(double versionNumber, const char *programName, const char *filename): file(0), invClocksPerSec(1 / float(getClocksPerSec()))
+LogFile::LogFile(const char *versionNumber, const char *programName, const char *filename): file(0), invClocksPerSec(1 / float(getClocksPerSec()))
 {
     strncpy(this->programName, programName, MAX_CHARS);
 
@@ -74,7 +77,7 @@ LogFile::LogFile(double versionNumber, const char *programName, const char *file
 
     // Output basic information
     printBanner(versionNumber);
-    fprintf(file, "                           $Revision: 1.58 $\n\n\n"
+    fprintf(file, "                           $Revision: 1.71 $\n\n\n"
                   "\nMaximum number of maps that can be computed = %d (defined by MAX_MAPS in \"autocomm.h\").\n\n\n"
                   "This file was created at:\t\t\t", MAX_MAPS);
     printCurrentDate(1);
@@ -186,7 +189,7 @@ void LogFile::printExecutionTimesInHMS(Clock startTime, Clock endTime, tms *star
 }
 
 // Output banner...
-void LogFile::printBanner(double versionNumber)
+void LogFile::printBanner(const char *versionNumber)
 {
     fprintf(file,
         "\n       _______________________________________________________\n"
@@ -215,14 +218,14 @@ void LogFile::printBanner(double versionNumber)
         "\n"
         "                ______________________________________ \n"
         "               |                                      |\n"
-        "               |            AutoGrid %3.2lf             |\n"
+        "               |            AutoGrid %-8s         |\n"
         "               |                                      |\n"
         "               |        Garrett M. Morris, TSRI       |\n"
         "               |            Ruth Huey, TSRI           |\n"
         "               |        David S. Goodsell, TSRI       |\n"
         "               |         Arthur J. Olson, TSRI        |\n"
         "               |                                      |\n"
-        "               |        (c) 1989-2005, TSRI           |\n"
+        "               |        (C) 1989-2009, TSRI           |\n"
         "               |   The Scripps Research Institute     |\n"
         "               |______________________________________|\n"
         "\n"
@@ -232,11 +235,12 @@ void LogFile::printBanner(double versionNumber)
         "               |   Electrostatic Potential Energy, &  |\n"
         "               |   Desolvation Free Energy Grid Maps  |\n"
         "               |             for AutoDock             |\n"
+        "               | For help, email %-19s |\n"
         "               |______________________________________|\n"
         "\n"
         "\n"
         "\n"
-        "\n", versionNumber);
+        "\n", versionNumber, PACKAGE_BUGREPORT);
 }
 
 void LogFile::printCurrentDate(int flag)

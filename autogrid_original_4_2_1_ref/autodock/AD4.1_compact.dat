@@ -1,18 +1,53 @@
-# $Id: AD4_parameters.dat,v 1.7 2006/07/10 23:13:28 garrett Exp $
+# $Id: AD4.1_compact.dat,v 1.4 2009/01/19 19:50:56 rhuey Exp $
+# 
+# AutoDock 
+# 
+# Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
+# All Rights Reserved.
+# 
+# AutoDock is a Trade Mark of The Scripps Research Institute.
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 # AutoDock Linear Free Energy Model Coefficients and Energetic Parameters
-#                        Version 1.0
-#                     $Revision: 1.7 $
+#                   Version 4.1 Compact
+#                     $Revision: 1.4 $
+
+# FE_unbound_model is used to specify how the internal energy of the
+# ligand should be treated when estimating the free energy of binding,
+# and can be set to one of the following strings:
+#   unbound_same_as_bound, extended, or compact
+# unbound_same_as_bound -- this assumes the internal energy of the ligand is the
+#                          same before and after binding.
+# extended -- this assumes the internal energy of the ligand is that of an 
+#             extended conformation when unbound.
+# compact -- this assumes the internal energy of the ligand is that of a 
+#            compact conformation when unbound.
+FE_unbound_model compact
 
 # AutoDock 4 free energy coefficients with respect to original (AD2) energetic parameters
+#  This model assumes that the unbound conformation is compact.
+#  See Table 3 in Huey,Morris,Olson&Goodsell (2007) J Comput Chem 28: 1145-1152.
 #
 #               Free Energy Coefficient
 #               ------
-FE_coeff_vdW    0.1560
-FE_coeff_hbond  0.0974
-FE_coeff_estat  0.1465
-FE_coeff_desolv 0.1159
-FE_coeff_tors   0.2744
+FE_coeff_vdW    0.1641
+FE_coeff_hbond  0.0531
+FE_coeff_estat  0.1272
+FE_coeff_desolv 0.0603
+FE_coeff_tors   0.2272
 
 # AutoDock 4 Energy Parameters
 
@@ -78,4 +113,8 @@ atom_par ZN     1.48  0.550   1.7000  -0.00110  0.0  0.0  0  -1  -1  4	# Non H-b
 atom_par Br     4.33  0.389  42.5661  -0.00110  0.0  0.0  0  -1  -1  4	# Non H-bonding Bromine
 atom_par BR     4.33  0.389  42.5661  -0.00110  0.0  0.0  0  -1  -1  4	# Non H-bonding Bromine
 atom_par I      4.72  0.550  55.0585  -0.00110  0.0  0.0  0  -1  -1  4	# Non H-bonding Iodine
-
+atom_par Z      4.00  0.150  33.5103  -0.00143  0.0  0.0  0  -1  -1  0  # Non H-bonding covalent map
+atom_par G      4.00  0.150  33.5103  -0.00143  0.0  0.0  0  -1  -1  0	# Ring closure Glue Aliphatic Carbon  # SF
+atom_par GA     4.00  0.150  33.5103  -0.00052  0.0  0.0  0  -1  -1  0	# Ring closure Glue Aromatic Carbon   # SF
+atom_par J      4.00  0.150  33.5103  -0.00143  0.0  0.0  0  -1  -1  0	# Ring closure Glue Aliphatic Carbon  # SF
+atom_par Q      4.00  0.150  33.5103  -0.00143  0.0  0.0  0  -1  -1  0	# Ring closure Glue Aliphatic Carbon  # SF

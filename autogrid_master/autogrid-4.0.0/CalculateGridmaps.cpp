@@ -1,8 +1,7 @@
 /*
     AutoGrid
 
-    Copyright (C) 1989-2007, Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson,
-    All Rights Reserved.
+    Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
     Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
@@ -127,11 +126,10 @@ static inline void getHBondAngularFunction(const InputData *input, const BondVec
             // END NEW2 calculate dot product of bond vector with bond vector of best input->hbond
         }
         // endif (input->atomType[ia] == hydrogen)
-        // NEW Directional N acceptor
     }
     else if (input->hbond[ia] == A1)
     {
-        // A1
+        // NEW Directional N acceptor
         //  ia-th macromolecule atom = Nitrogen (4 = H)
         //  calculate rdon for H-bond Donor PROBES at this grid pt.
 
@@ -304,6 +302,8 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
         gridmaps.getDesolvationMap().energies[outputIndex] += input->solparQ * input->vol[ia] * desolvExpFunc(indexR);
     } // ia loop, over all receptor atoms...
 
+    // Adjust maps of hydrogen-bonding atoms by adding largest and
+    // smallest interaction of all 'pair-wise' interactions with receptor atoms
     for (int m = 0; m < gridmaps.getNumAtomMaps(); m++)
     {
         double &e = gridmaps[m].energies[outputIndex];
