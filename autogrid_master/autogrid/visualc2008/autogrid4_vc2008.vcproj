@@ -463,91 +463,11 @@
 						>
 					</File>
 					<File
-						RelativePath="..\math\Geometric\Circle2.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Frustum3.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Frustum3.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Intersection2.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Intersection2.h"
-						>
-					</File>
-					<File
 						RelativePath="..\math\Geometric\Intersection3.cpp"
 						>
 					</File>
 					<File
 						RelativePath="..\math\Geometric\Intersection3.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Line2.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Line2.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Matrix3.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Matrix3.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Matrix4.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Matrix4.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Plane3.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Plane3.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Quaternion.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Quaternion.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Ray2.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Ray2.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Ray3.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Ray3.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Rect2.h"
 						>
 					</File>
 					<File
@@ -572,14 +492,6 @@
 					</File>
 					<File
 						RelativePath="..\math\Geometric\Vec4.h"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Vertex3.cpp"
-						>
-					</File>
-					<File
-						RelativePath="..\math\Geometric\Vertex3.h"
 						>
 					</File>
 				</Filter>

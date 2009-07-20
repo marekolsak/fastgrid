@@ -26,7 +26,7 @@
 #include "Exceptions.h"
 #include <cstring>
 #include <cctype>
-#include "../autodock-4.0.1/default_parameters.h"
+#include "../autodock/default_parameters.h"
 
 ParameterLibrary::ParameterLibrary(LogFile *logFile, const char *modelText, Unbound_Model unboundModel, int debug, int outputLevel)
     : logFile(logFile), debug(debug), outputLevel(outputLevel)
