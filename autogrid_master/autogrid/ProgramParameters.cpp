@@ -165,7 +165,7 @@ void ProgramParameters::printHelpAndExit()
                     "  -u, --help        display this help and exit\n"
                     "      --no-cuda     disable CUDA, use the CPU codepath instead\n"
                     "      --omp N       set OpenMP to use N threads at most\n"
-                    "      --v4          set the AutoGrid 4.0 default parameter library"
+                    "      --v4          set the AutoGrid 4.0 default parameter library\n"
                     "\n"
                     "Advanced:\n"
                     "      --cuda-ddd=g|c|t|i  set a way of calculating distance-dependent dielectric\n"
