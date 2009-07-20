@@ -46,7 +46,8 @@
 #endif
 
 ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), benchmark(false), nns(true),
-    cutoffGrid(true), cuda(true), cudaUnroll(true), cudaThread(true), calcSlicesSeparately(false), cudaDDDKind(DistanceDependentDiel_TextureMem)
+    cutoffGrid(true), cuda(true), cudaUnroll(true), cudaThread(true), calcSlicesSeparately(false), v4(false),
+    cudaDDDKind(DistanceDependentDiel_TextureMem)
 {
     programName[0] = 0;
     gridParameterFilename[0] = 0;
@@ -76,6 +77,7 @@ void ProgramParameters::parse(int argc, char **argv)
         else if (cmp2(argv[1], "-u", "--help"))   printHelpAndExit();
         else if (cmp(argv[1], "--no-cuda"))       cuda = false;
         else if (cmp(argv[1], "--omp"))           omp_set_num_threads(readParamInt(&argc, &argv));
+        else if (cmp(argv[1], "--v4"))            v4 = true;
 
         // Advanced:
         else if (cmp(argv[1], "--cuda-ddd=g"))    cudaDDDKind = DistanceDependentDiel_GlobalMem;
@@ -159,10 +161,11 @@ void ProgramParameters::printHelpAndExit()
                     "      --benchmark   print execution times to standard error output\n"
                     "      --cuda-enum   enumerate all CUDA devices and exit\n"
                     "      --cuda-dev N  use a CUDA device number N (default: 0)\n"
-                    "  -d, --debug       print additional debug information\n"
+                    "  -d, --debug       increment debug level\n"
                     "  -u, --help        display this help and exit\n"
                     "      --no-cuda     disable CUDA, use the CPU codepath instead\n"
                     "      --omp N       set OpenMP to use N threads at most\n"
+                    "      --v4          set the AutoGrid 4.0 default parameter library"
                     "\n"
                     "Advanced:\n"
                     "      --cuda-ddd=g|c|t|i  set a way of calculating distance-dependent dielectric\n"

@@ -29,7 +29,7 @@ using namespace std;
 
 #define stdSetGridMapParametersAsync        dddcmSetGridMapParametersAsync
 #define stdSetDistDepDielTexture            dddcmSetDistDepDielTexture
-#define stdSetDistDepDielLookUpTable        dddcmSetDistDepDielLookUpTable
+#define stdSetDistDepDielLookUpTableAsync        dddcmSetDistDepDielLookUpTableAsync
 #define stdSetGridMapSliceParametersAsync   dddcmSetGridMapSliceParametersAsync
 #define stdSetGridMapKernelParametersAsync  dddcmSetGridMapKernelParametersAsync
 #define stdGetKernelProc                    dddcmGetKernelProc

@@ -1,11 +1,10 @@
 /*
 
- $Id: typedefs.h,v 1.5 2007/04/27 06:01:52 garrett Exp $
+ $Id: typedefs.h,v 1.8 2009/05/08 23:02:18 rhuey Exp $
 
- AutoDock 
+ AutoDock  
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
- All Rights Reserved.
+Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
 
  AutoDock is a Trade Mark of The Scripps Research Institute.
 
@@ -31,7 +30,7 @@
 /******************************************************************************
  *      Name: typedefs.h                                                      *
  *  Function: Defines types used in Molecular Applications.                   *
- * Copyright: (C) Garrett Matthew Morris, TSRI                                *
+ *Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
  *----------------------------------------------------------------------------*
  *    Author: Garrett Matthew Morris, The Scripps Research Institute          *
  *      Date: JAN/18/2003                                                     *
@@ -63,6 +62,9 @@
 #endif
 #define FDFMT2 FDFMT " " FDFMT
 #define FDFMT3 FDFMT " " FDFMT " " FDFMT
+
+typedef float MapType; //the grid map type can be changed independent of other 'Real's
+#   define MAPFMT "%f"
 
 
 #ifdef USE_VELOCITY_ENGINE

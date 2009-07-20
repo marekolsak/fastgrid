@@ -11,7 +11,7 @@ goto MAIN
 :MAIN
 cd %2
 echo cmd: ../autogrid4.exe -p %input_file% -l %log_file%
-"../autogrid4.exe" -p %input_file% -l %log_file% --benchmark
+"../autogrid4.exe" -p %input_file% -l %log_file% --benchmark --v4
 if NOT ERRORLEVEL 0 goto PROGRAMERROR 
 tail -n 1 %log_file%
 cd ..

@@ -30,7 +30,7 @@ void stdSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGrid
                                     const float *gridSpacing, const float *gridSpacingCoalesced,
                                     float **deviceEnergies, cudaStream_t stream);
 void stdSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
-void stdSetDistDepDielLookUpTable(float **devicePtr, cudaStream_t stream);
+void stdSetDistDepDielLookUpTableAsync(float **devicePtr, cudaStream_t stream);
 void stdSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream);
 void stdSetGridMapKernelParametersAsync(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
 

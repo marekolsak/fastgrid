@@ -527,6 +527,11 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 {
                     strncpy(gridmaps[i].type, ligandTypes[i], 3);   // eg HD or OA or NA or N
                     foundParam = parameterLibrary.findAtomParameter(ligandTypes[i]);
+                    if (strcmp(ligandTypes[i], "Z") == 0)
+                    {
+                        logFile->print("Found covalent map atomtype\n");
+                        gridmaps[i].isCovalent = true;
+                    }
                     gridmaps[i].atomType = foundParam->mapIndex;
                     gridmaps[i].solparProbe = foundParam->solpar;
                     gridmaps[i].volProbe = foundParam->vol;
@@ -583,12 +588,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 {
                     logFile->printFormatted("\t\t\tAtom type number %d corresponds to atom type name \"%s\".\n", i, gridmaps[i].type);
 
-                    // TODO: FIX THIS!!! Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
-                    /*if (gridmaps[i].atomType == COVALENTTYPE)
-                    {
-                        gridmaps[i].isCovalent = true;
+                    if (gridmaps[i].isCovalent)
                         logFile->printFormatted("\nAtom type number %d will be used to calculate a covalent affinity grid map\n\n", i + 1);
-                    }*/
                 }
                 logFile->print("\n\n");
             }
@@ -749,7 +750,34 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
             sscanf(GPFLine, "%*s %s ", parameterLibraryFilename);
             break;
         }                       // second switch
-    }                           // while
+    }                           // while: finished reading gpf
+
+    // Map files checkpoint  (number of maps, desolv and elec maps) SF
+
+    // Number of maps defined for atom types
+    if (mapIndex < gridmaps.getNumAtomMaps() - 1)
+    {
+        logFile->printFormatted("Too few \"map\" keywords (%d);  the \"ligand_types\" command declares %d atom types.\nAdd a \"map\" keyword from the GPF.\n", mapIndex + 1, gridmaps.getNumAtomMaps());
+        logFile->printError(ERROR, "Not enough map keywords found.\n");
+        logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+	}
+
+    // Desolvation map
+    if (!gridmaps.getDesolvationMap().filename[0])
+    {
+        logFile->print("The desolvation map file is not defined in the GPF.\n");
+        logFile->printError(ERROR, "No desolvation map file defined.\n");
+        logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+	}
+
+    // Electrostatic map
+    if (!gridmaps.getElectrostaticMap().filename[0])
+    {
+        logFile->print("The electrostatic map file is not defined in the GPF.\n");
+        logFile->printError(ERROR, "No electrostatic map file defined.\n");
+        logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+	}
+    // End of map files checkpoint SF
 
     logFile->print("\n>>> Closing the grid parameter file (GPF)... <<<\n\n" UnderLine);
     fclose(GPF);

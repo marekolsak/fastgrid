@@ -31,6 +31,6 @@
 // - If CUDA is disabled, the function is called sequentially and zero is returned.
 void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
 
-// This functions synchronizes (or waits for) a previously-started asynchronous calculation.
+// This function waits for a previously-started asynchronous calculation.
 // A zero handle does no-op.
 void synchronizeCalculation(void *handle);

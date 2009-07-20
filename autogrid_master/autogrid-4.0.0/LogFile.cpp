@@ -224,6 +224,7 @@ void LogFile::printBanner(const char *versionNumber)
         "               |            Ruth Huey, TSRI           |\n"
         "               |        David S. Goodsell, TSRI       |\n"
         "               |         Arthur J. Olson, TSRI        |\n"
+        "               |         Marek Olsak, NCBR MUNI       |\n"
         "               |                                      |\n"
         "               |        (C) 1989-2009, TSRI           |\n"
         "               |   The Scripps Research Institute     |\n"

@@ -1,11 +1,10 @@
 /*
 
- $Id: autocomm.h,v 1.14 2007/04/27 06:01:47 garrett Exp $
+ $Id: autocomm.h,v 1.19 2009/05/08 23:02:10 rhuey Exp $
 
- AutoDock 
+ AutoDock  
 
- Copyright (C) 1989-2007,  Garrett M. Morris, David S. Goodsell, Ruth Huey, Arthur J. Olson, 
- All Rights Reserved.
+Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
 
  AutoDock is a Trade Mark of The Scripps Research Institute.
 
@@ -32,11 +31,13 @@
 
 #include <sys/types.h>
 #include <time.h>
+/* include stdio to pick up definition of FILENAME_MAX and possibly PATH_MAX */
+#include <stdio.h>
 
 /*******************************************************************************
 **      Name: autocomm.h                                                      **
 **  Function: Defines Constants, common to both AUTOGRID & AUTODOCK...        **
-** Copyright: (C) Garrett Matthew Morris, TSRI                                **
+**Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
 **----------------------------------------------------------------------------**
 **    Author: Garrett Matthew Morris, The Scripps Research Institute          **
 **      Date: 02/28/1995                                                      **
@@ -72,13 +73,16 @@
 
 #define APPROX_ZERO  1.0E-6 /* To avoid division-by-zero errors...            */
 #define BIG          1.0E12 /* Very large constant                            */
-#define MAX_CHARS    512    /* Number of characters in atom data & filenames  */
+#define MAX_CHARS    128    /* Number of characters in atom data & filenames  */
 #define MAX_LINES    256    /* Number of lines in parameter file              */
+#ifndef PATH_MAX
+#define PATH_MAX     FILENAME_MAX
+#endif
 
 #ifdef USE_XCODE
 #define LINE_LEN     140    /* Line length in characters                      */
 #else
-#define LINE_LEN     1024   /* Line length in characters                      */
+#define LINE_LEN     256    /* Line length in characters                      */
 #endif
 
 #if defined( USE_XCODE )
@@ -87,29 +91,22 @@
 #elif defined( __CYGWIN__ ) 
 #define MAX_GRID_PTS 64		/* Maximum number of grid points in 1 dimension */
 #else
-#define MAX_GRID_PTS 1024	/* Maximum number of grid points in 1 dimension */
+#define MAX_GRID_PTS 1024   /* Maximum number of grid points in 1 dimension */
 				/* MAX_GRID_PTS 128 causes a SIGSEGV on Cygwin */
 #endif
 
 #define	EINTCLAMP    100000. /* Clamp pairwise internal energies (kcal/mol )  */
 
-#define MAX_ATOM_TYPES 20    /* Maximum number of atom types                  */
 #define MAX_MAPS_PAD 0       // Use this to pad MAX_MAPS to a power of 2, for presumably-faster memory access
 #define NUM_NON_VDW_MAPS 2   // Number of electrostatic and desolvation maps
+#define MAX_ATOM_TYPES (16 - NUM_NON_VDW_MAPS)    /* Maximum number of atom types set to keep MAX_MAPS a power of 2 */
 #define MAX_MAPS (MAX_ATOM_TYPES + NUM_NON_VDW_MAPS + MAX_MAPS_PAD) /* Maximum number of energy maps        */
+                            /* 0,1,2,... are for atomic interactions          */
+                            /* last two are for electrostatics and desolvation */
 
 #define VECLENMAX    16     /* For AVS fld files...                           */
 
 // Legacy definitions:
-#define NATOMTYPES	    7   /* Number of atom types for atomic interactions   */
-#define MAX_TYPES       8   /* Maximum number of atom types used.             */
-#define ATOM_MAPS       6   /* Number of atomic affinity grids                */
-                            /* 0,1,2,... are for atomic interactions          */
-                            /* last is for electrostatics                     */
-
-#define ATOMTYPE	"CNOSHXM"
-/*                   0123456 */
-
 #define COVALENTTYPE 'Z'
 #define COVALENTTYPE2 'Y'
 
@@ -189,6 +186,25 @@ typedef struct AtomDesc {
 
 
 #endif
+
+/*
+ * assert that quaternions are OK
+ */
+#include <assert.h> // for assert in assertQuatOK
+#include <math.h> // for sqrt in assertQuatOK
+
+#define ONE_MINUS_EPSILON 0.999
+#define ONE_PLUS_EPSILON 1.001
+
+/*
+ * void assertQuatOK( const Quat q )
+ * {
+ *     register double mag4 = hypotenuse4( q.x, q.y, q.z, q.w );
+ *     assert((mag4 > ONE_MINUS_EPSILON) && (mag4 < ONE_PLUS_EPSILON));
+ * }
+ */
+#define assertQuatOK( q ) {fflush(logFile);register double aQOK_mag4 = hypotenuse4( (q).x, (q).y, (q).z, (q).w ); assert((aQOK_mag4 > ONE_MINUS_EPSILON) && (aQOK_mag4 < ONE_PLUS_EPSILON)); }
+
 
 #endif /*_AUTOCOMM*/
 

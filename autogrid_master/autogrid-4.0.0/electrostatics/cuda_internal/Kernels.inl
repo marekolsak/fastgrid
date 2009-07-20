@@ -218,7 +218,7 @@ void stdSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc 
     CUDA_SAFE_CALL(cudaBindTextureToArray(&epsilonTexture, ptr, desc));
 }
 
-void stdSetDistDepDielLookUpTable(float **devicePtr, cudaStream_t stream)
+void stdSetDistDepDielLookUpTableAsync(float **devicePtr, cudaStream_t stream)
 {
 #if defined(USE_DDD_CONSTMEM)
     CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::epsilon, *devicePtr, sizeof(float) * MAX_DIST, 0, cudaMemcpyDeviceToDevice, stream));

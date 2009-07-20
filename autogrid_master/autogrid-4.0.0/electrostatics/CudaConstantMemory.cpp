@@ -60,7 +60,7 @@ void CudaConstantMemory::initDistDepDielLookUpTable(const double *epsilon)
 
     std::transform(epsilon, epsilon + MAX_DIST, epsilonHost, typecast<float, double>);
     CUDA_SAFE_CALL(cudaMemcpyAsync(params.epsilonDevice, epsilonHost, size, cudaMemcpyHostToDevice, stream));
-    api->setDistDepDielLookUpTable(&paramsHost->epsilonDevice, stream);
+    api->setDistDepDielLookUpTableAsync(&paramsHost->epsilonDevice, stream);
 }
 
 void CudaConstantMemory::setGridMapParameters(const Vec3i &numGridPointsDiv2, double gridSpacing,

@@ -26,22 +26,32 @@
 #include "Exceptions.h"
 #include <cstring>
 #include <cctype>
-
-// Uh, this is ugly, but... we want to make the param_string variable (declared
-// in default_parameters.h) const without changing the autodock source code
-const
 #include "../autodock-4.0.1/default_parameters.h"
 
-ParameterLibrary::ParameterLibrary(LogFile *logFile, int debug, int outputLevel): logFile(logFile), debug(debug), outputLevel(outputLevel)
+ParameterLibrary::ParameterLibrary(LogFile *logFile, const char *modelText, Unbound_Model unboundModel, int debug, int outputLevel)
+    : logFile(logFile), debug(debug), outputLevel(outputLevel)
 {
+    filename[0] = 0;
     memset(dictionary, 0, sizeof(dictionary));
 
     // Setup default parameters
     // These are set up in "default_parameters.h"
-    // and stored in the param_string[MAX_LINES] array
-    logFile->print("Setting up parameter library with factory defaults.\n\n\n");
-    for (int i = 0; param_string[i]; i++)
-        readLine(param_string[i]);
+    // and stored in the param_string_VERSION_NUM[MAX_LINES] array
+    // so far we have param_string_4_0 and param_string_4_1
+    char **paramString;
+    if (unboundModel == Extended)
+        paramString = param_string_4_0;
+    else if (unboundModel == Unbound_Same_As_Bound)
+        paramString=param_string_4_1;
+    else
+    {
+        logFile->printFormatted("DEBUG: cannot determine %s parameter values \n", modelText);
+        throw ExitProgram(-1);
+    }
+
+    logFile->printFormatted("Setting up parameter library with AutoDock %s values.\n\n\n", modelText);
+    for (int i = 0; paramString[i]; i++)
+        readLine(paramString[i]);
 }
 
 ParameterLibrary::~ParameterLibrary()
@@ -92,17 +102,18 @@ int ParameterLibrary::getAtomParameterRecIndex(const char *key) const
 
 void ParameterLibrary::load(const char *filename)
 {
-    logFile->print("Using read_parameter_library\n");
+    logFile->printFormatted("Using read_parameter_library() to try to open and read \"%s\".\n\n", filename);
+    strncpy(this->filename, filename, MAX_CHARS);
 
     // Open and read the parameter library
     FILE *parameterLibraryFile;
     if ((parameterLibraryFile = boincOpenFile(filename, "r")) == 0)
     {
-         fprintf(stderr,"Sorry, I can't find or open %s\n", filename);
-         throw ExitProgram(-1);
+        logFile->printFormatted("Sorry, I can't find or open %s\n", filename);
+        throw ExitProgram(-1);
     }
 
-    char line[MAX_CHARS];
+    char line[LINE_LEN];
     while (fgets(line, sizeof(line), parameterLibraryFile) != 0)
         readLine(line);
 }
@@ -174,6 +185,11 @@ void ParameterLibrary::readLine(const char *line)
         logFile->printFormatted("Free energy coefficient for the torsional term     = \t%.4lf\n\n", this->coeff_tors);
         break;
 
+    case PAR_UNBOUND:
+        logFile->printError(WARNING, "the unbound model cannot be specified in the parameter library file.\n\n");
+        logFile->print("Use the DPF parameter 'unbound_model' instead.\n");
+        break;
+
     case PAR_ATOM_PAR:
         // Read in one line of atom parameters;
         // NB: scanf doesn't try to write missing fields
@@ -197,14 +213,17 @@ void ParameterLibrary::readLine(const char *line)
         thisParameter.epsijHB *= this->coeff_hbond;
 
         insertAtomParameter(thisParameter.autogridType, thisParameter);
-        logFile->printFormatted("Parameters for the atom type named \"%s\" were read in from the parameter library as follows:\n", thisParameter.autogridType);
+        if (filename[0])
+            logFile->printFormatted("Parameters for the atom type \"%s\" were read in from \"%s\" as follows:\n\n", thisParameter.autogridType, filename);
+        else
+            logFile->printFormatted("Parameters for the atom type \"%s\" were initialised with the following default values:\n\n", thisParameter.autogridType);
 
         if (outputLevel > 2)
             logFile->printFormatted("\tR-eqm = %5.2f Angstrom\n\tweighted epsilon = %5.3f\n\tAtomic fragmental volume = %5.3f\n\tAtomic solvation parameter = %5.3f\n\tH-bonding R-eqm = %5.3f\n\tweighted H-bonding epsilon = %5.3f\n\tH-bonding type = %d,  bond index = %d\n\n",
                     thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
                     thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
         else
-            logFile->printFormatted("\tR-eqm = %.2f Angstrom,  weighted epsilon = %.3f,  At.frag.vol. = %.3f,  At.solv.par. = %.3f, \n\tHb R-eqm = %.3f,  weighted Hb epsilon = %.3f,  Hb type = %d,  bond index = %d\n\n",
+            logFile->printFormatted("\tR-eqm = %.2f Angstrom,  weighted epsilon = %.3f,\n\tAt.frag.vol. = %.3f,  At.solv.par. = %.3f,\n\tHb R-eqm = %.3f,  weighted Hb epsilon = %.3f,\n\tHb type = %d,  bond index = %d\n\n",
                     thisParameter.Rij, thisParameter.epsij, thisParameter.vol, thisParameter.solpar,
                     thisParameter.RijHB, thisParameter.epsijHB, thisParameter.hbond, thisParameter.bondIndex);
         break;

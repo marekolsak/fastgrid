@@ -75,7 +75,7 @@ public:
     const ParameterEntry *findAtomParameter(const char *key) const;
     int getAtomParameterRecIndex(const char *key) const;
 
-    ParameterLibrary(LogFile *logFile, int debug, int outputLevel = -1);
+    ParameterLibrary(LogFile *logFile, const char *modelText, Unbound_Model unboundModel, int debug, int outputLevel = -1);
     ~ParameterLibrary();
     void load(const char *filename);
 
@@ -93,9 +93,11 @@ private:
         PAR_DESOLV,
         PAR_TORS,
         PAR_ATOM_PAR,
-        PAR_COMMENT
+        PAR_COMMENT,
+        PAR_UNBOUND
     };
 
+    char filename[MAX_CHARS];
     ParameterEntry *dictionary[MAXKEY];
     LogFile *logFile;
     int debug, outputLevel;

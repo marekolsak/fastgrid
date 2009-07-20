@@ -132,7 +132,9 @@ void autogridMain(int argc, char **argv)
     GridMapList gridmaps(&logFile);
 
     // Initialization of free energy coefficients and atom parameters
-    ParameterLibrary parameterLibrary(&logFile, programParams.getDebugLevel());
+    ParameterLibrary parameterLibrary(&logFile, "default Unbound_Same_As_Bound",
+                                      programParams.useVersion4() ? Extended : Unbound_Same_As_Bound,
+                                      programParams.getDebugLevel());
 
     // Reading in the grid parameter file
     InputDataLoader *inputDataLoader = new InputDataLoader(&logFile);
@@ -189,25 +191,6 @@ void autogridMain(int argc, char **argv)
                            "            /Ang              /sec            /sec\n"
                            "________  ________  ________  ______________  __________________________\n\n"*/,
                            gridmaps.getNumMapsInclFloatingGrid(), input->numGridPointsPerMap, input->numReceptorAtoms);
-
-    // TODO: rewrite writing out progress in percents
-    /* Former code:
-
-        for (all z)
-        {
-            tms timesGridStart;
-            Clock gridStartTime = times(&timesGridStart);
-
-            for (all y) ...
-
-            tms timerGridEnd;
-            Clock gridEndTime = times(&timerGridEnd);
-            logFile.printFormatted(" %6d   %8.3lf   %5.1lf%%   ", gridCoordZ, input->gridCornerMin.z + gridPosZ, ((z+1) * 100.0) / input->numGridPoints.z);
-            logFile.printTimeInHMS((gridEndTime - gridStartTime) * (input->numGridPoints.z - z));
-            logFile.print("  ");
-            logFile.printExecutionTimes(gridStartTime, gridEndTime, &timesGridStart, &timerGridEnd);
-        }
-    */
 
     // Covalent Atom Types are not yet supported with the new AG4/AD4 atom typing mechanism...
     Timer *t1 = 0;
