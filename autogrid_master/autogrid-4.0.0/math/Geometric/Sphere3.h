@@ -49,15 +49,6 @@ namespace Rune
         static T CalculateRadius(const Vec3<T> &center, const Vec3<T> *vertices, int count);
     };
 
-    template<typename T>
-    RUNEMATH_API Sphere3<T> operator *(const Matrix3<T> &m, const Sphere3<T> &s);
-    template<typename T>
-    RUNEMATH_API Sphere3<T> operator *(const Sphere3<T> &s, const Matrix3<T> &m);
-    template<typename T>
-    RUNEMATH_API Sphere3<T> operator *(const Matrix4<T> &m, const Sphere3<T> &s);
-    template<typename T>
-    RUNEMATH_API Sphere3<T> operator *(const Sphere3<T> &s, const Matrix4<T> &m);
-
     typedef Sphere3<float> Sphere3f;
     typedef Sphere3<double> Sphere3d;
 }

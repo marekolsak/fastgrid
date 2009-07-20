@@ -25,24 +25,6 @@
 namespace Rune
 {
     /**
-        Spocita kolizi roviny a primky
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const Plane3<T> &p, const Ray3<T> &ray, Vec3<T> &point, T &tparam)
-    {
-        T dp = Vec3<T>::Dot(ray.direction, p.normal);
-        if (Math<T>::SafeIsZero(dp)) return false;
-        T t = -p.GetDistance(ray.origin) / dp;
-        if (t < 0) return false;
-        point = (ray.origin + ray.direction * t);
-        tparam = t;
-        return true;
-    }
-
-    template RUNEMATH_API bool Intersect(const Plane3<float> &p, const Ray3<float> &ray, Vec3<float> &point, float &tparam);
-    template RUNEMATH_API bool Intersect(const Plane3<double> &p, const Ray3<double> &ray, Vec3<double> &point, double &tparam);
-
-    /**
         Spocita kolizi AABB a bodu
     **************************************************************************************************/
     template<typename T>
@@ -175,30 +157,6 @@ namespace Rune
     template RUNEMATH_API bool Intersect(const AxisAlignedBox3<double> &b, Interior bi, const Sphere3<double> &s, Interior si);
 
     /**
-        Spocita kolizi AABB a primky
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const AxisAlignedBox3<T> &b, const Ray3<T> &ray)
-    {
-        Vec3<T> sides = b.GetExtents();
-        Vec3<T> diff = ray.origin - b.GetCenter();
-
-        if ((Math<T>::Abs(diff.x) > sides.x && diff.x * ray.direction.x >= 0) ||
-            (Math<T>::Abs(diff.y) > sides.y && diff.y * ray.direction.y >= 0) ||
-            (Math<T>::Abs(diff.z) > sides.z && diff.z * ray.direction.z >= 0)) return false;
-
-        Vec3<T> rayDirAbs = ray.direction.GetAbs();
-        Vec3<T> crossAbs = Vec3<T>::Cross(ray.direction, diff).GetAbs();
-
-        return !(crossAbs.x > sides.y * rayDirAbs.z + sides.z * rayDirAbs.y ||
-                 crossAbs.y > sides.x * rayDirAbs.z + sides.z * rayDirAbs.x ||
-                 crossAbs.z > sides.x * rayDirAbs.y + sides.y * rayDirAbs.x);
-    }
-
-    template RUNEMATH_API bool Intersect(const AxisAlignedBox3<float> &b, const Ray3<float> &ray);
-    template RUNEMATH_API bool Intersect(const AxisAlignedBox3<double> &b, const Ray3<double> &ray);
-
-    /**
         Spocita kolizi dvou kouli
     **************************************************************************************************/
     template<typename T>
@@ -241,100 +199,4 @@ namespace Rune
 
     template RUNEMATH_API bool Intersect(const Sphere3<float> &s, const Vec3<float> &point);
     template RUNEMATH_API bool Intersect(const Sphere3<double> &s, const Vec3<double> &point);
-
-    /**
-        Spocita kolizi koule a primky
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const Sphere3<T> &s, const Ray3<T> &ray)
-    {
-        Vec3<T> rd = s.pos - ray.origin;
-        T a = Vec3<T>::Dot(ray.direction, ray.direction);
-        T b = Vec3<T>::Dot(rd, ray.direction) * 2;
-        T c = Vec3<T>::Dot(rd, rd) - s.radius*s.radius;
-        T d = Math<T>::Discriminant(a, b, c);
-        return d >= 0 && b * Math<T>::Abs(b) + d > 0;
-    }
-
-    template RUNEMATH_API bool Intersect(const Sphere3<float> &s, const Ray3<float> &ray);
-    template RUNEMATH_API bool Intersect(const Sphere3<double> &s, const Ray3<double> &ray);
-
-    /**
-        Spocita kolizi koule a primky, vraci navic bod dotyku a vzdalenost
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const Sphere3<T> &s, const Ray3<T> &ray, Vec3<T> &point, T &distance)
-    {
-        Vec3<T> rd = s.pos - ray.origin;
-        T a = Vec3<T>::Dot(ray.direction, ray.direction);
-        T b = Vec3<T>::Dot(rd, ray.direction) * 2;
-        T c = Vec3<T>::Dot(rd, rd) - s.radius*s.radius;
-        T d = Math<T>::Discriminant(a, b, c);
-
-        if (d >= 0 && b * Math<T>::Abs(b) + d > 0)
-        {
-            T t = -Math<T>::QuadraticEquationRoot(a, b, d, 1);
-            point = (ray.origin + ray.direction * t);
-            distance = t;
-            return true;
-        }
-        return false;
-    }
-
-    template RUNEMATH_API bool Intersect(const Sphere3<float> &s, const Ray3<float> &ray, Vec3<float> &point, float &distance);
-    template RUNEMATH_API bool Intersect(const Sphere3<double> &s, const Ray3<double> &ray, Vec3<double> &point, double &distance);
-
-    /**
-        Spocita kolizi komoleho jehlanu a bodu
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const Frustum3<T> &f, const Vec3<T> &point)
-    {
-        for (int i = 0; i < 6; i++)
-            if (f.planes[i].GetSide(point) != 1) return false;
-        return true;
-    }
-
-    template RUNEMATH_API bool Intersect(const Frustum3<float> &f, const Vec3<float> &point);
-    template RUNEMATH_API bool Intersect(const Frustum3<double> &f, const Vec3<double> &point);
-
-    /**
-        Spocita kolizi komoleho jehlanu a koule
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const Frustum3<T> &f, const Sphere3<T> &s)
-    {
-        for (int i = 0; i < 6; i++)
-            if (f.planes[i].GetDistance(s.pos) < -s.radius) return false;
-        return true;
-    }
-
-    template RUNEMATH_API bool Intersect(const Frustum3<float> &f, const Sphere3<float> &s);
-    template RUNEMATH_API bool Intersect(const Frustum3<double> &f, const Sphere3<double> &s);
-
-    /**
-        Spocita kolizi komoleho jehlanu a AABB
-    **************************************************************************************************/
-    template<typename T>
-    RUNEMATH_API bool Intersect(const Frustum3<T> &f, const AxisAlignedBox3<T> &box)
-    {
-        Vec3<T> corners[8];
-        box.GetVertices(corners);
-        for (int i = 0; i < 6; i++)
-        {
-            bool res = false;
-            for (int j = 0; j < 8; j++)
-                if (f.planes[i].GetSide(corners[j]) == 1)
-                {
-                    res = true;
-                    break;
-                }
-            if (!res)
-                return false;
-        }
-        return true;
-    }
-
-    template RUNEMATH_API bool Intersect(const Frustum3<float> &f, const AxisAlignedBox3<float> &box);
-    template RUNEMATH_API bool Intersect(const Frustum3<double> &f, const AxisAlignedBox3<double> &box);
 }

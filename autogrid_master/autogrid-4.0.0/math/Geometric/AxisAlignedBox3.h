@@ -44,15 +44,6 @@ namespace Rune
         RUNEMATH_API void Approximate(const AxisAlignedBox3 *boxes, int count);
     };
 
-    template<typename T>
-    RUNEMATH_API AxisAlignedBox3<T> operator *(const Matrix3<T> &m, const AxisAlignedBox3<T> &b);
-    template<typename T>
-    RUNEMATH_API AxisAlignedBox3<T> operator *(const AxisAlignedBox3<T> &b, const Matrix3<T> &m);
-    template<typename T>
-    RUNEMATH_API AxisAlignedBox3<T> operator *(const Matrix4<T> &m, const AxisAlignedBox3<T> &b);
-    template<typename T>
-    RUNEMATH_API AxisAlignedBox3<T> operator *(const AxisAlignedBox3<T> &b, const Matrix4<T> &m);
-
     typedef AxisAlignedBox3<float> AxisAlignedBox3f;
     typedef AxisAlignedBox3<double> AxisAlignedBox3d;
 }

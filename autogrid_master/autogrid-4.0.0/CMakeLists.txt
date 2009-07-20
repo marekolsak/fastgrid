@@ -21,18 +21,8 @@ SET(AUTOGRID_SOURCES
     ./ann/src/kd_split.cpp
 
     ./math/Geometric/Sphere3.cpp
-    ./math/Geometric/Matrix3.cpp
-    ./math/Geometric/Ray2.cpp
     ./math/Geometric/AxisAlignedBox3.cpp
-    ./math/Geometric/Vertex3.cpp
-    ./math/Geometric/Matrix4.cpp
     ./math/Geometric/Vec4.cpp
-    ./math/Geometric/Intersection2.cpp
-    ./math/Geometric/Frustum3.cpp
-    ./math/Geometric/Plane3.cpp
-    ./math/Geometric/Line2.cpp
-    ./math/Geometric/Ray3.cpp
-    ./math/Geometric/Quaternion.cpp
     ./math/Geometric/Intersection3.cpp
 
     ./openthreads/pthread_src/PThread.c++
@@ -76,11 +66,13 @@ FIND_PACKAGE(CUDA)
         ${AUTOGRID_SOURCES}
 
         ./electrostatics/Cuda.cpp
-        ./electrostatics/Cuda_internal.cu
         ./electrostatics/CudaConstantMemory.cpp
         ./electrostatics/CudaEvents.cpp
         ./electrostatics/CudaFloatTexture1D.cpp
         ./electrostatics/CudaGridMap.cpp
+        ./electrostatics/cuda_internal/Interface.cpp
+        ./electrostatics/cuda_internal/StandardKernels.cu
+        ./electrostatics/cuda_internal/DDDConstMemKernels.cu
     )
 
     CUDA_ADD_EXECUTABLE(autogrid4 ${AUTOGRID_SOURCES})
