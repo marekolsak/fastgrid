@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 
@@ -72,15 +72,15 @@ void PairwiseInteractionEnergies::calculate(const GridMapList &gridmaps, LogFile
                 cA = (tmpconst = epsij / (xA - xB)) * pow(Rij, xA) * xB;
                 cB = tmpconst * pow(Rij, xB) * xA;
                 if (isnan(cA))
-                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cA is not a number.  AutoGrid must exit.");
+                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cA is not a number.  " APPNAME " must exit.");
                 if (isnan(cB))
-                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cB is not a number.  AutoGrid must exit.");
+                    logFile.printError(FATAL_ERROR, "Van der Waals coefficient cB is not a number.  " APPNAME " must exit.");
                 dxA = xA;
                 dxB = xB;
                 if (xA == 0)
-                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xA is 0.  AutoGrid must exit.");
+                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xA is 0.  " APPNAME " must exit.");
                 if (xB == 0)
-                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xB is 0.  AutoGrid must exit.");
+                    logFile.printError(FATAL_ERROR, "Van der Waals exponent xB is 0.  " APPNAME " must exit.");
 
                 logFile.printFormatted("\n             %9.1lf       %9.1lf \n"
                                        "    E    =  -----------  -  -----------\n"

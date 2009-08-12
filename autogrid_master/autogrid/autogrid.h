@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 
@@ -43,7 +43,13 @@
 
 #include "../autodock/autocomm.h"
 
-// Taken from autodock/constants.h (to not interfere with AutoGrid rewrite)
+#if defined(FASTGRID)
+    #define APPNAME "FastGrid"
+#else
+    #define APPNAME "AutoGrid"
+#endif
+
+// Copied from autodock/constants.h (to avoid compile errors)
 enum Unbound_Model { Unbound_Default=0, Unbound_Same_As_Bound=1, Extended=2, Compact=3, User=4 };
 
 #if !defined(__CUDACC__)

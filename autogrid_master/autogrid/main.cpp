@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 
@@ -102,7 +102,7 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
 //
 // Inputs: Control file, receptor PDBQT file, parameter file
 // Returns: Atomic affinity, desolvation and electrostatic grid maps.
-void autogridMain(int argc, char **argv)
+void programMain(int argc, char **argv)
 {
     // Get the time at the start of the run...
     tms tmsJobStart;
@@ -247,8 +247,8 @@ int main(int argc, char **argv)
         // Initialize BOINC if needed
         boincInit();
 
-        // AutoGrid's main function
-        autogridMain(argc, argv);
+        // Main function
+        programMain(argc, argv);
 
         // This should not return if used
         boincDone();

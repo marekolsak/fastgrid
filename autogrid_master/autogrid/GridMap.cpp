@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 
@@ -155,7 +155,7 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
                 logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[i].filename);
                 logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
             }
-            if (fwrite(fileHeader, fileHeaderLength, 1, file) != fileHeaderLength)
+            if (!fwrite(fileHeader, fileHeaderLength, 1, file))
                 logFile->printError(FATAL_ERROR, "Not enough disk space.");
 
             // Save energies
@@ -163,8 +163,10 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
             {
                 double f = gridmaps[i].energies[j];
                 if (f == 0)
-                    if (fwrite("0\n", 2, 1, file) != 2)
+                {
+                    if (!fwrite("0\n", 2, 1, file))
                         logFile->printError(FATAL_ERROR, "Not enough disk space.");
+                }
                 else
                     fprintf(file, "%.3f\n", f);
             }
@@ -182,7 +184,7 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
             logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
             logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
         }
-        if (fwrite(fileHeader, fileHeaderLength, 1, file) != fileHeaderLength)
+        if (!fwrite(fileHeader, fileHeaderLength, 1, file))
             logFile->printError(FATAL_ERROR, "Not enough disk space.");
 
         // Save the floating grid

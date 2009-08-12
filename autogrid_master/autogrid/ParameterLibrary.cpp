@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 

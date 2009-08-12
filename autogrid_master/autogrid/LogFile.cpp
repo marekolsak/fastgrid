@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 
@@ -99,14 +99,14 @@ const char *LogFile::getProgramName() const
 void LogFile::print(const char *msg)
 {
     size_t len = strlen(msg);
-    if (fwrite(msg, len, 1, file) != len)
+    if (!fwrite(msg, len, 1, file))
         printError(FATAL_ERROR, "Not enough disk space.");
 }
 
 void LogFile::printFormatted(const char *format, ...)
 {
     FORMAT_MESSAGE(message, messageLength, format);
-    if (fwrite(message, messageLength, 1, file) != messageLength)
+    if (!fwrite(message, messageLength, 1, file))
         printError(FATAL_ERROR, "Not enough disk space.");
 }
 
@@ -134,13 +134,13 @@ void LogFile::printError(ErrorLevel errorLevel, const char *msg)
     char outputMessage[LINE_LEN];
     snprintf(outputMessage, LINE_LEN, "\n%s: %s:  %s\n", programName, tags[errorLevel+2], msg);
     size_t len = strlen(outputMessage);
-    if (fwrite(outputMessage, len, 1, file) != len && errorLevel != FATAL_ERROR)
+    if (!fwrite(outputMessage, len, 1, file) && errorLevel != FATAL_ERROR)
         // if it's a fatal error, no need to care because the program will be terminated anyway
         printError(FATAL_ERROR, "Not enough disk space.");
 
     // Only send errors, fatal errors and warnings to standard error.
     if (errorLevel <= WARNING)
-        if (fwrite(outputMessage, len, 1, stderr) != len && errorLevel != FATAL_ERROR)
+        if (!fwrite(outputMessage, len, 1, stderr) && errorLevel != FATAL_ERROR)
             // the log file *might* still be writable...
             printError(FATAL_ERROR, "Cannot write to standard error output.");
 
@@ -202,6 +202,16 @@ void LogFile::printBanner(const char *versionNumber)
     fprintf(file,
         "\n       _______________________________________________________\n"
         "\n"
+#if defined(FASTGRID)
+        "________///////_________________________/////_________________/________\n"
+        "_______/_________________________/_____/______________/_______/________\n"
+        "_______/_________________________/_____/______________________/________\n"
+        "_______///////___/////___//////_/////__/__////_/_///__/__////_/________\n"
+        "_______/______________/_/________/_____/_____/_//___/_/_/____//________\n"
+        "_______/________///////__/////___/_____/_____/_/______/_/_____/________\n"
+        "_______/_______/_____//_______/__/___/_/_____/_/______/_/____//________\n"
+        "_______/________/////_/_//////____///___/////__/______/__////_/________\n"
+#else
         "__________//____________________________/////_________________/________\n"
         "_________/__/____________/_____________/______________/_______/________\n"
         "________/____/___________/_____________/______________________/________\n"
@@ -210,6 +220,7 @@ void LogFile::printBanner(const char *versionNumber)
         "_______////////_/_____/__/_____/_____/_/_____/_/______/_/_____/________\n"
         "_______/______/_/____//__/___/_/_____/_/_____/_/______/_/____//________\n"
         "_______/______/__////_/___///___/////___/////__/______/__////_/________\n"
+#endif
         "\n"
         "       _______________________________________________________\n"
         "\n"
@@ -226,16 +237,27 @@ void LogFile::printBanner(const char *versionNumber)
         "\n"
         "                ______________________________________ \n"
         "               |                                      |\n"
-        "               |            AutoGrid %-8s         |\n"
+        "               |            " APPNAME " %-8s         |\n"
+#if defined(FASTGRID)
+        "               |                                      |\n"
+        "               |          The fork of AutoGrid        |\n"
+        "               |      optimized to fully leverage     |\n"
+        "               |  the power of multi-core processors  |\n"
+        "               |     and NVIDIA graphics hardware.    |\n"
+#endif
         "               |                                      |\n"
         "               |        Garrett M. Morris, TSRI       |\n"
         "               |            Ruth Huey, TSRI           |\n"
         "               |        David S. Goodsell, TSRI       |\n"
         "               |         Arthur J. Olson, TSRI        |\n"
-        "               |         Marek Olsak, NCBR MUNI       |\n"
+        "               |       Jiri Filipovic, NCBR MUNI      |\n"
+        "               |         Marek Olsak, FI MUNI         |\n"
         "               |                                      |\n"
         "               |        (C) 1989-2009, TSRI           |\n"
         "               |   The Scripps Research Institute     |\n"
+        "               |                                      |\n"
+        "               |           (C) 2009, MUNI             |\n"
+        "               |          Masaryk University          |\n"
         "               |______________________________________|\n"
         "\n"
         "                ______________________________________ \n"

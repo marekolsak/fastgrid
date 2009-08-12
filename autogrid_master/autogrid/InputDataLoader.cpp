@@ -1,8 +1,8 @@
 /*
-    AutoGrid
+    FastGrid (formerly AutoGrid)
 
     Copyright (C) 2009 The Scripps Research Institute. All rights reserved.
-    Copyright (C) 2008-2009, Marek Olsak (maraeo@gmail.com), All Rights Reserved.
+    Copyright (C) 2009 Masaryk University. All rights reserved.
 
     AutoGrid is a Trade Mark of The Scripps Research Institute.
 
@@ -210,7 +210,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 int sizeOfFile = ftell(receptorFile);
                 fseek(receptorFile, 0, SEEK_SET);
                 char *fileContent = new char[sizeOfFile];
-                if (fread(fileContent, sizeOfFile, 1, receptorFile) != sizeOfFile)
+                if (!fread(fileContent, sizeOfFile, 1, receptorFile))
                     logFile->printError(FATAL_ERROR, "Cannot read the receptor file.");
                 fseek(receptorFile, 0, SEEK_SET);
 
@@ -333,9 +333,9 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                             logFile->printErrorFormatted(ERROR, "Too many atoms in receptor PDBQT file %s;", receptorFilename);
                             logFile->printErrorFormatted(ERROR, "-- the maximum number of atoms, AG_MAX_ATOMS, allowed is %ul.", AG_MAX_ATOMS);
                             logFile->printErrorFormatted(SUGGESTION, "Increase the value in the \"#define AG_MAX_ATOMS %ul\" line", AG_MAX_ATOMS);
-                            logFile->printError(SUGGESTION, "in the source file \"autogrid.h\", and re-compile AutoGrid.");
-                            // FATAL_ERROR will cause AutoGrid to exit...
-                            logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                            logFile->printError(SUGGESTION, "in the source file \"autogrid.h\", and re-compile " APPNAME ".");
+                            // FATAL_ERROR will cause this program to exit...
+                            logFile->printError(FATAL_ERROR, "Sorry, " APPNAME " cannot continue.");
                         }           // endif
                     }               // endif
                 }                   // endwhile
@@ -350,8 +350,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                         logFile->printErrorFormatted(ERROR,
                             "The number of atom types found in the receptor PDBQT (%d) does not match the number specified by the \"receptor_types\" command (%d) in the GPF!\n\n",
                             numReceptorTypes, receptor_types_gpf_ct);
-                        // FATAL_ERROR will cause AutoGrid to exit...
-                        logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                        // FATAL_ERROR will cause this program to exit...
+                        logFile->printError(FATAL_ERROR, "Sorry, " APPNAME " cannot continue.");
                     }
 
                 // Update the total number of atoms in the receptor
@@ -363,8 +363,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 if (q_max == 0 && q_min == 0)
                 {
                     logFile->printErrorFormatted(ERROR, "No partial atomic charges were found in the receptor PDBQT file %s!\n\n", receptorFilename);
-                    // FATAL_ERROR will cause AutoGrid to exit...
-                    logFile->printError(FATAL_ERROR, "Sorry, AutoGrid cannot continue.");
+                    // FATAL_ERROR will cause this program to exit...
+                    logFile->printError(FATAL_ERROR, "Sorry, " APPNAME " cannot continue.");
                 }                   // if there are no charges EXIT
 
                 logFile->print("Atom\tAtom\tNumber of this Type\n"
