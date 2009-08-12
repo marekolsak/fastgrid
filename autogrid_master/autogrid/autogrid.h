@@ -43,7 +43,7 @@
 
 #include "../autodock/autocomm.h"
 
-// Taken from autodock/constants.h (including this header interfere with the AutoGrid rewrite
+// Taken from autodock/constants.h (to not interfere with AutoGrid rewrite)
 enum Unbound_Model { Unbound_Default=0, Unbound_Same_As_Bound=1, Extended=2, Compact=3, User=4 };
 
 #if !defined(__CUDACC__)

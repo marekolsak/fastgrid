@@ -40,7 +40,7 @@
 #define FORMATTED_MSG_MAX_SIZE (1<<14)
 
 // Formats a message
-// The reason we use a macro instead of a function is that we need access to the variable number of arguments
+// The reason we use a macro instead of a function is that we need to access the variable number of arguments
 #define FORMAT_MESSAGE(message, messageLength, format) \
         char message[FORMATTED_MSG_MAX_SIZE]; \
         int messageLength; \
@@ -98,13 +98,16 @@ const char *LogFile::getProgramName() const
 
 void LogFile::print(const char *msg)
 {
-    fwrite(msg, strlen(msg), 1, file);
+    size_t len = strlen(msg);
+    if (fwrite(msg, len, 1, file) != len)
+        printError(FATAL_ERROR, "Not enough disk space.");
 }
 
 void LogFile::printFormatted(const char *format, ...)
 {
     FORMAT_MESSAGE(message, messageLength, format);
-    fwrite(message, messageLength, 1, file);
+    if (fwrite(message, messageLength, 1, file) != messageLength)
+        printError(FATAL_ERROR, "Not enough disk space.");
 }
 
 void LogFile::printTitled(const char *msg)
@@ -130,11 +133,16 @@ void LogFile::printError(ErrorLevel errorLevel, const char *msg)
 
     char outputMessage[LINE_LEN];
     snprintf(outputMessage, LINE_LEN, "\n%s: %s:  %s\n", programName, tags[errorLevel+2], msg);
-    fwrite(outputMessage, strlen(outputMessage), 1, file);
+    size_t len = strlen(outputMessage);
+    if (fwrite(outputMessage, len, 1, file) != len && errorLevel != FATAL_ERROR)
+        // if it's a fatal error, no need to care because the program will be terminated anyway
+        printError(FATAL_ERROR, "Not enough disk space.");
 
     // Only send errors, fatal errors and warnings to standard error.
     if (errorLevel <= WARNING)
-        fwrite(outputMessage, strlen(outputMessage), 1, stderr);
+        if (fwrite(outputMessage, len, 1, stderr) != len && errorLevel != FATAL_ERROR)
+            // the log file *might* still be writable...
+            printError(FATAL_ERROR, "Cannot write to standard error output.");
 
     // If this is a fatal error, exit now.
     if (errorLevel == FATAL_ERROR)

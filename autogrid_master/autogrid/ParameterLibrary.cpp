@@ -26,7 +26,10 @@
 #include "Exceptions.h"
 #include <cstring>
 #include <cctype>
+
+#define char const char // ugly hack to calm down G++
 #include "../autodock/default_parameters.h"
+#undef char
 
 ParameterLibrary::ParameterLibrary(LogFile *logFile, const char *modelText, Unbound_Model unboundModel, int debug, int outputLevel)
     : logFile(logFile), debug(debug), outputLevel(outputLevel)
@@ -38,7 +41,7 @@ ParameterLibrary::ParameterLibrary(LogFile *logFile, const char *modelText, Unbo
     // These are set up in "default_parameters.h"
     // and stored in the param_string_VERSION_NUM[MAX_LINES] array
     // so far we have param_string_4_0 and param_string_4_1
-    char **paramString;
+    const char **paramString;
     if (unboundModel == Extended)
         paramString = param_string_4_0;
     else if (unboundModel == Unbound_Same_As_Bound)

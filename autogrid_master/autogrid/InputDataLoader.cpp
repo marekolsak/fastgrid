@@ -210,7 +210,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 int sizeOfFile = ftell(receptorFile);
                 fseek(receptorFile, 0, SEEK_SET);
                 char *fileContent = new char[sizeOfFile];
-                fread(fileContent, sizeOfFile, 1, receptorFile);
+                if (fread(fileContent, sizeOfFile, 1, receptorFile) != sizeOfFile)
+                    logFile->printError(FATAL_ERROR, "Cannot read the receptor file.");
                 fseek(receptorFile, 0, SEEK_SET);
 
                 int numAtomsMax = 1;
