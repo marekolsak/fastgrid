@@ -27,6 +27,9 @@
 #include "ProgramParameters.h"
 #include "Utils.h"
 #include "Exceptions.h"
+#if !defined(_WIN32)
+    #include "UnixSignals.h"
+#endif
 
 #define ST_ENABLED "enabled"
 #define ST_DISABLED "disabled (related options ignored)"
@@ -77,6 +80,7 @@ void ProgramParameters::parse(int argc, char **argv)
         else if (cmp2(argv[1], "-u", "--help"))   printHelpAndExit();
         else if (cmp(argv[1], "--no-cuda"))       cuda = false;
         else if (cmp(argv[1], "--omp"))           omp_set_num_threads(readParamInt(&argc, &argv));
+        else if (cmp(argv[1], "--timeout"))       setTimeout(readParamInt(&argc, &argv));
         else if (cmp(argv[1], "--v4"))            v4 = true;
 
         // Advanced:
@@ -165,6 +169,8 @@ void ProgramParameters::printHelpAndExit()
                     "  -u, --help        display this help and exit\n"
                     "      --no-cuda     disable CUDA, use the CPU codepath instead\n"
                     "      --omp N       set OpenMP to use N threads at most\n"
+                    "      --timeout N   terminate if calculations does not finish in N seconds\n"
+                    "                    (POSIX only), this must be the first parameter if used\n"
                     "      --v4          set the AutoGrid 4.0 default parameter library\n"
                     "\n"
                     "Advanced:\n"
@@ -182,6 +188,29 @@ void ProgramParameters::printHelpAndExit()
                     "Compiled with CUDA " CUDA_STATUS ".\n"
                     "\n", programName);
     throw ExitProgram(0);
+}
+
+void ProgramParameters::setTimeout(int seconds)
+{
+#if !defined(_WIN32)
+    pid_t pid = fork();
+    if (pid)
+    {
+        int status;
+        alarm(seconds);
+        UNIX_SIGNAL_TRY(SIGALRM)
+        {
+            waitpid(pid, &status, 0);
+        }
+        UNIX_SIGNAL_CATCH()
+        {
+            kill(pid, SIGKILL);
+            fprintf(stderr, "Timeout! Process terminated.\n");
+        }
+        UNIX_SIGNAL_END()
+        throw ExitProgram(0);
+    }
+#endif
 }
 
 bool ProgramParameters::cmp(const char *s1, const char *s2)

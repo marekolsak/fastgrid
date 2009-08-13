@@ -8,7 +8,9 @@ bind to a receptor of known 3D structure.
 
 AutoDock actually consists of two main programs: AutoDock performs
 the docking of the ligand to a set of grids describing the target
-protein; AutoGrid pre-calculates these grids.
+protein; AutoGrid pre-calculates these grids. FastGrid is a fork
+of AutoGrid optimized for modern hardware and is often more than
+50 times faster.
 
 In addition to using them for docking, the atomic affinity grids
 can be visualised. This can help, for example, to guide organic
@@ -29,11 +31,11 @@ AutoDock has applications in:
     chemical mechanism studies.
 
 
-Installing AutoGrid
+Installing FastGrid
 ===================
 
-Make sure you checkout both "autodock" and "autogrid" at the same 
-time and into the same directory.  The compilation of "autogrid4" 
+Make sure you checkout both "autodock" and "fastgrid" at the same
+time and into the same directory.  The compilation of "fastgrid4"
 depends on files in the "../autodock" directory, specifically:
 
     ../autodock/autocomm.h
@@ -53,15 +55,8 @@ files would be come necessary:
 Bootstrapping Installation
 ==========================
 
-The CVS repository does not include the 'configure' file;  this
-is used to create a Makefile that is platform-specific.
-
-To generate the `./configure' file, it is necessary to run 'autoreconf -i'.
-Once this file has been generated, follow the instructions below
-for installing AutoGrid.
-
 Please read the INSTALL file in this directory for more information,
-this will explain how to use './configure' to create the necessary
+this will explain how to use 'cmake' to create the necessary
 Makefile and how to use it to make the executables.
 
 

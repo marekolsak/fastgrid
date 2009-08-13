@@ -655,6 +655,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\UnixSignals.h"
+			>
+		</File>
+		<File
 			RelativePath="..\Utils.cpp"
 			>
 		</File>

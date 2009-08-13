@@ -57,6 +57,7 @@ private:
     void readParamString(int *argc, char ***argv, char *out);
     int readParamInt(int *argc, char ***argv);
     void printHelpAndExit();
+    void setTimeout(int seconds);
     bool cmp(const char *s1, const char *s2);
     bool cmp2(const char *s1, const char *s2, const char *s3);
 };
