@@ -22,7 +22,7 @@
 */
 
 #if !defined(PACKAGE_BUGREPORT)
-#define PACKAGE_BUGREPORT "maraeo@gmail.com"
+#define PACKAGE_BUGREPORT "@gmail.com"
 #endif
 
 #if defined(_WIN32)
@@ -250,8 +250,8 @@ void LogFile::printBanner(const char *versionNumber)
         "               |            Ruth Huey, TSRI           |\n"
         "               |        David S. Goodsell, TSRI       |\n"
         "               |         Arthur J. Olson, TSRI        |\n"
-        "               |       Jiri Filipovic, NCBR MUNI      |\n"
         "               |         Marek Olsak, FI MUNI         |\n"
+        "               |       Jiri Filipovic, NCBR MUNI      |\n"
         "               |                                      |\n"
         "               |        (C) 1989-2009, TSRI           |\n"
         "               |   The Scripps Research Institute     |\n"

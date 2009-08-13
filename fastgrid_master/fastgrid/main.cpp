@@ -85,20 +85,30 @@ void calculateFloatingGrid(const InputData *input, const GridMapList &gridmaps)
 // Copyright: (C) 2004, TSRI
 //
 // Authors: Garrett Matthew Morris, Ruth Huey, David S. Goodsell
+//          Marek Olsak
 //
 // The Scripps Research Institute
 // Department of Molecular Biology, MB5
 // 10550 North Torrey Pines Road
 // La Jolla, CA 92037-1000.
 //
+// Masaryk University
+// National Centre For Biomolecular Research
+// Building A4, University Campus
+// Kamenice 5
+// 625 00 Brno-Bohunice
+// Czech Republic
+//
 // e-mail: garrett@scripps.edu
-// rhuey@scripps.edu
-// goodsell@scripps.edu
+//         rhuey@scripps.edu
+//         goodsell@scripps.edu
+//         marao@mail.muni.cz
 //
 // Helpful suggestions and advice:
 // Arthur J. Olson
 // Bruce Duncan, Yng Chen, Michael Pique, Victoria Roberts
 // Lindy Lindstrom
+// Jiri Filipovic
 //
 // Inputs: Control file, receptor PDBQT file, parameter file
 // Returns: Atomic affinity, desolvation and electrostatic grid maps.
