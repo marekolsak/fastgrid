@@ -29,6 +29,7 @@
 #include "Exceptions.h"
 #if !defined(_WIN32)
     #include "UnixSignals.h"
+    #include <sys/wait.h>
 #endif
 
 #define ST_ENABLED "enabled"
