@@ -615,10 +615,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\Octree.h"
-			>
-		</File>
-		<File
 			RelativePath="..\PairwiseInteractionEnergies.cpp"
 			>
 		</File>

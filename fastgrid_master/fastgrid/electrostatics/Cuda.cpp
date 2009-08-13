@@ -82,28 +82,15 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     CudaEvents events(programParams->benchmarkEnabled(), stream);
 
     // Determine a number of threads per block and a number of grid points calculated in each thread
-    int numThreads;
-    int numGridPointsPerThread;
-    if (programParams->unrollLoopCUDA())
-    {
-        numThreads = input->distDepDiel ? 16*16 : 16*4;
-        numGridPointsPerThread = 4;
-    }
-    else
-    {
-        numThreads = 16*24;
-        numGridPointsPerThread = 1;
-    }
+    int numThreads = 16*8;
+    int numGridPointsPerThread = programParams->unrollLoopCUDA() ? 4 : 1;
 
     // Calculate the size of the padded grid and determine dimensions of thread blocks and the overall thread grid
     Vec3i numGridPointsPadded;
     dim3 dimGrid, dimBlock;
-    if (programParams->calcSlicesSeparatelyCUDA())
-        setupSliceThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
-                               &numGridPointsPadded, &dimGrid, &dimBlock);
-    else
-        setupGridThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
-                              &numGridPointsPadded, &dimGrid, &dimBlock);
+    (programParams->calcSlicesSeparatelyCUDA() ? setupSliceThreadBlocks : setupGridThreadBlocks)
+        (numThreads, numGridPointsPerThread, input->numGridPoints,
+         &numGridPointsPadded, &dimGrid, &dimBlock);
 
     events.recordInitialization();
 
@@ -115,7 +102,6 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     constMem.setGridMapParameters(input->numGridPointsDiv2, input->gridSpacing,
                                   numGridPointsPadded, grid.getEnergiesDevicePtr());
 
-    
     CudaFloatTexture1D *texture = 0;
     if (input->distDepDiel)
     {
