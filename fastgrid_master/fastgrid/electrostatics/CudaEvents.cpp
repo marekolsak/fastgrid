@@ -22,8 +22,8 @@
 */
 
 #if defined(AG_CUDA)
-#include "CudaEvents.h"
 #include <cstdio>
+#include "CudaEvents.h"
 
 CudaEvents::CudaEvents(bool enabled, cudaStream_t stream): enabled(enabled), stream(stream)
 {

@@ -21,8 +21,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "CudaFloatTexture1D.h"
 #include <algorithm>
+#include "CudaFloatTexture1D.h"
 
 CudaFloatTexture1D::CudaFloatTexture1D(int width, const double *data, CudaAction action, cudaStream_t stream, CudaInternalAPI *api)
 {

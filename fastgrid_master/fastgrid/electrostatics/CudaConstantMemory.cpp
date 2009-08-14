@@ -21,8 +21,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "CudaConstantMemory.h"
 #include <algorithm>
+#include "CudaConstantMemory.h"
 
 struct CudaConstantMemory::AtomsConstMem
 {

@@ -22,6 +22,8 @@
 */
 
 #if defined(AG_CUDA)
+#include <algorithm>
+#include <cstring>
 #include "Electrostatics.h"
 #include "CudaEvents.h"
 #include "CudaGridMap.h"
@@ -29,8 +31,6 @@
 #include "CudaConstantMemory.h"
 #include "../Exceptions.h"
 #include "../openthreads/Thread"
-#include <algorithm>
-#include <cstring>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

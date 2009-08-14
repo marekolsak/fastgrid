@@ -21,11 +21,11 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include <cstring>
+#include <cctype>
 #include "ParameterLibrary.h"
 #include "Utils.h"
 #include "Exceptions.h"
-#include <cstring>
-#include <cctype>
 
 #define char const char // ugly hack to calm down G++
 #include "../autodock/default_parameters.h"

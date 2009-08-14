@@ -21,9 +21,9 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include <algorithm>
 #include "CudaGridMap.h"
 #include "../Exceptions.h"
-#include <algorithm>
 
 CudaGridMap::CudaGridMap(const Vec3i &numGridPoints, const Vec3i &numGridPointsPadded, const double *inputEnergies, cudaStream_t stream)
     : stream(stream), numGridPoints(numGridPoints), numGridPointsPadded(numGridPointsPadded)

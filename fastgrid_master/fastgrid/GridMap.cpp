@@ -21,10 +21,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "GridMap.h"
-#include "Utils.h"
 #include <new>
 #include <cstring>
+#include "GridMap.h"
+#include "Utils.h"
 
 GridMap::GridMap()
 {

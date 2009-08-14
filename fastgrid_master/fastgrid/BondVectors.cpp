@@ -21,8 +21,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "BondVectors.h"
 #include <cstring>
+#include "BondVectors.h"
 
 BondVectors::BondVectors(int numReceptorAtoms, LogFile *logFile): logFile(logFile)
 {

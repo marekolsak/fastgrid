@@ -21,13 +21,13 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include <new>
 #include "ProgramParameters.h"
 #include "Exceptions.h"
 #include "InputDataLoader.h"
 #include "Utils.h"
 #include "CalculateGridmaps.h"
 #include "electrostatics/Electrostatics.h"
-#include <new>
 
 void initCovalentMaps(const InputData *input, const GridMapList &gridmaps)
 {

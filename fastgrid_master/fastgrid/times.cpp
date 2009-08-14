@@ -21,12 +21,12 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "times.h"
 #if !defined(_WIN32)
     #include <unistd.h>
     #include <cstdio>
     #include "Exceptions.h"
 #endif
+#include "times.h"
 
 int getClocksPerSec()
 {

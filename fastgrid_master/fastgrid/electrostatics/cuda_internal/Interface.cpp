@@ -21,11 +21,11 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include <cstdio>
+#include <cstring>
 #include "StandardKernels.h"
 #include "DDDConstMemKernels.h"
 #include "../../Exceptions.h"
-#include <cstdio>
-#include <cstring>
 
 void getCudaInternalAPI(DielectricKind dddKind, CudaInternalAPI &api)
 {

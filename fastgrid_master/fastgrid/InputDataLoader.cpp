@@ -21,12 +21,12 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "InputDataLoader.h"
-#include "Utils.h"
-#include "Exceptions.h"
 #include <cstring>
 #include <cctype>
 #include <climits>
+#include "InputDataLoader.h"
+#include "Utils.h"
+#include "Exceptions.h"
 
 // GPF tokens
 enum GPFTokens

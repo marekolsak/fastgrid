@@ -26,16 +26,16 @@
     #pragma warning (disable: 4996)
 #endif
 
-#include "Utils.h"
-#include "Exceptions.h"
-#include "times.h"
-
 // the BOINC API header files
 #if defined(BOINC)
     #include "diagnostics.h"
     #include "boinc_api.h"
     #include "filesys.h"    // boinc_fopen(), etc...
 #endif
+
+#include "Utils.h"
+#include "Exceptions.h"
+#include "times.h"
 
 void saveAVSGridmapsFile(const GridMapList &gridmaps, const InputData *input, const ProgramParameters &programParams, LogFile &logFile)
 {

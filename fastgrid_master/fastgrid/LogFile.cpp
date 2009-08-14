@@ -31,11 +31,11 @@
 #else
     #include <unistd.h>
 #endif
+#include <cstring>
+#include <cstdarg>
 #include "LogFile.h"
 #include "Exceptions.h"
 #include "Utils.h"
-#include <cstring>
-#include <cstdarg>
 
 #define FORMATTED_MSG_MAX_SIZE (1<<14)
 
