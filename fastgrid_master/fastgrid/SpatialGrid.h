@@ -97,10 +97,10 @@ public:
 
     static size_t estimateMemorySize(const Vec3i &numCells, int maxElementsInCell)
     {
-        Vec3<size_t> tnumCells = Vec3<size_t>(numCells);
+        Vec3i tnumCells = numCells;
         for (int i = 0; i < 3; i++)
-            tnumCells[i] = Math<size_t>::Max(1, tnumCells[i]);
-        size_t numAllCells = tnumCells.Cube();
+            tnumCells[i] = Mathi::Max(1, tnumCells[i]);
+        size_t numAllCells = Vec3<size_t>(tnumCells).Cube();
 
         size_t sizeofCell = 1 + maxElementsInCell;
         sizeofCell = (((sizeofCell * sizeof(T) - 1) / 8 + 1) * 8) / sizeof(T);

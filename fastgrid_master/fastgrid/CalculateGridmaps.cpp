@@ -378,7 +378,7 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
     {
         fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
         fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
-        fprintf(stderr, "Cutoff Grid: Allocating %i KiB\n", cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 10);
+        fprintf(stderr, "Cutoff Grid: Allocating %lu KiB\n", (unsigned long)(cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell)>>10));
     }
 
     cutoffGrid.create(gridSize, cellSize, 0, maxAtomsPerCell);
