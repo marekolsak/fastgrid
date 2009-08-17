@@ -67,7 +67,7 @@ public:
         // Align to a multiple of 8 bytes
         sizeofCell = (((sizeofCell * sizeof(T) - 1) / 8 + 1) * 8) / sizeof(T);
         // Allocate the grid
-        int numAllCells = this->numCells.x * this->numCells.y * this->numCells.z;
+        int numAllCells = this->numCells.Cube();
         grid = new T[numAllCells * sizeofCell];
 
         // Zeroize the count of elements in each grid
@@ -83,6 +83,29 @@ public:
 
         // cornerCellPosMin is a position at the center of the corner cell
         cornerCellPosMin = cornerPosMin + cellSizeHalf;
+    }
+
+    static int estimateMemorySize(const Vec3d &gridSize, double maxCellSize, int maxElementsInCell)
+    {
+        Vec3d minNumCells = gridSize / maxCellSize;
+        Vec3d numCells = Vec3d(Mathd::Ceil(minNumCells.x),
+                               Mathd::Ceil(minNumCells.y),
+                               Mathd::Ceil(minNumCells.z));
+
+        return estimateMemorySize(Vec3i(numCells + 0.5), maxElementsInCell);
+    }
+
+    static int estimateMemorySize(const Vec3i &numCells, int maxElementsInCell)
+    {
+        Vec3i tnumCells = numCells;
+        for (int i = 0; i < 3; i++)
+            tnumCells[i] = Mathi::Max(1, tnumCells[i]);
+        int numAllCells = tnumCells.Cube();
+
+        int sizeofCell = 1 + maxElementsInCell;
+        sizeofCell = (((sizeofCell * sizeof(T) - 1) / 8 + 1) * 8) / sizeof(T);
+
+        return sizeof(T) * numAllCells * sizeofCell;
     }
 
     // Set indices to be in the valid range

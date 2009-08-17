@@ -329,7 +329,7 @@ static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydr
     END_FOR()
 }
 
-static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
+static void initCutoffGrid(const InputData *input, const ProgramParameters &programParams, SpatialGrid &cutoffGrid)
 {
     // Find distance^2 between two closest atoms
     // TODO: rewrite this using kd-tree
@@ -371,11 +371,15 @@ static void initCutoffGrid(const InputData *input, SpatialGrid &cutoffGrid)
     double minAtomRadius = sqrt(minDistanceSq)/2;
     double minAtomVolume = (4.0/3.0) * 3.14159265358979323846 * minAtomRadius;
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
-    double cellSize = NBCUTOFF;
+    double cellSize = NBCUTOFF*2;
     int maxAtomsPerCell = int(Mathd::Ceil(Mathd::Cube(cellSize + NBCUTOFF*2) / minAtomVolume));
 
-    fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
-    fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
+    if (programParams.benchmarkEnabled())
+    {
+        fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
+        fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
+        fprintf(stderr, "Cutoff Grid: Allocating %i KiB\n", cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 10);
+    }
 
     cutoffGrid.create(gridSize, cellSize, 0, maxAtomsPerCell);
     cutoffGrid.insertSpheres(input->numReceptorAtoms, &input->receptorAtom[0], NBCUTOFF);
@@ -410,7 +414,7 @@ void calculateGridmaps(const InputData *input, const ProgramParameters &programP
         Timer *t0 = 0;
         if (programParams.benchmarkEnabled())
             t0 = Timer::startNew("Cutoff grid            ");
-        initCutoffGrid(input, cutoffGrid);
+        initCutoffGrid(input, programParams, cutoffGrid);
         if (programParams.benchmarkEnabled())
             t0->stopAndLog(stderr);
     }

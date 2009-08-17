@@ -22,7 +22,7 @@
 */
 
 #if !defined(PACKAGE_BUGREPORT)
-#define PACKAGE_BUGREPORT "@gmail.com"
+#define PACKAGE_BUGREPORT "marao@mail.muni.cz"
 #endif
 
 #if defined(_WIN32)
