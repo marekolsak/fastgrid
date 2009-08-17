@@ -85,7 +85,7 @@ public:
         cornerCellPosMin = cornerPosMin + cellSizeHalf;
     }
 
-    static int estimateMemorySize(const Vec3d &gridSize, double maxCellSize, int maxElementsInCell)
+    static size_t estimateMemorySize(const Vec3d &gridSize, double maxCellSize, int maxElementsInCell)
     {
         Vec3d minNumCells = gridSize / maxCellSize;
         Vec3d numCells = Vec3d(Mathd::Ceil(minNumCells.x),
@@ -95,14 +95,14 @@ public:
         return estimateMemorySize(Vec3i(numCells + 0.5), maxElementsInCell);
     }
 
-    static int estimateMemorySize(const Vec3i &numCells, int maxElementsInCell)
+    static size_t estimateMemorySize(const Vec3i &numCells, int maxElementsInCell)
     {
-        Vec3i tnumCells = numCells;
+        Vec3<size_t> tnumCells = Vec3<size_t>(numCells);
         for (int i = 0; i < 3; i++)
-            tnumCells[i] = Mathi::Max(1, tnumCells[i]);
-        int numAllCells = tnumCells.Cube();
+            tnumCells[i] = Math<size_t>::Max(1, tnumCells[i]);
+        size_t numAllCells = tnumCells.Cube();
 
-        int sizeofCell = 1 + maxElementsInCell;
+        size_t sizeofCell = 1 + maxElementsInCell;
         sizeofCell = (((sizeofCell * sizeof(T) - 1) / 8 + 1) * 8) / sizeof(T);
 
         return sizeof(T) * numAllCells * sizeofCell;
