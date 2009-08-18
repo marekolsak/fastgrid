@@ -34,6 +34,9 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+typedef void (*SetupThreadBlocksProc)(int numThreads, int numGridPointsPerThread, const Vec3i &numGridPoints,
+                                      Vec3i *numGridPointsPadded, dim3 *dimGrid, dim3 *dimBlock);
+
 static void setupSliceThreadBlocks(int numThreads, int numGridPointsPerThread, const Vec3i &numGridPoints,
                                    Vec3i *numGridPointsPadded, dim3 *dimGrid, dim3 *dimBlock)
 {
@@ -41,15 +44,15 @@ static void setupSliceThreadBlocks(int numThreads, int numGridPointsPerThread, c
         throw ExitProgram(0xbad);
 
     // One slice at a time
-    dimBlock->x = 16;
+    dimBlock->x = 32;
     dimBlock->y = numThreads / dimBlock->x;
 
     // Pad/align the grid to a size of the grid block
-    numGridPointsPadded->x = align(numGridPoints.x, dimBlock->x * numGridPointsPerThread);
-    numGridPointsPadded->y = align(numGridPoints.y, dimBlock->y);
+    numGridPointsPadded->x = align(numGridPoints.x, dimBlock->x);
+    numGridPointsPadded->y = align(numGridPoints.y, dimBlock->y * numGridPointsPerThread);
     numGridPointsPadded->z = numGridPoints.z;
-    dimGrid->x = numGridPointsPadded->x / (dimBlock->x * numGridPointsPerThread);
-    dimGrid->y = numGridPointsPadded->y / dimBlock->y;
+    dimGrid->x = numGridPointsPadded->x / dimBlock->x;
+    dimGrid->y = numGridPointsPadded->y / (dimBlock->y * numGridPointsPerThread);
 }
 
 static void setupGridThreadBlocks(int numThreads, int numGridPointsPerThread, const Vec3i &numGridPoints,
@@ -75,6 +78,9 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     CudaInternalAPI api;
     getCudaInternalAPI(programParams->getDDDKindCUDA(), api);
 
+    SetupThreadBlocksProc setupThreadBlocks =
+        programParams->calcSlicesSeparatelyCUDA() ? setupSliceThreadBlocks : setupGridThreadBlocks;
+
     cudaStream_t stream;
 
     CUDA_SAFE_CALL(cudaSetDevice(programParams->getDeviceIDCUDA()));
@@ -82,15 +88,33 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     CudaEvents events(programParams->benchmarkEnabled(), stream);
 
     // Determine a number of threads per block and a number of grid points calculated in each thread
-    int numThreads = 16*8;
-    int numGridPointsPerThread = programParams->unrollLoopCUDA() ? 4 : 1;
+    bool unroll = programParams->unrollLoopCUDA() != False; // Assume Unassigned == True
+    int numThreads = 32*4;
+    int numGridPointsPerThread = unroll ? 8 : 1;
 
     // Calculate the size of the padded grid and determine dimensions of thread blocks and the overall thread grid
     Vec3i numGridPointsPadded;
     dim3 dimGrid, dimBlock;
-    (programParams->calcSlicesSeparatelyCUDA() ? setupSliceThreadBlocks : setupGridThreadBlocks)
-        (numThreads, numGridPointsPerThread, input->numGridPoints,
-         &numGridPointsPadded, &dimGrid, &dimBlock);
+
+    setupThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
+                      &numGridPointsPadded, &dimGrid, &dimBlock);
+
+    // With the knowledge of size of the padded grid, we can examine how much we lose by padding in terms of performance
+    if (programParams->unrollLoopCUDA() == Unassigned)
+    {
+        double volume = input->numGridPointsPerMap;
+        double volumePadded = numGridPointsPadded.Cube();
+
+        if (volume*1.5 < volumePadded)
+        {
+            // Revert to disabled unrolling
+            unroll = false;
+            numGridPointsPerThread = 1;
+
+            setupThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
+                              &numGridPointsPadded, &dimGrid, &dimBlock);
+        }
+    }
 
     events.recordInitialization();
 
@@ -117,7 +141,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     // Get a CUDA kernel function according to parameters
     CudaKernelProc kernelProc = api.getKernelProc(input->distDepDiel, programParams->getDDDKindCUDA(),
                                                   programParams->calcSlicesSeparatelyCUDA(),
-                                                  programParams->unrollLoopCUDA());
+                                                  unroll);
 
     // Initialize storage for atoms in page-locked system memory
     constMem.initAtoms(input->receptorAtom, input->numReceptorAtoms, programParams->calcSlicesSeparatelyCUDA());

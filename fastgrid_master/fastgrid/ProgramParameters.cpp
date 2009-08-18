@@ -50,7 +50,7 @@
 #endif
 
 ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), cutoffGridMem(512), benchmark(false), nns(true),
-    cutoffGrid(true), cuda(true), cudaUnroll(true), cudaThread(true), calcSlicesSeparately(false), v4(false),
+    cutoffGrid(true), cuda(true), cudaThread(true), calcSlicesSeparately(false), v4(false), cudaUnroll(Unassigned),
     cudaDDDKind(DistanceDependentDiel_TextureMem)
 {
     programName[0] = 0;
@@ -90,8 +90,8 @@ void ProgramParameters::parse(int argc, char **argv)
         else if (cmp(argv[1], "--cuda-ddd=c"))    cudaDDDKind = DistanceDependentDiel_ConstMem;
         else if (cmp(argv[1], "--cuda-ddd=t"))    cudaDDDKind = DistanceDependentDiel_TextureMem;
         else if (cmp(argv[1], "--cuda-ddd=i"))    cudaDDDKind = DistanceDependentDiel_InPlace;
-        else if (cmp(argv[1], "--cuda-unroll=y")) cudaUnroll = true;
-        else if (cmp(argv[1], "--cuda-unroll=n")) cudaUnroll = false;
+        else if (cmp(argv[1], "--cuda-unroll=y")) cudaUnroll = True;
+        else if (cmp(argv[1], "--cuda-unroll=n")) cudaUnroll = False;
         else if (cmp(argv[1], "--cuda-thread=y")) cudaThread = true;
         else if (cmp(argv[1], "--cuda-thread=n")) cudaThread = false;
         else if (cmp(argv[1], "--cuda-slices=y")) calcSlicesSeparately = true;

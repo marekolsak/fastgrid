@@ -51,7 +51,7 @@ static inline __device__ float dielectric(float invR);
 template<int DielectricKind>
 static inline __device__ float distanceDependentDiel(float invR);
 template<int CalcGranularity>
-static inline __device__ void initialize(float3 &gridPos, int &outputIndex);
+static inline __device__ void initialize(float3 &gridPos, int &outputIndex, bool unrolling);
 template<int CalcGranularity>
 static inline __device__ float calc_dzSq(float gridPosZ, float atomZ);
 
@@ -107,10 +107,10 @@ static inline __device__ float dielectric(float invR)
 // Initializes gridPos and outputIndex based on the thread ID
 // Version for calculating one slice at a time
 template<>
-static inline __device__ void initialize<CalcOneSlice>(float3 &gridPos, int &outputIndex)
+static inline __device__ void initialize<CalcOneSlice>(float3 &gridPos, int &outputIndex, bool unrolling)
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int y = (blockIdx.y * blockDim.y + threadIdx.y) * (unrolling ? 8 : 1);
 
     gridPos.x = (x - numGridPointsDiv2.x) * gridSpacing;
     gridPos.y = (y - numGridPointsDiv2.y) * gridSpacing;
@@ -121,10 +121,10 @@ static inline __device__ void initialize<CalcOneSlice>(float3 &gridPos, int &out
 // Initializes gridPos and outputIndex based on the thread ID
 // Version for calculating the entire gridmap at once
 template<>
-static inline __device__ void initialize<CalcEntireGrid>(float3 &gridPos, int &outputIndex)
+static inline __device__ void initialize<CalcEntireGrid>(float3 &gridPos, int &outputIndex, bool unrolling)
 {
     int x = (blockIdx.x / numGridPoints.z) * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int y = (blockIdx.y * blockDim.y + threadIdx.y) * (unrolling ? 8 : 1);
     int z = blockIdx.x % numGridPoints.z;
 
     gridPos.x = (x - numGridPointsDiv2.x) * gridSpacing;
@@ -133,14 +133,14 @@ static inline __device__ void initialize<CalcEntireGrid>(float3 &gridPos, int &o
     outputIndex = z * numGridPoints.y * numGridPoints.x + y * numGridPoints.x + x;
 }
 
-// Returns precalculated squared distance between gridPos and the atom in Z direction
+// Returns precalculated squared distance between gridPos and an atom in Z direction
 template<>
 static inline __device__ float calc_dzSq<CalcOneSlice>(float gridPosZ, float atomZ)
 {
     return atomZ;
 }
 
-// Calculates squared distance between gridPos and the atom in Z direction
+// Calculates squared distance between gridPos and an atom in Z direction
 template<>
 static inline __device__ float calc_dzSq<CalcEntireGrid>(float gridPosZ, float atomZ)
 {
@@ -148,13 +148,13 @@ static inline __device__ float calc_dzSq<CalcEntireGrid>(float gridPosZ, float a
     return dz*dz;
 }
 
-// The basic kernel, no loop unrolling, memory accesses are automatically coalesced
+// The basic kernel, no loop unrolling
 template<int DielectricKind, int CalcGranularity>
-static __global__ void calcSlice_1Point()
+static __global__ void calc_1Point()
 {
     float3 gridPos;
     int outputIndex;
-    initialize<CalcGranularity>(gridPos, outputIndex);
+    initialize<CalcGranularity>(gridPos, outputIndex, false);
 
     float energy = 0;
 
@@ -173,40 +173,54 @@ static __global__ void calcSlice_1Point()
     deviceEnergies[outputIndex] += energy;
 }
 
-// The kernel where the loop over grid points is unrolled 4 times, memory accesses are explicitly coalesced
+// The kernel where the loop over grid points is unrolled by 8
 template<int DielectricKind, int CalcGranularity>
-static __global__ void calcSlice_4Points()
+static __global__ void calc_8Points()
 {
     float3 gridPos;
     int outputIndex;
-    initialize<CalcGranularity>(gridPos, outputIndex);
+    initialize<CalcGranularity>(gridPos, outputIndex, true);
 
-    float energy0 = 0, energy1 = 0, energy2 = 0, energy3 = 0;
+    float energy0 = 0, energy1 = 0, energy2 = 0, energy3 = 0,
+          energy4 = 0, energy5 = 0, energy6 = 0, energy7 = 0;
 
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
     {
-        // Calculate dx[i]
-        float dx0 = gridPos.x - atoms[ia].x;
-        float dx1 = dx0 + gridSpacingCoalesced;
-        float dx2 = dx1 + gridSpacingCoalesced;
-        float dx3 = dx2 + gridSpacingCoalesced;
+        // Calculate dx
+        float dx = gridPos.x - atoms[ia].x;
 
-        float dy = gridPos.y - atoms[ia].y;
+        float dy0 = gridPos.y - atoms[ia].y;
+        float dy1 = dy0 + gridSpacing;
+        float dy2 = dy1 + gridSpacing;
+        float dy3 = dy2 + gridSpacing;
+        float dy4 = dy3 + gridSpacing;
+        float dy5 = dy4 + gridSpacing;
+        float dy6 = dy5 + gridSpacing;
+        float dy7 = dy6 + gridSpacing;
+
         float dzSq = calc_dzSq<CalcGranularity>(gridPos.z, atoms[ia].z);
-        float dydzSq = dy*dy + dzSq;
+        float dxdzSq = dx*dx + dzSq;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
-        energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx0*dx0 + dydzSq));
-        energy1 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx1*dx1 + dydzSq));
-        energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx2*dx2 + dydzSq));
-        energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrt(dx3*dx3 + dydzSq));
+        energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy0*dy0 + dxdzSq));
+        energy1 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy1*dy1 + dxdzSq));
+        energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy2*dy2 + dxdzSq));
+        energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy3*dy3 + dxdzSq));
+        energy4 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy4*dy4 + dxdzSq));
+        energy5 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy5*dy5 + dxdzSq));
+        energy6 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy6*dy6 + dxdzSq));
+        energy7 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy7*dy7 + dxdzSq));
     }
 
-    deviceEnergies[outputIndex] += energy0; outputIndex += 16;
-    deviceEnergies[outputIndex] += energy1; outputIndex += 16;
-    deviceEnergies[outputIndex] += energy2; outputIndex += 16;
-    deviceEnergies[outputIndex] += energy3;
+    deviceEnergies[outputIndex] += energy0; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy1; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy2; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy3; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy4; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy5; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy6; outputIndex += numGridPoints.x;
+    deviceEnergies[outputIndex] += energy7;
 }
 
 void stdSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc)
@@ -265,7 +279,7 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_ConstMem:
-                    return calcSlice_4Points<DistanceDependentDiel_ConstMem, CalcOneSlice>;
+                    return calc_8Points<DistanceDependentDiel_ConstMem, CalcOneSlice>;
                 }
         }
         else
@@ -274,7 +288,7 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_ConstMem:
-                    return calcSlice_1Point<DistanceDependentDiel_ConstMem, CalcOneSlice>;
+                    return calc_1Point<DistanceDependentDiel_ConstMem, CalcOneSlice>;
                 }
         }
     else
@@ -284,7 +298,7 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_ConstMem:
-                    return calcSlice_4Points<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
+                    return calc_8Points<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
                 }
         }
         else
@@ -293,7 +307,7 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_ConstMem:
-                    return calcSlice_1Point<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
+                    return calc_1Point<DistanceDependentDiel_ConstMem, CalcEntireGrid>;
                 }
         }
 
@@ -306,14 +320,14 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
-                    return calcSlice_4Points<DistanceDependentDiel_GlobalMem, CalcOneSlice>;
+                    return calc_8Points<DistanceDependentDiel_GlobalMem, CalcOneSlice>;
                 case DistanceDependentDiel_TextureMem:
-                    return calcSlice_4Points<DistanceDependentDiel_TextureMem, CalcOneSlice>;
+                    return calc_8Points<DistanceDependentDiel_TextureMem, CalcOneSlice>;
                 case DistanceDependentDiel_InPlace:
-                    return calcSlice_4Points<DistanceDependentDiel_InPlace, CalcOneSlice>;
+                    return calc_8Points<DistanceDependentDiel_InPlace, CalcOneSlice>;
                 }
             else
-                return calcSlice_4Points<ConstantDiel, CalcOneSlice>;
+                return calc_8Points<ConstantDiel, CalcOneSlice>;
         }
         else
         {
@@ -321,14 +335,14 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
-                    return calcSlice_1Point<DistanceDependentDiel_GlobalMem, CalcOneSlice>;
+                    return calc_1Point<DistanceDependentDiel_GlobalMem, CalcOneSlice>;
                 case DistanceDependentDiel_TextureMem:
-                    return calcSlice_1Point<DistanceDependentDiel_TextureMem, CalcOneSlice>;
+                    return calc_1Point<DistanceDependentDiel_TextureMem, CalcOneSlice>;
                 case DistanceDependentDiel_InPlace:
-                    return calcSlice_1Point<DistanceDependentDiel_InPlace, CalcOneSlice>;
+                    return calc_1Point<DistanceDependentDiel_InPlace, CalcOneSlice>;
                 }
             else
-                return calcSlice_1Point<ConstantDiel, CalcOneSlice>;
+                return calc_1Point<ConstantDiel, CalcOneSlice>;
         }
     else
         if (unrollLoop)
@@ -337,14 +351,14 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
-                    return calcSlice_4Points<DistanceDependentDiel_GlobalMem, CalcEntireGrid>;
+                    return calc_8Points<DistanceDependentDiel_GlobalMem, CalcEntireGrid>;
                 case DistanceDependentDiel_TextureMem:
-                    return calcSlice_4Points<DistanceDependentDiel_TextureMem, CalcEntireGrid>;
+                    return calc_8Points<DistanceDependentDiel_TextureMem, CalcEntireGrid>;
                 case DistanceDependentDiel_InPlace:
-                    return calcSlice_4Points<DistanceDependentDiel_InPlace, CalcEntireGrid>;
+                    return calc_8Points<DistanceDependentDiel_InPlace, CalcEntireGrid>;
                 }
             else
-                return calcSlice_4Points<ConstantDiel, CalcEntireGrid>;
+                return calc_8Points<ConstantDiel, CalcEntireGrid>;
         }
         else
         {
@@ -352,14 +366,14 @@ CudaKernelProc stdGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool c
                 switch (dddKind)
                 {
                 case DistanceDependentDiel_GlobalMem:
-                    return calcSlice_1Point<DistanceDependentDiel_GlobalMem, CalcEntireGrid>;
+                    return calc_1Point<DistanceDependentDiel_GlobalMem, CalcEntireGrid>;
                 case DistanceDependentDiel_TextureMem:
-                    return calcSlice_1Point<DistanceDependentDiel_TextureMem, CalcEntireGrid>;
+                    return calc_1Point<DistanceDependentDiel_TextureMem, CalcEntireGrid>;
                 case DistanceDependentDiel_InPlace:
-                    return calcSlice_1Point<DistanceDependentDiel_InPlace, CalcEntireGrid>;
+                    return calc_1Point<DistanceDependentDiel_InPlace, CalcEntireGrid>;
                 }
             else
-                return calcSlice_1Point<ConstantDiel, CalcEntireGrid>;
+                return calc_1Point<ConstantDiel, CalcEntireGrid>;
         }
 
 #endif

@@ -25,6 +25,13 @@
 #include "autogrid.h"
 #include "electrostatics/CudaUtils.h"
 
+enum ExtendedBool
+{
+    False = 0,
+    True = 1,
+    Unassigned = -1
+};
+
 class ProgramParameters
 {
 public:
@@ -39,7 +46,7 @@ public:
     bool useCUDA() const                            { return cuda; }
     bool useCUDAThread() const                      { return cudaThread; }
     bool calcSlicesSeparatelyCUDA() const           { return calcSlicesSeparately; }
-    bool unrollLoopCUDA() const                     { return cudaUnroll; }
+    ExtendedBool unrollLoopCUDA() const             { return cudaUnroll; }
     int getDeviceIDCUDA() const                     { return deviceID; }
     DielectricKind getDDDKindCUDA() const           { return cudaDDDKind; }
     bool useVersion4() const                        { return v4; }
@@ -50,7 +57,8 @@ private:
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
     int debug, deviceID, cutoffGridMem;
-    bool benchmark, nns, cutoffGrid, cuda, cudaUnroll, cudaThread, calcSlicesSeparately, v4;
+    bool benchmark, nns, cutoffGrid, cuda, cudaThread, calcSlicesSeparately, v4;
+    ExtendedBool cudaUnroll;
     DielectricKind cudaDDDKind;
 
     void parse(int argc, char **argv);
