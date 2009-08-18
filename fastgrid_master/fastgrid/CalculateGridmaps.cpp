@@ -374,13 +374,13 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
     double invMinAtomVolume = 1 / minAtomVolume;
     Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
 
-    // Calculate max atoms per cell according to memory usage
+    // Calculate the cell size and the max atoms per cell according to memory usage
     double cellSize = NBCUTOFF/2;
-    int maxAtomsPerCell;
+    int maxAtomsPerCell = 0;
     for (int i = 0; i < 40; i++, cellSize += 0.5)
     {
-        maxAtomsPerCell = int(Mathd::Cube(cellSize + NBCUTOFF*2) * invMinAtomVolume + 0.5); // 0.5 because of rounding
-        if ((cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20) <= programParams.getCutoffGridMemoryLimit())
+        maxAtomsPerCell = int(Mathd::Cube(cellSize + NBCUTOFF*2) * invMinAtomVolume + 1); // + 1 because of rounding
+        if ((cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20) <= size_t(programParams.getCutoffGridMemoryLimit()))
             break;
     }
 

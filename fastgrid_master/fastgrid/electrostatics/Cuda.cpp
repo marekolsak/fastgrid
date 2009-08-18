@@ -111,7 +111,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         // Initialize global or constant memory for distance-dependent dielectric if needed
         else if (programParams->getDDDKindCUDA() == DistanceDependentDiel_GlobalMem ||
                  programParams->getDDDKindCUDA() == DistanceDependentDiel_ConstMem)
-             constMem.initDistDepDielLookUpTable(input->epsilon);
+            constMem.initDistDepDielLookUpTable(input->epsilon);
     }
 
     // Get a CUDA kernel function according to parameters
