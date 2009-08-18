@@ -38,6 +38,10 @@
         #define snprintf _snprintf
 
         #define inline __forceinline
+
+        #define SIZE_T_FLAG "I"
+    #else
+        #define SIZE_T_FLAG "Z"
     #endif
 #endif
 

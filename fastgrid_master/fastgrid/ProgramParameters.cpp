@@ -49,7 +49,7 @@
     #define CUDA_STATUS ST_DISABLED
 #endif
 
-ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), benchmark(false), nns(true),
+ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), cutoffGridMem(512), benchmark(false), nns(true),
     cutoffGrid(true), cuda(true), cudaUnroll(true), cudaThread(true), calcSlicesSeparately(false), v4(false),
     cudaDDDKind(DistanceDependentDiel_TextureMem)
 {
@@ -75,6 +75,7 @@ void ProgramParameters::parse(int argc, char **argv)
 
         // Miscellaneous:
         else if (cmp(argv[1], "--benchmark"))     benchmark = true;
+        else if (cmp(argv[1], "--cogrid-mem"))    cutoffGridMem = readParamInt(&argc, &argv);
         else if (cmp(argv[1], "--cuda-enum"))     cudaEnumDevicesAndExit();
         else if (cmp(argv[1], "--cuda-dev"))      deviceID = readParamInt(&argc, &argv);
         else if (cmp2(argv[1], "-d", "--debug"))  ++debug;
@@ -164,8 +165,10 @@ void ProgramParameters::printHelpAndExit()
                     "\n"
                     "Miscellaneous:\n"
                     "      --benchmark   print execution times to standard error output\n"
+                    "      --cogrid-mem N  reserve at most N megabytes of memory for the cutoff grid,\n"
+                    "                      default: 512\n"
                     "      --cuda-enum   enumerate all CUDA devices and exit\n"
-                    "      --cuda-dev N  use a CUDA device number N (default: 0)\n"
+                    "      --cuda-dev N  use a CUDA device number N, default: 0\n"
                     "  -d, --debug       increment debug level\n"
                     "  -u, --help        display this help and exit\n"
                     "      --no-cuda     disable CUDA, use the CPU codepath instead\n"
@@ -181,7 +184,8 @@ void ProgramParameters::printHelpAndExit()
                     "      --cuda-slices=y|n  calculate gridmap slices separately i.e. only one\n"
                     "                         gridmap slice per CUDA kernel call, default: n\n"
                     "      --cuda-thread=y|n  use a separate thread for CUDA, default: y\n"
-                    "      --cuda-unroll=y|n  increase performance for large gridmaps, default: y\n"
+                    "      --cuda-unroll=y|n  increase performance for large gridmaps,\n"
+                    "                         default: based on grid dimensions\n"
                     "      --no-cogrid   disable the cutoff-grid optimization\n"
                     "      --no-nns      disable the nearest-neighbor-search optimization\n"
                     "\n"

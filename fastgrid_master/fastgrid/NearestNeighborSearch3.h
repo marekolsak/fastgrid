@@ -38,18 +38,26 @@ public:
         if (pointarray)
             delete [] pointarray;
         if (releaseCoords && coords)
-            delete [] coords;
+            switch (stride)
+            {
+            case 3:
+                delete [] (Vec3<T>*)coords;
+                break;
+
+            case 4:
+                delete [] (Vec4<T>*)coords;
+                break;
+            }
     }
 
     void create(const Vec3<T> *points, int num, bool releaseCoordsOnDestroy = false)
     {
-        releaseCoords = releaseCoordsOnDestroy;
-        coords = points;
-        pointarray = new ANNpoint[num];
-        for (int i = 0; i < num; i++)
-            pointarray[i] = const_cast<double*>(&coords[i].x);
+        create(&points->x, 3, num, releaseCoordsOnDestroy);
+    }
 
-        tree = new ANNkd_tree(pointarray, num, 3);
+    void create(const Vec4<T> *points, int num, bool releaseCoordsOnDestroy = false)
+    {
+        create(&points->x, 4, num, releaseCoordsOnDestroy);
     }
 
     int searchNearest(const Vec3<T> &point) const
@@ -60,11 +68,32 @@ public:
         return result;
     }
 
+    T getDistanceSqrOfNearest2(const Vec3<T> &point) const
+    {
+        int result[2];
+        double d[2];
+        const_cast<ANNkd_tree*>(tree)->annkSearch(const_cast<double*>(&point.x), 2, result, d, 0);
+        return Vec3<T>::DistanceSqr(*(Vec3<T>*)&coords[result[0]*stride], *(Vec3<T>*)&coords[result[1]*stride]);
+    }
+
 private:
     bool releaseCoords;
-    const Vec3<T> *coords;
+    int stride;
+    const T *coords;
     ANNkd_tree *tree;
     ANNpointArray pointarray;
+
+    void create(const T *points, int stride, int num, bool releaseCoordsOnDestroy)
+    {
+        this->stride = stride;
+        releaseCoords = releaseCoordsOnDestroy;
+        coords = points;
+        pointarray = new ANNpoint[num];
+        for (int i = 0; i < num; i++)
+            pointarray[i] = const_cast<double*>(&coords[i*stride]);
+
+        tree = new ANNkd_tree(pointarray, num, 3);
+    }
 };
 
 typedef NearestNeighborSearch3<int32> NearestNeighborSearch3i;

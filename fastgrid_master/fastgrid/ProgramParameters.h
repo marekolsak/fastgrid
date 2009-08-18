@@ -43,12 +43,13 @@ public:
     int getDeviceIDCUDA() const                     { return deviceID; }
     DielectricKind getDDDKindCUDA() const           { return cudaDDDKind; }
     bool useVersion4() const                        { return v4; }
+    int getCutoffGridMemoryLimit() const            { return cutoffGridMem; }
 
 private:
     char programName[MAX_CHARS];
     char gridParameterFilename[MAX_CHARS];
     char logFilename[MAX_CHARS];
-    int debug, deviceID;
+    int debug, deviceID, cutoffGridMem;
     bool benchmark, nns, cutoffGrid, cuda, cudaUnroll, cudaThread, calcSlicesSeparately, v4;
     DielectricKind cudaDDDKind;
 
