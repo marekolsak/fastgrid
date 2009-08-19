@@ -152,7 +152,7 @@
 				OmitFramePointers="true"
 				EnableFiberSafeOptimizations="true"
 				AdditionalIncludeDirectories=".;&quot;$(CUDA_INC_PATH)&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_CUDA;AG_OPENMP;_SCL_SECURE_NO_WARNINGS;FASTGRID"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP;_SCL_SECURE_NO_WARNINGS;FASTGRID"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"

@@ -25,6 +25,7 @@
 
 enum DielectricKind
 {
+    Diel_Unassigned,
     ConstantDiel,
     DistanceDependentDiel_GlobalMem,
     DistanceDependentDiel_ConstMem,

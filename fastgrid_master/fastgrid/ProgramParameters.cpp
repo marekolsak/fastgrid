@@ -51,7 +51,7 @@
 
 ProgramParameters::ProgramParameters(int argc, char **argv): debug(0), deviceID(0), cutoffGridMem(512), benchmark(false), nns(true),
     cutoffGrid(true), cuda(true), cudaThread(true), calcSlicesSeparately(false), v4(false), cudaUnroll(Unassigned),
-    cudaDDDKind(DistanceDependentDiel_TextureMem)
+    cudaDDDKind(Diel_Unassigned)
 {
     programName[0] = 0;
     gridParameterFilename[0] = 0;
@@ -180,7 +180,8 @@ void ProgramParameters::printHelpAndExit()
                     "Advanced:\n"
                     "      --cuda-ddd=g|c|t|i  set a way of calculating distance-dependent dielectric\n"
                     "                          to one of the following: g=global memory, c=constant\n"
-                    "                          memory, t=texture memory, i=in-place, default: t\n"
+                    "                          memory, t=texture memory, i=in-place\n"
+                    "                          default: either t or i based on grid dimensions\n"
                     "      --cuda-slices=y|n  calculate gridmap slices separately i.e. only one\n"
                     "                         gridmap slice per CUDA kernel call, default: n\n"
                     "      --cuda-thread=y|n  use a separate thread for CUDA, default: y\n"

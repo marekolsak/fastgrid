@@ -74,18 +74,9 @@ static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, CudaKe
 
 static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)
 {
-    // Get the CUDA Internal API used to set variables stored in constant memory, samplers, and to call kernels
-    CudaInternalAPI api;
-    getCudaInternalAPI(programParams->getDDDKindCUDA(), api);
-
+    // Set the setup function based on granularity
     SetupThreadBlocksProc setupThreadBlocks =
         programParams->calcSlicesSeparatelyCUDA() ? setupSliceThreadBlocks : setupGridThreadBlocks;
-
-    cudaStream_t stream;
-
-    CUDA_SAFE_CALL(cudaSetDevice(programParams->getDeviceIDCUDA()));
-    CUDA_SAFE_CALL(cudaStreamCreate(&stream));
-    CudaEvents events(programParams->benchmarkEnabled(), stream);
 
     // Determine a number of threads per block and a number of grid points calculated in each thread
     bool unroll = programParams->unrollLoopCUDA() != False; // Assume Unassigned == True
@@ -107,7 +98,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
         if (volume*1.5 < volumePadded)
         {
-            // Revert to disabled unrolling
+            // Disable unrolling
             unroll = false;
             numGridPointsPerThread = 1;
 
@@ -116,6 +107,27 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         }
     }
 
+    // Determine which DDD algorithm to use
+    DielectricKind dddKind = programParams->getDDDKindCUDA();
+    if (dddKind == Diel_Unassigned)
+    {
+        double mean = (numGridPointsPadded.x + numGridPointsPadded.y + numGridPointsPadded.z) / 3;
+
+        if (mean > 128)
+            dddKind = DistanceDependentDiel_TextureMem;
+        else
+            dddKind = DistanceDependentDiel_InPlace;
+    }
+
+    // Get the CUDA Internal API that is used to set variables stored in constant memory, samplers, and to call kernels
+    CudaInternalAPI api;
+    getCudaInternalAPI(dddKind, api);
+
+    cudaStream_t stream;
+
+    CUDA_SAFE_CALL(cudaSetDevice(programParams->getDeviceIDCUDA()));
+    CUDA_SAFE_CALL(cudaStreamCreate(&stream));
+    CudaEvents events(programParams->benchmarkEnabled(), stream);
     events.recordInitialization();
 
     // Create a padded gridmap on the GPU
@@ -130,18 +142,17 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     if (input->distDepDiel)
     {
         // Create a texture for distance-dependent dielectric if needed
-        if (programParams->getDDDKindCUDA() == DistanceDependentDiel_TextureMem)
+        if (dddKind == DistanceDependentDiel_TextureMem)
             texture = new CudaFloatTexture1D(MAX_DIST, input->epsilon, BindToKernel, stream, &api);
         // Initialize global or constant memory for distance-dependent dielectric if needed
-        else if (programParams->getDDDKindCUDA() == DistanceDependentDiel_GlobalMem ||
-                 programParams->getDDDKindCUDA() == DistanceDependentDiel_ConstMem)
+        else if (dddKind == DistanceDependentDiel_GlobalMem ||
+                 dddKind == DistanceDependentDiel_ConstMem)
             constMem.initDistDepDielLookUpTable(input->epsilon);
     }
 
     // Get a CUDA kernel function according to parameters
-    CudaKernelProc kernelProc = api.getKernelProc(input->distDepDiel, programParams->getDDDKindCUDA(),
-                                                  programParams->calcSlicesSeparatelyCUDA(),
-                                                  unroll);
+    CudaKernelProc kernelProc = api.getKernelProc(input->distDepDiel, dddKind,
+                                                  programParams->calcSlicesSeparatelyCUDA(), unroll);
 
     // Initialize storage for atoms in page-locked system memory
     constMem.initAtoms(input->receptorAtom, input->numReceptorAtoms, programParams->calcSlicesSeparatelyCUDA());
