@@ -44,7 +44,7 @@ static void setupSliceThreadBlocks(int numThreads, int numGridPointsPerThread, c
         throw ExitProgram(0xbad);
 
     // One slice at a time
-    dimBlock->x = 32;
+    dimBlock->x = numGridPointsPerThread > 1 ? 32 : 16;
     dimBlock->y = numThreads / dimBlock->x;
 
     // Pad/align the grid to a size of the grid block
@@ -80,7 +80,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
     // Determine a number of threads per block and a number of grid points calculated in each thread
     bool unroll = programParams->unrollLoopCUDA() != False; // Assume Unassigned == True
-    int numThreads = 32*4;
+    int numThreads = 128;
     int numGridPointsPerThread = unroll ? 8 : 1;
 
     // Calculate the size of the padded grid and determine dimensions of thread blocks and the overall thread grid
