@@ -38,11 +38,22 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
         gridPos.z = (z - input->numGridPointsDiv2.z) * input->gridSpacing;
         int outputOffsetZBase = z * input->numGridPoints.x*input->numGridPoints.y;
 
+        // Precalculate dz^2
+        double *dzSq = new double[input->numReceptorAtoms*2];
+        for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+            dzSq[ia] = Mathd::Sqr(input->receptorAtom[ia].z - gridPos.z);
+
+        double *dydzSq = dzSq + input->numReceptorAtoms;
+
         // Y axis
         for (int y = 0; y < input->numGridPoints.y; y++)
         {
             gridPos.y = (y - input->numGridPointsDiv2.y) * input->gridSpacing;
             int outputOffsetZYBase = outputOffsetZBase + y * input->numGridPoints.x;
+
+            // Precalculate dy^2 + dz^2
+            for (int ia = 0; ia < input->numReceptorAtoms; ia++)
+                dydzSq[ia] = Mathd::Sqr(input->receptorAtom[ia].y - gridPos.y) + dzSq[ia];
 
             // X axis
             for (int x = 0; x < input->numGridPoints.x; x++)
@@ -56,7 +67,7 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
                 for (int ia = 0; ia < input->numReceptorAtoms; ia++)
                 {
                     // Get reciprocal of the distance from current grid point to this receptor atom (1 / |receptorAtom - gridPos|)
-                    double r = (Vec3d(input->receptorAtom[ia]) - gridPos).Magnitude();
+                    double r = sqrt(Mathd::Sqr(input->receptorAtom[ia].x - gridPos.x) + dydzSq[ia]);
                     double invR = 1 / r;
 
                     if (DistanceDependentDielectric)
@@ -71,6 +82,8 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
                 elecMap.energies[outputIndex] = roundOutput(energy);
             }
         }
+
+        delete [] dzSq;
     }
 }
 
