@@ -113,7 +113,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     {
         double mean = (numGridPointsPadded.x + numGridPointsPadded.y + numGridPointsPadded.z) / 3;
 
-        if (mean > 128)
+        if (mean > 160)
             dddKind = DistanceDependentDiel_TextureMem;
         else
             dddKind = DistanceDependentDiel_InPlace;

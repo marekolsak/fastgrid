@@ -1,0 +1,15 @@
+receptor ../macromol_1t60_half_prot.pdbqt # macromolecule filename
+gridfld colagen2.maps.fld            # grid data filename
+npts 40 40 40                        # number of grid points in xyz
+spacing 1                            # grid point spacing (A)
+gridcenter 64.0 -16.0 37.0           # center of grid maps (A)
+receptor_types  A C HD N OA SA       # receptor atom types
+ligand_types  C HD OA                # ligand atom types
+smooth 0.5                           # store minimum energy w/in rad(A)
+map colagen2.C.map                   # atom-specific affinity map
+map colagen2.HD.map                  # atom-specific affinity map
+map colagen2.OA.map                  # atom-specific affinity map
+elecmap colagen2.e.map               # electrostatic potential map filename
+dsolvmap colagen2.d.map              # desolvation map filename
+dielectric -0.1465                   # <0, AD4 distance-dep.diel;>0, constant
+
