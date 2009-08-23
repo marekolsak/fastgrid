@@ -112,6 +112,7 @@ static inline __device__ void initialize(bool unrolling, int calcGranularity, fl
         x = (blockIdx.x / gridDimZ) * blockDim.x + threadIdx.x;
         y = blockIdx.y * blockDim.y + threadIdx.y;
         z = blockIdx.x % gridDimZ;
+        if (unrolling) z *= 8;
     }
     else
     {
