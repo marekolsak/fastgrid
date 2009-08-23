@@ -103,18 +103,21 @@ static inline __device__ float dielectric(float invR)
 // Initializes gridPos and outputIndex based on the thread ID
 static inline __device__ void initialize(bool unrolling, int calcGranularity, float3 &gridPos, int &outputIndex)
 {
+    int x, y, z;
     if (calcGranularity == CalcEntireGrid)
     {
-        int gridDimZ = numGridPoints.z / 8;
-        int x = (blockIdx.x / gridDimZ) * blockDim.x + threadIdx.x;
-        int y = blockIdx.y * blockDim.y + threadIdx.y;
-        int z = blockIdx.x % gridDimZ;
+        int gridDimZ = numGridPoints.z;
+        if (unrolling) gridDimZ /= 8;
+
+        x = (blockIdx.x / gridDimZ) * blockDim.x + threadIdx.x;
+        y = blockIdx.y * blockDim.y + threadIdx.y;
+        z = blockIdx.x % gridDimZ;
     }
     else
     {
-        int x = blockIdx.x * blockDim.x + threadIdx.x;
-        int y = blockIdx.y * blockDim.y + threadIdx.y;
-        int z = zIndex;
+        x = blockIdx.x * blockDim.x + threadIdx.x;
+        y = blockIdx.y * blockDim.y + threadIdx.y;
+        z = zIndex;
     }
 
     gridPos.x = (x - numGridPointsDiv2.x) * gridSpacing;
