@@ -20,10 +20,14 @@ fi
 if [ -z "$fg_test_enabled" ]; then
     fg_test_enabled=n
 fi
+if [ -z "$fg_executable" ]; then
+    fg_executable=fastgrid4
+    fg_params="--benchmark --v4"
+fi
 
 cd $fg_new_dir
 
-fg_cmd="fastgrid4 -p $fg_input_file -l $fg_log_file --benchmark --v4 $1 $2 $3 $4 $5 $6 $7 $8 $9"
+fg_cmd="$fg_executable -p $fg_input_file -l $fg_log_file $fg_params $1 $2 $3 $4 $5 $6 $7 $8 $9"
 echo "EXEC: $fg_cmd"
 ../$fg_cmd
 result=$?
