@@ -28,6 +28,7 @@
 #include <iostream>
 #include <math.h>
 #include "autogrid.h"
+#include <cstdlib>
 
 
 extern char *programname;
