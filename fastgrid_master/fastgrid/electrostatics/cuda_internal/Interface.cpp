@@ -31,25 +31,25 @@ void getCudaInternalAPI(DielectricKind dddKind, CudaInternalAPI &api)
 {
     if (dddKind != DistanceDependentDiel_ConstMem)
     {
-        api.numAtomsPerKernel               = STD_NUM_ATOMS_PER_KERNEL;
-        api.setDistDepDielTexture           = stdSetDistDepDielTexture;
-        api.setDistDepDielLookUpTableAsync  = stdSetDistDepDielLookUpTableAsync;
-        api.setGridMapParametersAsync       = stdSetGridMapParametersAsync;
-        api.setGridMapSliceParametersAsync  = stdSetGridMapSliceParametersAsync;
-        api.setGridMapKernelParametersAsync = stdSetGridMapKernelParametersAsync;
-        api.getKernelProc                   = stdGetKernelProc;
-        api.callKernelAsync                 = stdCallKernelAsync;
+        api.numAtomsPerKernel           = STD_NUM_ATOMS_PER_KERNEL;
+        api.setDistDepDielTexture       = stdSetDistDepDielTexture;
+        api.setDistDepDielLookUpTable   = stdSetDistDepDielLookUpTable;
+        api.setGridMap                  = stdSetGridMap;
+        api.setSlice                    = stdSetSlice;
+        api.setAtoms                    = stdSetAtoms;
+        api.getKernelProc               = stdGetKernelProc;
+        api.callKernel                  = stdCallKernel;
     }
     else
     {
-        api.numAtomsPerKernel               = DDDCM_NUM_ATOMS_PER_KERNEL;
-        api.setDistDepDielTexture           = dddcmSetDistDepDielTexture;
-        api.setDistDepDielLookUpTableAsync  = dddcmSetDistDepDielLookUpTableAsync;
-        api.setGridMapParametersAsync       = dddcmSetGridMapParametersAsync;
-        api.setGridMapSliceParametersAsync  = dddcmSetGridMapSliceParametersAsync;
-        api.setGridMapKernelParametersAsync = dddcmSetGridMapKernelParametersAsync;
-        api.getKernelProc                   = dddcmGetKernelProc;
-        api.callKernelAsync                 = dddcmCallKernelAsync;
+        api.numAtomsPerKernel           = DDDCM_NUM_ATOMS_PER_KERNEL;
+        api.setDistDepDielTexture       = dddcmSetDistDepDielTexture;
+        api.setDistDepDielLookUpTable   = dddcmSetDistDepDielLookUpTable;
+        api.setGridMap                  = dddcmSetGridMap;
+        api.setSlice                    = dddcmSetSlice;
+        api.setAtoms                    = dddcmSetAtoms;
+        api.getKernelProc               = dddcmGetKernelProc;
+        api.callKernel                  = dddcmCallKernel;
     }
 }
 

@@ -69,7 +69,7 @@ static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, CudaKe
     constMem.setAtomConstMem(atomSubsetIndex); // Move atoms to the constant memory
 
     // Calculate the entire grid for the given subset of atoms
-    api.callKernelAsync(kernelProc, dimGrid, dimBlock, stream);
+    api.callKernel(kernelProc, dimGrid, dimBlock, stream);
 }
 
 static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)

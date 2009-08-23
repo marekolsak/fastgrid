@@ -34,16 +34,15 @@ struct CudaInternalAPI
     int numAtomsPerKernel; // How many atoms can be processed by one kernel call
 
     // Functions
-    void (*setGridMapParametersAsync)(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
-                                      const float *gridSpacing, const float *gridSpacingCoalesced,
-                                      float **deviceEnergies, cudaStream_t stream);
+    void (*setGridMap)(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
+                       const float *gridSpacing, float **deviceEnergies, cudaStream_t stream);
     void (*setDistDepDielTexture)(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
-    void (*setDistDepDielLookUpTableAsync)(float **devicePtr, cudaStream_t stream);
-    void (*setGridMapSliceParametersAsync)(const int *outputOffsetZBase, cudaStream_t stream);
-    void (*setGridMapKernelParametersAsync)(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
+    void (*setDistDepDielLookUpTable)(float **devicePtr, cudaStream_t stream);
+    void (*setSlice)(const int *zIndex, cudaStream_t stream);
+    void (*setAtoms)(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
 
     CudaKernelProc (*getKernelProc)(bool distDepDiel, DielectricKind dddKind, bool calcSlicesSeparately, bool unrollLoop);
-    void (*callKernelAsync)(CudaKernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream);
+    void (*callKernel)(CudaKernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream);
 };
 
 // This function sets the CudaInternalAPI structure

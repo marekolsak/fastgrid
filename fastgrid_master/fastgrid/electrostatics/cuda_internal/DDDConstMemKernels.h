@@ -27,13 +27,12 @@
 
 #define DDDCM_NUM_ATOMS_PER_KERNEL 2000
 
-void dddcmSetGridMapParametersAsync(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
-                                    const float *gridSpacing, const float *gridSpacingCoalesced,
-                                    float **deviceEnergies, cudaStream_t stream);
+void dddcmSetGridMap(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
+                     const float *gridSpacing, float **deviceEnergies, cudaStream_t stream);
 void dddcmSetDistDepDielTexture(const cudaArray *ptr, const cudaChannelFormatDesc *desc);
-void dddcmSetDistDepDielLookUpTableAsync(float **devicePtr, cudaStream_t stream);
-void dddcmSetGridMapSliceParametersAsync(const int *outputOffsetZBase, cudaStream_t stream);
-void dddcmSetGridMapKernelParametersAsync(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
+void dddcmSetDistDepDielLookUpTable(float **devicePtr, cudaStream_t stream);
+void dddcmSetSlice(const int *zIndex, cudaStream_t stream);
+void dddcmSetAtoms(const int *numAtoms, const float4 *atoms, cudaStream_t stream);
 
 CudaKernelProc dddcmGetKernelProc(bool distDepDiel, DielectricKind dddKind, bool calcSlicesSeparately, bool unrollLoop);
-void dddcmCallKernelAsync(CudaKernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream);
+void dddcmCallKernel(CudaKernelProc kernel, const dim3 &grid, const dim3 &block, cudaStream_t stream);

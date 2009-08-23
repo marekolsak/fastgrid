@@ -27,12 +27,12 @@ using namespace std;
 #define USE_DDD_CONSTMEM
 #define STD_NUM_ATOMS_PER_KERNEL DDDCM_NUM_ATOMS_PER_KERNEL
 
-#define stdSetGridMapParametersAsync        dddcmSetGridMapParametersAsync
-#define stdSetDistDepDielTexture            dddcmSetDistDepDielTexture
-#define stdSetDistDepDielLookUpTableAsync        dddcmSetDistDepDielLookUpTableAsync
-#define stdSetGridMapSliceParametersAsync   dddcmSetGridMapSliceParametersAsync
-#define stdSetGridMapKernelParametersAsync  dddcmSetGridMapKernelParametersAsync
-#define stdGetKernelProc                    dddcmGetKernelProc
-#define stdCallKernelAsync                  dddcmCallKernelAsync
+#define stdSetGridMap                   dddcmSetGridMap
+#define stdSetDistDepDielTexture        dddcmSetDistDepDielTexture
+#define stdSetDistDepDielLookUpTable    dddcmSetDistDepDielLookUpTable
+#define stdSetSlice                     dddcmSetSlice
+#define stdSetAtoms                     dddcmSetAtoms
+#define stdGetKernelProc                dddcmGetKernelProc
+#define stdCallKernel                   dddcmCallKernel
 
 #include "Kernels.inl"

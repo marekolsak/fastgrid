@@ -48,7 +48,7 @@ private:
     {
         int3 numGridPointsDiv2;
         int3 numGridPointsPadded;
-        float gridSpacing, gridSpacingCoalesced;
+        float gridSpacing;
         float *energiesDevice, *epsilonDevice;
     };
 
@@ -58,10 +58,10 @@ private:
     Params *paramsHost, params;
     AtomsConstMem *atomsHost;
     cudaStream_t stream;
-    int *zOffsetArray;
+    int *zIndexArray;
     int numAtomSubsets;
     int currentZSlice;
     float *epsilonHost;
 
-    void initZOffsetArray(); 
+    void initZIndexArray(); 
 };

@@ -31,7 +31,7 @@ struct CudaConstantMemory::AtomsConstMem
 };
 
 CudaConstantMemory::CudaConstantMemory(cudaStream_t stream, CudaInternalAPI *api): api(api), atomsHost(0), stream(stream),
-    zOffsetArray(0), numAtomSubsets(1), currentZSlice(0), epsilonHost(0)
+    zIndexArray(0), numAtomSubsets(1), currentZSlice(0), epsilonHost(0)
 {
     CUDA_SAFE_CALL(cudaMallocHost((void**)&paramsHost, sizeof(Params)));
 }
@@ -45,8 +45,8 @@ CudaConstantMemory::~CudaConstantMemory()
     }
 
     CUDA_SAFE_CALL(cudaFreeHost(paramsHost));
-    if (zOffsetArray)
-        CUDA_SAFE_CALL(cudaFreeHost(zOffsetArray));
+    if (zIndexArray)
+        CUDA_SAFE_CALL(cudaFreeHost(zIndexArray));
     if (atomsHost)
         CUDA_SAFE_CALL(cudaFreeHost(atomsHost));
 }
@@ -60,7 +60,7 @@ void CudaConstantMemory::initDistDepDielLookUpTable(const double *epsilon)
 
     std::transform(epsilon, epsilon + MAX_DIST, epsilonHost, typecast<float, double>);
     CUDA_SAFE_CALL(cudaMemcpyAsync(params.epsilonDevice, epsilonHost, size, cudaMemcpyHostToDevice, stream));
-    api->setDistDepDielLookUpTableAsync(&paramsHost->epsilonDevice, stream);
+    api->setDistDepDielLookUpTable(&paramsHost->epsilonDevice, stream);
 }
 
 void CudaConstantMemory::setGridMapParameters(const Vec3i &numGridPointsDiv2, double gridSpacing,
@@ -68,13 +68,11 @@ void CudaConstantMemory::setGridMapParameters(const Vec3i &numGridPointsDiv2, do
 {
     params.numGridPointsPadded = make_int3(numGridPointsPadded.x, numGridPointsPadded.y, numGridPointsPadded.z);
     params.gridSpacing = float(gridSpacing);
-    params.gridSpacingCoalesced = float(gridSpacing * 16);
     params.energiesDevice = energiesDevice;
     params.numGridPointsDiv2 = make_int3(numGridPointsDiv2.x, numGridPointsDiv2.y, numGridPointsDiv2.z);
     *paramsHost = params;
-    api->setGridMapParametersAsync(&paramsHost->numGridPointsPadded, &paramsHost->numGridPointsDiv2,
-                                   &paramsHost->gridSpacing, &paramsHost->gridSpacingCoalesced,
-                                   &paramsHost->energiesDevice, stream);
+    api->setGridMap(&paramsHost->numGridPointsPadded, &paramsHost->numGridPointsDiv2,
+                                   &paramsHost->gridSpacing, &paramsHost->energiesDevice, stream);
 }
 
 void CudaConstantMemory::initAtoms(const Vec4d *atoms, int numAtoms, bool calculateSlicesSeparately)
@@ -85,15 +83,12 @@ void CudaConstantMemory::initAtoms(const Vec4d *atoms, int numAtoms, bool calcul
 
     if (calculateSlicesSeparately) // Initialize atoms for later calculating slices separately
     {
-        initZOffsetArray();
+        initZIndexArray();
 
         for (int z = 0; z < params.numGridPointsPadded.z; z++)
         {
             // Set the pointer to memory of this slice
             AtomsConstMem *atomConstMemZBase = atomsHost + z * numAtomSubsets;
-
-            // Calculate the Z coord of this grid point
-            double gridPosZ = (z - params.numGridPointsDiv2.z) * params.gridSpacing;
 
             // For each subset numAtomsPerKernel long
             for (int iaStart = 0, i = 0; iaStart < numAtoms; iaStart += api->numAtomsPerKernel, i++)
@@ -108,10 +103,10 @@ void CudaConstantMemory::initAtoms(const Vec4d *atoms, int numAtoms, bool calcul
                 {
                     const Vec4d &atom = atoms[iaStart + ia];
 
-                    // Copy X, Y and the charge, precalculate distanceZ^2
+                    // Copy X, Y, Z, and the charge
                     thisAtomConstMem.atoms[ia].x = float(atom.x);
                     thisAtomConstMem.atoms[ia].y = float(atom.y);
-                    thisAtomConstMem.atoms[ia].z = float(Mathd::Sqr(atom.z - gridPosZ)); // Precalculate (Z - gridPosZ)^2
+                    thisAtomConstMem.atoms[ia].z = float(atom.z);
                     thisAtomConstMem.atoms[ia].w = float(atom.w);
                 }
             }
@@ -132,7 +127,7 @@ void CudaConstantMemory::initAtoms(const Vec4d *atoms, int numAtoms, bool calcul
             {
                 const Vec4d &atom = atoms[iaStart + ia];
 
-                // Copy X, Y, Z and the charge
+                // Copy X, Y, Z, and the charge
                 thisAtomConstMem.atoms[ia].x = float(atom.x);
                 thisAtomConstMem.atoms[ia].y = float(atom.y);
                 thisAtomConstMem.atoms[ia].z = float(atom.z);
@@ -142,15 +137,14 @@ void CudaConstantMemory::initAtoms(const Vec4d *atoms, int numAtoms, bool calcul
     }
 }
 
-void CudaConstantMemory::initZOffsetArray()
+void CudaConstantMemory::initZIndexArray()
 {
     int numSlices = params.numGridPointsPadded.z;
-    int numGridPointsPaddedXMulY = params.numGridPointsPadded.x * params.numGridPointsPadded.y;
 
     // Reserve memory for each offseted output index of a slice and precalculate
-    CUDA_SAFE_CALL(cudaMallocHost((void**)&zOffsetArray, sizeof(int) * numSlices));
+    CUDA_SAFE_CALL(cudaMallocHost((void**)&zIndexArray, sizeof(int) * numSlices));
     for (int z = 0; z < numSlices; z++)
-        zOffsetArray[z] = z * numGridPointsPaddedXMulY;
+        zIndexArray[z] = z;
 }
 
 void CudaConstantMemory::setZSlice(int z)
@@ -158,11 +152,11 @@ void CudaConstantMemory::setZSlice(int z)
     currentZSlice = z;
 
     // Set an offset of output index to constant memory
-    api->setGridMapSliceParametersAsync(zOffsetArray + z, stream);
+    api->setSlice(zIndexArray + z, stream);
 }
 
 void CudaConstantMemory::setAtomConstMem(int atomSubsetIndex)
 {
     AtomsConstMem *thisAtomConstMem = atomsHost + currentZSlice * numAtomSubsets + atomSubsetIndex;
-    api->setGridMapKernelParametersAsync(&thisAtomConstMem->numAtoms, thisAtomConstMem->atoms, stream);
+    api->setAtoms(&thisAtomConstMem->numAtoms, thisAtomConstMem->atoms, stream);
 }
