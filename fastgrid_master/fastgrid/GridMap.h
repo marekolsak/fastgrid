@@ -76,7 +76,10 @@ public:
     // void initialize(int numMaps, bool enableFloatingGrid, int numGridPointsPerMap);
 
     // Saves all energies and possibly the floating grid to files
-    void saveToFiles(const InputData *input, const char *gridParameterFilename);
+    void initFileHeader(const InputData *input, const char *gridParameterFilename);
+    void saveElectrostaticMap() const;
+    void saveAtomMapsAndDesolvMap() const;
+    void saveFloatingGrid(const char *floatingGridFilename) const;
 
     // Writes out summary
     void logSummary();
@@ -108,6 +111,9 @@ private:
     bool useFloatingGrid;
     float *floatingGridMins;
     int numGridPointsPerMap;
+    char fileHeader[1<<14];
+    int fileHeaderLength;
 
     void calculateEnergyMinMax(int map, double &energyMin, double &energyMax);
+    void saveGridMap(int index) const;
 };

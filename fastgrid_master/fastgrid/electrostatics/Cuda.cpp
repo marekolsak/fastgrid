@@ -72,7 +72,7 @@ static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, CudaKe
     api.callKernel(kernelProc, dimGrid, dimBlock, stream);
 }
 
-static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)
+static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramParameters *programParams, GridMapList *gridmaps)
 {
     // Set the setup function based on granularity
     SetupThreadBlocksProc setupThreadBlocks =
@@ -135,7 +135,7 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     events.recordInitialization();
 
     // Create a padded gridmap on the GPU
-    CudaGridMap grid(input->numGridPoints, numGridPointsPadded, elecMap->energies, stream);
+    CudaGridMap grid(input->numGridPoints, numGridPointsPadded, gridmaps->getElectrostaticMap().energies, stream);
 
     // This class makes use of constant memory easier
     CudaConstantMemory constMem(stream, &api);
@@ -188,7 +188,10 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     events.recordFinalization();
     CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
     events.printTimes(input, numGridPointsPadded.Cube());
-    grid.readFromHost(elecMap->energies);
+    grid.readFromHost(gridmaps->getElectrostaticMap().energies);
+
+    // And save the gridmap
+    gridmaps->saveElectrostaticMap();
 
     delete texture;
 
@@ -197,39 +200,39 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap);
+void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMapList &gridmaps);
 
 class CudaThread : public OpenThreads::Thread
 {
 public:
-    CudaThread(const InputData *input, const ProgramParameters *programParams, GridMap *elecMap)
-        : input(input), programParams(programParams), elecMap(elecMap) {}
+    CudaThread(const InputData *input, const ProgramParameters *programParams, GridMapList *gridmaps)
+        : input(input), programParams(programParams), gridmaps(gridmaps) {}
 
     virtual void run()
     {
-        calculateElectrostaticMapCUDA(input, programParams, elecMap);
+        calculateElectrostaticMapCUDA(input, programParams, gridmaps);
     }
 
 private:
     const InputData *input;
     const ProgramParameters *programParams;
-    GridMap *elecMap;
+    GridMapList *gridmaps;
 };
 
-void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMapList &gridmaps)
 {
     if (programParams.useCUDA())
         if (programParams.useCUDAThread())
         {
             // Create and start the thread
-            CudaThread *thread = new CudaThread(input, &programParams, &elecMap);
+            CudaThread *thread = new CudaThread(input, &programParams, &gridmaps);
             thread->start();
             return thread;
         }
         else
-            calculateElectrostaticMapCUDA(input, &programParams, &elecMap);
+            calculateElectrostaticMapCUDA(input, &programParams, &gridmaps);
     else
-        calculateElectrostaticMapCPU(input, programParams, elecMap);
+        calculateElectrostaticMapCPU(input, programParams, gridmaps);
     return 0;
 }
 

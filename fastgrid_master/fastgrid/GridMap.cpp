@@ -124,7 +124,7 @@ void GridMapList::prepareGridmaps(int numGridPointsPerMap)
         floatingGridMins = new float[numGridPointsPerMap];
 }
 
-void GridMapList::saveToFiles(const InputData *input, const char *gridParameterFilename)
+void GridMapList::initFileHeader(const InputData *input, const char *gridParameterFilename)
 {
     // Write out the correct grid data '.fld' filename at the head of each map file,
     // to avoid centering errors in subsequent dockings...
@@ -132,8 +132,7 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
     // specified in its parameter file...
 
     // The header of all files
-    char fileHeader[1<<14];
-    int fileHeaderLength = snprintf(fileHeader, 1<<14,
+    fileHeaderLength = snprintf(fileHeader, 1<<14,
         "GRID_PARAMETER_FILE %s\n"
         "GRID_DATA_FILE %s\n"
         "MACROMOLECULE %s\n"
@@ -143,45 +142,31 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
         gridParameterFilename, input->fldFilenameAVS, input->receptorFilename, input->gridSpacing,
         input->numGridPoints.x-1, input->numGridPoints.y-1, input->numGridPoints.z-1,
         input->gridCenter.x, input->gridCenter.y, input->gridCenter.z);
+}
 
-    // Gridmaps
-    for (int i = 0; i < numMaps; i++)
-        if (gridmaps[i].filename[0])
-        {
-            // Open the file
-            FILE *file;
-            if ((file = boincOpenFile(gridmaps[i].filename, "w")) == 0)
-            {
-                logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[i].filename);
-                logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
-            }
-            if (!fwrite(fileHeader, fileHeaderLength, 1, file))
-                logFile->printError(FATAL_ERROR, "Not enough disk space.");
+void GridMapList::saveElectrostaticMap() const
+{
+    saveGridMap(elecIndex);
+}
 
-            // Save energies
-            for (int j = 0; j < numGridPointsPerMap; j++)
-            {
-                double f = gridmaps[i].energies[j];
-                if (f == 0)
-                {
-                    if (!fwrite("0\n", 2, 1, file))
-                        logFile->printError(FATAL_ERROR, "Not enough disk space.");
-                }
-                else
-                    fprintf(file, "%.3f\n", f);
-            }
+void GridMapList::saveAtomMapsAndDesolvMap() const
+{
+    for (int i = 0; i < numAtomMaps; i++)
+        saveGridMap(i);
+    
+    saveGridMap(desolvIndex);
+}
 
-            fclose(file);
-        }
-
+void GridMapList::saveFloatingGrid(const char *floatingGridFilename) const
+{
     // Floating grid
     if (useFloatingGrid)
     {
         // Open the file
         FILE *file = 0;
-        if ((file = boincOpenFile(input->floatingGridFilename, "w")) == 0)
+        if ((file = boincOpenFile(floatingGridFilename, "w")) == 0)
         {
-            logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", input->floatingGridFilename);
+            logFile->printErrorFormatted(ERROR, "can't open grid map \"%s\" for writing.\n", floatingGridFilename);
             logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
         }
         if (!fwrite(fileHeader, fileHeaderLength, 1, file))
@@ -190,6 +175,37 @@ void GridMapList::saveToFiles(const InputData *input, const char *gridParameterF
         // Save the floating grid
         for (int j = 0; j < numGridPointsPerMap; j++)
             fprintf(file, "%.3f\n", floatingGridMins[j]);
+
+        fclose(file);
+    }
+}
+
+void GridMapList::saveGridMap(int index) const
+{
+    if (gridmaps[index].filename[0])
+    {
+        // Open the file
+        FILE *file;
+        if ((file = boincOpenFile(gridmaps[index].filename, "w")) == 0)
+        {
+            logFile->printErrorFormatted(ERROR, "Cannot open grid map \"%s\" for writing.", gridmaps[index].filename);
+            logFile->printError(FATAL_ERROR, "Unsuccessful completion.\n\n");
+        }
+        if (!fwrite(fileHeader, fileHeaderLength, 1, file))
+            logFile->printError(FATAL_ERROR, "Not enough disk space.");
+
+        // Save energies
+        for (int j = 0; j < numGridPointsPerMap; j++)
+        {
+            double f = gridmaps[index].energies[j];
+            if (f == 0)
+            {
+                if (!fwrite("0\n", 2, 1, file))
+                    logFile->printError(FATAL_ERROR, "Not enough disk space.");
+            }
+            else
+                fprintf(file, "%.3f\n", f);
+        }
 
         fclose(file);
     }

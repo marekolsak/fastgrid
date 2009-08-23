@@ -87,16 +87,16 @@ static void calculateElectrostaticMapGeneric(const InputData *input, GridMap &el
     }
 }
 
-void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameters &programParams, GridMapList &gridmaps)
 {
     Timer *t2 = 0;
     if (programParams.benchmarkEnabled())
         t2 = Timer::startNew("Electrostatic map      ");
 
     if (input->distDepDiel)
-        calculateElectrostaticMapGeneric<1>(input, elecMap);
+        calculateElectrostaticMapGeneric<1>(input, gridmaps.getElectrostaticMap());
     else
-        calculateElectrostaticMapGeneric<0>(input, elecMap);
+        calculateElectrostaticMapGeneric<0>(input, gridmaps.getElectrostaticMap());
 
     if (programParams.benchmarkEnabled())
     {
@@ -107,13 +107,15 @@ void calculateElectrostaticMapCPU(const InputData *input, const ProgramParameter
         double atomsPerSec = atoms / seconds;
         fprintf(stderr, "Electrostatics performance: %i million atoms/s\n", int(atomsPerSec / 1000000));
     }
+
+    gridmaps.saveElectrostaticMap();
 }
 
 #if !defined(AG_CUDA)
 
-void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMap &elecMap)
+void *calculateElectrostaticMapAsync(const InputData *input, const ProgramParameters &programParams, GridMapList &gridmaps)
 {
-    calculateElectrostaticMapCPU(input, programParams, elecMap);
+    calculateElectrostaticMapCPU(input, programParams, gridmaps);
     return 0;
 }
 

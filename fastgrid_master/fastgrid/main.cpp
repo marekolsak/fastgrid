@@ -159,8 +159,9 @@ void programMain(int argc, char **argv)
     if (input->floatingGridFilename[0])
         gridmaps.enableFloatingGrid();
 
-    // Inititializing arrays of output energies
+    // Inititializing arrays of output energies and the header which is at the beginning of each output file
     gridmaps.prepareGridmaps(input->numGridPointsPerMap);
+    gridmaps.initFileHeader(input, programParams.getGridParameterFilename());
 
     // TODO: add a smarter mechanism of checking for the available disk space, we need to know that as soon as possible.
     // the formerly implemented checks in the middle of calculations were done too late
@@ -211,10 +212,11 @@ void programMain(int argc, char **argv)
         t1->stopAndLog(stderr);
 
     // Start calculating the electrostatic map
-    void *handleElecMap = calculateElectrostaticMapAsync(input, programParams, gridmaps.getElectrostaticMap());
+    void *handleElecMap = calculateElectrostaticMapAsync(input, programParams, gridmaps);
 
     // Calculate the atom maps and the desolvation map
     calculateGridmaps(input, programParams, gridmaps, parameterLibrary, energyLookup, desolvExpFunc, bondVectors);
+    gridmaps.saveAtomMapsAndDesolvMap(); // and save them
 
     // Wait for the calculation
     synchronizeCalculation(handleElecMap);
@@ -225,9 +227,13 @@ void programMain(int argc, char **argv)
         Timer *t3 = 0;
         if (programParams.benchmarkEnabled())
             t3 = Timer::startNew("Floating grid          ");
+
         calculateFloatingGrid(input, gridmaps);
+
         if (programParams.benchmarkEnabled())
             t3->stopAndLog(stderr);
+
+        gridmaps.saveFloatingGrid(input->floatingGridFilename);
     }
 
     delete bondVectors;
@@ -235,9 +241,6 @@ void programMain(int argc, char **argv)
 #if defined(BOINCCOMPOUND)
     boinc_fraction_done(0.9);
 #endif
-
-    // Save all gridmaps
-    gridmaps.saveToFiles(input, programParams.getGridParameterFilename());
 
     delete inputDataLoader;
 
