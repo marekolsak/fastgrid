@@ -151,6 +151,8 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
         // Initialize global or constant memory for distance-dependent dielectric if needed
         else if (dddKind == DistanceDependentDiel_GlobalMem ||
                  dddKind == DistanceDependentDiel_ConstMem)
+            // by default, the table is put into constant memory,
+            // however the internal API may decide to put it into global memory instead
             constMem.initDistDepDielLookUpTable(input->epsilon);
     }
 
@@ -166,13 +168,16 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
     // Do the gridmap calculation...
     if (programParams->calcSlicesSeparatelyCUDA())
+    {
+        int step = unroll ? 8 : 1;
         // For each Z
-        for (int z = 0; z < input->numGridPoints.z; z++)
+        for (int z = 0; z < input->numGridPoints.z; z += step)
         {
             constMem.setZSlice(z);
             for (int i = 0; i < numAtomSubsets; i++)
                 callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream, api);
         }
+    }
     else // !calcSlicesSeparately
         for (int i = 0; i < numAtomSubsets; i++)
             callKernel(constMem, i, kernelProc, dimGrid, dimBlock, stream, api);
