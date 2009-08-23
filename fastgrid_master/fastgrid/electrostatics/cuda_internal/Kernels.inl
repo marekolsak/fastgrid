@@ -104,8 +104,10 @@ static inline __device__ float dielectric(float invR)
 static inline __device__ void initialize(bool unrolling, int calcGranularity, float3 &gridPos, int &outputIndex)
 {
     int x = (calcGranularity == CalcEntireGrid ? blockIdx.x / numGridPoints.z : blockIdx.x) * blockDim.x + threadIdx.x;
-    int y = (blockIdx.y * blockDim.y + threadIdx.y) * (unrolling ? 8 : 1);
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
     int z = calcGranularity == CalcEntireGrid ? blockIdx.x % numGridPoints.z : zIndex;
+    if (unrolling)
+        z *= 8;
 
     gridPos.x = (x - numGridPointsDiv2.x) * gridSpacing;
     gridPos.y = (y - numGridPointsDiv2.y) * gridSpacing;
@@ -127,7 +129,6 @@ static __global__ void calc_1Point()
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
     {
-        // Calculate dx, dy
         float dx = gridPos.x - atoms[ia].x;
         float dy = gridPos.y - atoms[ia].y;
         float dz = gridPos.z - atoms[ia].z;
@@ -153,38 +154,38 @@ static __global__ void calc_8Points()
     //  Do all Receptor (protein, DNA, etc.) atoms...
     for (int ia = 0; ia < numAtoms; ia++)
     {
-        // Calculate dx
         float dx = gridPos.x - atoms[ia].x;
-        float dz = gridPos.z - atoms[ia].z;
-        float dxdzSq = dx*dx + dz*dz;
+        float dy = gridPos.y - atoms[ia].y;
+        float dxdySq = dx*dx + dy*dy;
 
-        float dy0 = gridPos.y - atoms[ia].y;
-        float dy1 = dy0 + gridSpacing;
-        float dy2 = dy1 + gridSpacing;
-        float dy3 = dy2 + gridSpacing;
-        float dy4 = dy3 + gridSpacing;
-        float dy5 = dy4 + gridSpacing;
-        float dy6 = dy5 + gridSpacing;
-        float dy7 = dy6 + gridSpacing;
+        float dz0 = gridPos.z - atoms[ia].z;
+        float dz1 = dz0 + gridSpacing;
+        float dz2 = dz1 + gridSpacing;
+        float dz3 = dz2 + gridSpacing;
+        float dz4 = dz3 + gridSpacing;
+        float dz5 = dz4 + gridSpacing;
+        float dz6 = dz5 + gridSpacing;
+        float dz7 = dz6 + gridSpacing;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
-        energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy0*dy0 + dxdzSq));
-        energy1 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy1*dy1 + dxdzSq));
-        energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy2*dy2 + dxdzSq));
-        energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy3*dy3 + dxdzSq));
-        energy4 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy4*dy4 + dxdzSq));
-        energy5 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy5*dy5 + dxdzSq));
-        energy6 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy6*dy6 + dxdzSq));
-        energy7 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dy7*dy7 + dxdzSq));
+        energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz0*dz0));
+        energy1 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz1*dz1));
+        energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz2*dz2));
+        energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz3*dz3));
+        energy4 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz4*dz4));
+        energy5 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz5*dz5));
+        energy6 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz6*dz6));
+        energy7 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz7*dz7));
     }
 
-    deviceEnergies[outputIndex] += energy0; outputIndex += numGridPoints.x;
-    deviceEnergies[outputIndex] += energy1; outputIndex += numGridPoints.x;
-    deviceEnergies[outputIndex] += energy2; outputIndex += numGridPoints.x;
-    deviceEnergies[outputIndex] += energy3; outputIndex += numGridPoints.x;
-    deviceEnergies[outputIndex] += energy4; outputIndex += numGridPoints.x;
-    deviceEnergies[outputIndex] += energy5; outputIndex += numGridPoints.x;
-    deviceEnergies[outputIndex] += energy6; outputIndex += numGridPoints.x;
+    int numGridPointsXMulY = numGridPoints.y * numGridPoints.x;
+    deviceEnergies[outputIndex] += energy0; outputIndex += numGridPointsXMulY;
+    deviceEnergies[outputIndex] += energy1; outputIndex += numGridPointsXMulY;
+    deviceEnergies[outputIndex] += energy2; outputIndex += numGridPointsXMulY;
+    deviceEnergies[outputIndex] += energy3; outputIndex += numGridPointsXMulY;
+    deviceEnergies[outputIndex] += energy4; outputIndex += numGridPointsXMulY;
+    deviceEnergies[outputIndex] += energy5; outputIndex += numGridPointsXMulY;
+    deviceEnergies[outputIndex] += energy6; outputIndex += numGridPointsXMulY;
     deviceEnergies[outputIndex] += energy7;
 }
 
@@ -217,7 +218,7 @@ void stdSetGridMap(const int3 *numGridPoints, const int3 *numGridPointsDiv2,
 
 void stdSetSlice(const int *zIndex, cudaStream_t stream)
 {
-    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::zIndex,            zIndex,            sizeof(int), 0, cudaMemcpyHostToDevice, stream));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbolAsync(::zIndex, zIndex, sizeof(int), 0, cudaMemcpyHostToDevice, stream));
 }
 
 void stdSetAtoms(const int *numAtoms, const float4 *atoms, cudaStream_t stream)

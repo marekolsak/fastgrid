@@ -44,22 +44,22 @@ static void setupSliceThreadBlocks(int numThreads, int numGridPointsPerThread, c
         throw ExitProgram(0xbad);
 
     // One slice at a time
-    dimBlock->x = numGridPointsPerThread > 1 ? 32 : 16;
+    dimBlock->x = 16;
     dimBlock->y = numThreads / dimBlock->x;
 
     // Pad/align the grid to a size of the grid block
     numGridPointsPadded->x = align(numGridPoints.x, dimBlock->x);
-    numGridPointsPadded->y = align(numGridPoints.y, dimBlock->y * numGridPointsPerThread);
-    numGridPointsPadded->z = numGridPoints.z;
+    numGridPointsPadded->y = align(numGridPoints.y, dimBlock->y);
+    numGridPointsPadded->z = align(numGridPoints.z, numGridPointsPerThread);
     dimGrid->x = numGridPointsPadded->x / dimBlock->x;
-    dimGrid->y = numGridPointsPadded->y / (dimBlock->y * numGridPointsPerThread);
+    dimGrid->y = numGridPointsPadded->y / dimBlock->y;
 }
 
 static void setupGridThreadBlocks(int numThreads, int numGridPointsPerThread, const Vec3i &numGridPoints,
                                   Vec3i *numGridPointsPadded, dim3 *dimGrid, dim3 *dimBlock)
 {
     setupSliceThreadBlocks(numThreads, numGridPointsPerThread, numGridPoints, numGridPointsPadded, dimGrid, dimBlock);
-    dimGrid->x *= numGridPointsPadded->z;
+    dimGrid->x *= numGridPointsPadded->z / numGridPointsPerThread;
 }
 
 static void callKernel(CudaConstantMemory &constMem, int atomSubsetIndex, CudaKernelProc kernelProc,
@@ -89,6 +89,10 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
 
     setupThreadBlocks(numThreads, numGridPointsPerThread, input->numGridPoints,
                       &numGridPointsPadded, &dimGrid, &dimBlock);
+    if (programParams->benchmarkEnabled())
+        fprintf(stderr, "CUDA: gridmap = (%i, %i, %i), dimBlock = (%i, %i), dimGrid = (%i, %i)\n",
+                numGridPointsPadded.x, numGridPointsPadded.y, numGridPointsPadded.z,
+                dimBlock.x, dimBlock.y, dimGrid.x, dimGrid.y);
 
     // With the knowledge of size of the padded grid, we can examine how much we lose by padding in terms of performance
     if (programParams->unrollLoopCUDA() == Unassigned)
@@ -111,9 +115,9 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     DielectricKind dddKind = programParams->getDDDKindCUDA();
     if (dddKind == Diel_Unassigned)
     {
-        double mean = (numGridPointsPadded.x + numGridPointsPadded.y + numGridPointsPadded.z) / 3;
+        double max = Mathd::Max(numGridPointsPadded.x, Mathd::Max(numGridPointsPadded.y, numGridPointsPadded.z));
 
-        if (mean > 160)
+        if (max > 160)
             dddKind = DistanceDependentDiel_TextureMem;
         else
             dddKind = DistanceDependentDiel_InPlace;
