@@ -18,12 +18,14 @@ bench_one()
 
 bench_molecules()
 {
+if [ "$1" -ge "360" ]; then
     bench_one $1 1000
     bench_one $1 2500
     bench_one $1 5000
     bench_one $1 7500
     bench_one $1 10000
     bench_one $1 15000
+fi
     bench_one $1 20000
     bench_one $1 25000
 }
@@ -41,14 +43,14 @@ bench_grids()
 #    bench_molecules 90
 #    bench_molecules 100
 #    bench_molecules 120
-    bench_molecules 140
-    bench_molecules 160
-    bench_molecules 180
-    bench_molecules 200
-    bench_molecules 233
-    bench_molecules 266
-    bench_molecules 300
-    bench_molecules 350
+#    bench_molecules 140
+#    bench_molecules 160
+#    bench_molecules 180
+#    bench_molecules 200
+#    bench_molecules 233
+#    bench_molecules 266
+#    bench_molecules 300
+#    bench_molecules 350
     bench_molecules 400
     bench_molecules 500
 }

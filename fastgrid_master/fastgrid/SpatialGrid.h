@@ -108,6 +108,15 @@ public:
         return sizeof(T) * numAllCells * sizeofCell;
     }
 
+    Vec3d getCorrectCellSize(const Vec3d &gridSize, double maxCellSize)
+    {
+        Vec3d minNumCells = gridSize / maxCellSize;
+        Vec3d numCells = Vec3d(Mathd::Ceil(minNumCells.x),
+                               Mathd::Ceil(minNumCells.y),
+                               Mathd::Ceil(minNumCells.z));
+        return gridSize / numCells;
+    }
+
     // Set indices to be in the valid range
     void clampIndices(Vec3i &in) const
     {

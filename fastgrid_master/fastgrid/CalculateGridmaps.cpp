@@ -377,19 +377,30 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
     // Calculate the cell size and the max atoms per cell according to memory usage
     double cellSize = NBCUTOFF/2;
     int maxAtomsPerCell = 0;
-    for (int i = 0; i < 40; i++, cellSize += 0.5)
+    int i, iMax = 100;
+    for (i = 0; i < iMax; i++, cellSize *= 1.25)
     {
-        maxAtomsPerCell = int(Mathd::Cube(cellSize + NBCUTOFF*2) * invMinAtomVolume + 1); // + 1 because of rounding
-        if ((cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20) <= size_t(programParams.getCutoffGridMemoryLimit()))
+        Vec3d bucketVolume = cutoffGrid.getCorrectCellSize(gridSize, cellSize);
+        bucketVolume += NBCUTOFF*2;
+        maxAtomsPerCell = int(bucketVolume.Cube() * invMinAtomVolume + 1); // + 1 because of rounding
+        if (maxAtomsPerCell > input->numReceptorAtoms)
+            maxAtomsPerCell = input->numReceptorAtoms;
+
+        int mb = cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20;
+        if (mb <= size_t(programParams.getCutoffGridMemoryLimit()))
             break;
+        if (programParams.benchmarkEnabled())
+            ;//fprintf(stderr, "Cutoff Grid, test failed: Cell size: %f, Max atoms per cell: %i, Grid memory: %i MB\n", cellSize, maxAtomsPerCell, mb);
     }
+    if (i == iMax)
+        fprintf(stderr, "Determining the memory size of the cutoff grid FAILED.\n");
 
     if (programParams.benchmarkEnabled())
     {
         //fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
         //fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
         //fprintf(stderr, "Cutoff Grid: Cell size: %f\n", cellSize);
-        //fprintf(stderr, "Cutoff Grid: Allocating %" SIZE_T_FLAG "u MiB\n", cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20);
+        fprintf(stderr, "Cutoff Grid: Allocating %" SIZE_T_FLAG "u MiB\n", cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20);
     }
 
     cutoffGrid.create(gridSize, cellSize, 0, maxAtomsPerCell);
