@@ -97,10 +97,10 @@ static void calculateElectrostaticMapCUDA(const InputData *input, const ProgramP
     // With the knowledge of size of the padded grid, we can examine how much we lose by padding in terms of performance
     if (programParams->unrollLoopCUDA() == Unassigned)
     {
-        double volume = input->numGridPointsPerMap;
-        double volumePadded = numGridPointsPadded.Cube();
+        double z = input->numGridPointsPerMap;
+        double zPadded = numGridPointsPadded.z;
 
-        if (volume*1.5 < volumePadded)
+        if (z*1.5 < zPadded)
         {
             // Disable unrolling
             unroll = false;
