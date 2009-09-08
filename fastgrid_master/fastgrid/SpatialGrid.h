@@ -33,10 +33,20 @@ public:
     typedef int32 T;
 
     SpatialGrid(): grid(0) {}
-    ~SpatialGrid() { if (grid) delete [] grid; }
+
+	~SpatialGrid()
+	{	
+		if (grid)
+		{
+			for (int i = 0; i < numAllCells; i++)
+				if (grid[i])
+					delete [] grid[i];
+			delete [] grid;
+		}
+	}
 
     // Creates the grid with the given size of the grid and the maximal expected size of each cell
-    void create(const Vec3d &gridSize, double maxCellSize, const Vec3d &centerPos, int maxElementsInCell)
+    void create(const Vec3d &gridSize, double maxCellSize, const Vec3d &centerPos)
     {
         Vec3d minNumCells = gridSize / maxCellSize;
         Vec3d numCells = Vec3d(Mathd::Ceil(minNumCells.x),
@@ -44,11 +54,23 @@ public:
                                Mathd::Ceil(minNumCells.z));
         Vec3d cellSize = gridSize / numCells;
 
-        create(Vec3i(numCells + 0.5), cellSize, centerPos, maxElementsInCell);
+        create(Vec3i(numCells + 0.5), cellSize, centerPos);
     }
 
+	// Returns the size of memory
+	size_t getSizeOfMemory() const
+	{
+		if (!grid)
+			return 0;
+
+		size_t size = numAllCells * sizeof(T*);
+		for (int i = 0; i < numAllCells; i++)
+			size += (grid[i][0]+2) * sizeof(T);
+		return size;
+	}
+
     // Creates the grid with the given number of cells and the size of each cell
-    void create(const Vec3i &numCells, const Vec3d &cellSize, const Vec3d &centerPos, int maxElementsInCell)
+    void create(const Vec3i &numCells, const Vec3d &cellSize, const Vec3d &centerPos)
     {
         this->numCells = numCells;
         for (int i = 0; i < 3; i++)
@@ -60,20 +82,11 @@ public:
         cellDiagonalHalf = cellSizeHalf.Magnitude();
         cellSizeInv = cellSize;
         cellSizeInv.Inverse();
-        this->maxElementsInCell = maxElementsInCell;
 
-        // The actual number of elements is at the beginning of every cell
-        sizeofCell = 1 + maxElementsInCell;
-        // Align to a multiple of 8 bytes
-        sizeofCell = (((sizeofCell * sizeof(T) - 1) / 8 + 1) * 8) / sizeof(T);
         // Allocate the grid
-        int numAllCells = this->numCells.Cube();
-        grid = new T[numAllCells * sizeofCell];
-
-        // Zeroize the count of elements in each grid
-        T *end = grid + numAllCells * sizeofCell;
-        for (T *p = grid; p != end; p += sizeofCell)
-            *p = 0;
+        numAllCells = this->numCells.Cube();
+        grid = new T*[numAllCells];
+		memset(grid, 0, sizeof(T*) * numAllCells);
 
         // extent is a vector from the corner to the center
         Vec3d extent = Vec3d(this->numCells) * cellSizeHalf;
@@ -85,38 +98,6 @@ public:
         cornerCellPosMin = cornerPosMin + cellSizeHalf;
     }
 
-    static size_t estimateMemorySize(const Vec3d &gridSize, double maxCellSize, int maxElementsInCell)
-    {
-        Vec3d minNumCells = gridSize / maxCellSize;
-        Vec3d numCells = Vec3d(Mathd::Ceil(minNumCells.x),
-                               Mathd::Ceil(minNumCells.y),
-                               Mathd::Ceil(minNumCells.z));
-
-        return estimateMemorySize(Vec3i(numCells + 0.5), maxElementsInCell);
-    }
-
-    static size_t estimateMemorySize(const Vec3i &numCells, int maxElementsInCell)
-    {
-        Vec3i tnumCells = numCells;
-        for (int i = 0; i < 3; i++)
-            tnumCells[i] = Mathi::Max(1, tnumCells[i]);
-        size_t numAllCells = Vec3<size_t>(tnumCells).Cube();
-
-        size_t sizeofCell = 1 + maxElementsInCell;
-        sizeofCell = (((sizeofCell * sizeof(T) - 1) / 8 + 1) * 8) / sizeof(T);
-
-        return sizeof(T) * numAllCells * sizeofCell;
-    }
-
-    Vec3d getCorrectCellSize(const Vec3d &gridSize, double maxCellSize)
-    {
-        Vec3d minNumCells = gridSize / maxCellSize;
-        Vec3d numCells = Vec3d(Mathd::Ceil(minNumCells.x),
-                               Mathd::Ceil(minNumCells.y),
-                               Mathd::Ceil(minNumCells.z));
-        return gridSize / numCells;
-    }
-
     // Set indices to be in the valid range
     void clampIndices(Vec3i &in) const
     {
@@ -125,74 +106,62 @@ public:
     }
 
     // Returns an internal cell ID, which is actually a pointer to the grid array
-    SpatialCell getCellByIndices(const Vec3i &indices) const
+    SpatialCell getCellFromIndices(const Vec3i &indices) const
     {
         Vec3i in = indices;
         clampIndices(in);
-        return getCellByClampedIndices(in);
-    }
-
-    // Returns an internal cell ID, which is actually a pointer to the grid array
-    SpatialCell getCellByClampedIndices(const Vec3i &in) const
-    {
-        int index = getScalarIndexByIndices(in) * sizeofCell;
-        return grid + index;
+        return grid[getScalarIndexFromIndices(in)];
     }
 
     // Calculates a scalar index from 3D indices
-    int getScalarIndexByIndices(const Vec3i &in) const
+    int getScalarIndexFromIndices(const Vec3i &in) const
     {
         return numCells.x * (numCells.y * in.z + in.y) + in.x;
     }
 
     // Returns indices of the cell at the given position
-    void getIndicesByPos(const Vec3d &pos, Vec3i &indices) const
+    void getIndicesFromPos(const Vec3d &pos, Vec3i &indices) const
     {
         indices = Vec3i((pos - cornerPosMin) * cellSizeInv);
     }
 
-    // Returns the center of the cell at the given indices
-    void getCellCenterPosByIndices(const Vec3i &indices, Vec3d &pos) const
-    {
-        pos = Vec3d(indices) * cellSize + cornerCellPosMin;
-    }
-
     // Returns the corner of the cell at the given indices
-    void getCellCornerPosByIndices(const Vec3i &indices, Vec3d &pos) const
+    void getCellCornerPosFromIndices(const Vec3i &indices, Vec3d &pos) const
     {
         pos = Vec3d(indices) * cellSize + cornerPosMin;
     }
 
     // Returns the internal cell ID at the given position
-    SpatialCell getCellByPos(const Vec3d &pos) const
+    SpatialCell getCellFromPos(const Vec3d &pos) const
     {
         Vec3i ipos;
-        getIndicesByPos(pos, ipos);
-        return getCellByIndices(ipos);
+        getIndicesFromPos(pos, ipos);
+        return getCellFromIndices(ipos);
     }
 
     // Returns the number of elements in the cell
     T getNumElements(const SpatialCell cell) const
     {
-        return *(T*)cell;
+        return *((T*)cell + 1);
     }
 
     // Returns the index-th element in the given cell
     T getElement(const SpatialCell cell, int index) const
     {
-        return *((T*)cell + 1 + index);
+        return *((T*)cell + 2 + index);
     }
 
     // Inserts ID of your object to the cell, which occupies the given cell
     void insertIntoCell(SpatialCell cell, T id)
     {
-        // The first index represents the number of elements
-        T &num = *(T*)cell;
+		T *c = (T*)cell;
 
-        if (num < maxElementsInCell)
+		T maxNum = c[0]; // The maximum number of elements
+        T &num = c[1]; // The actual number of elements
+		T *elements = c+2;
+
+        if (num < maxNum)
         {
-            // Elements begin at the second index
-            T *elements = (T*)cell+1;
             elements[num] = id;
             ++num;
         }
@@ -206,19 +175,19 @@ public:
     // Inserts ID of your object to the cell at the given indices
     void insertAtIndices(const Vec3i &indices, T id)
     {
-        insertIntoCell(getCellByIndices(indices), id);
+        insertIntoCell(getCellFromIndices(indices), id);
     }
 
     // Inserts ID of your object to the cell at the given indices
     void insertAtClampedIndices(const Vec3i &indices, T id)
     {
-        insertIntoCell(getCellByClampedIndices(indices), id);
+        insertIntoCell(grid[getScalarIndexFromIndices(indices)], id);
     }
 
     // Inserts ID to the cell at the given position
     void insertPos(const Vec3d &pos, T id)
     {
-        insertIntoCell(getCellByPos(pos), id);
+        insertIntoCell(getCellFromPos(pos), id);
     }
 
     // Returns the numCells vector of the grid
@@ -231,8 +200,8 @@ public:
     void insertSphere(const Sphere3d &s, T id)
     {
         Vec3i indicesMin, indicesMax;
-        getIndicesByPos(s.pos - s.radius, indicesMin);
-        getIndicesByPos(s.pos + s.radius, indicesMax);
+        getIndicesFromPos(s.pos - s.radius, indicesMin);
+        getIndicesFromPos(s.pos + s.radius, indicesMax);
         clampIndices(indicesMin);
         clampIndices(indicesMax);
 
@@ -243,7 +212,7 @@ public:
                 {
                     Vec3i indices(x, y, z);
                     Vec3d cellPos;
-                    getCellCornerPosByIndices(indices, cellPos);
+                    getCellCornerPosFromIndices(indices, cellPos);
 
                     if (Intersect(AxisAlignedBox3d(cellPos, cellPos + cellSize), s))
                         insertAtClampedIndices(indices, id);
@@ -265,8 +234,8 @@ public:
                 {
                     Vec3i indices(x, y, z);
                     Vec3d cellPos;
-                    getCellCornerPosByIndices(indices, cellPos);
-                    boxes[getScalarIndexByIndices(indices)] = AxisAlignedBox3d(cellPos, cellPos + cellSize);
+                    getCellCornerPosFromIndices(indices, cellPos);
+                    boxes[getScalarIndexFromIndices(indices)] = AxisAlignedBox3d(cellPos, cellPos + cellSize);
                 }
 
         // For each sphere, precalculate a range of possible indices of cells the sphere might intersect with
@@ -277,8 +246,8 @@ public:
         for (int s = 0; s < num; s++)
         {
             int sindex = s*2;
-            getIndicesByPos(Vec3d(pos[s]) - radius, sphereIndicesRange[sindex]);
-            getIndicesByPos(Vec3d(pos[s]) + radius, sphereIndicesRange[sindex+1]);
+            getIndicesFromPos(Vec3d(pos[s]) - radius, sphereIndicesRange[sindex]);
+            getIndicesFromPos(Vec3d(pos[s]) + radius, sphereIndicesRange[sindex+1]);
             clampIndices(sphereIndicesRange[sindex]);
             clampIndices(sphereIndicesRange[sindex+1]);
         }
@@ -293,6 +262,11 @@ public:
         // The reason we do this is that iterating through all X elements concurrently and then through all the spheres
         // would be waste of computational time since not all spheres intersect the particular X coordinate, so we divide
         // the X axis to a reasonable number of segments and iterate only the ones which might really intersect the sphere.
+
+		// FIRST DETERMINE THE SIZE OF EACH CELL
+		assert(sizeof(size_t) == sizeof(T*));
+		size_t *counts = (size_t*)grid;
+		memset(counts, 0, sizeof(size_t) * numAllCells);
 
 #if defined(AG_OPENMP)
     #pragma omp parallel for schedule(dynamic, 1)
@@ -315,9 +289,46 @@ public:
                     for (int y = indicesMin.y; y <= indicesMax.y; y++)
                         for (int z = indicesMin.z; z <= indicesMax.z; z++)
                         {
-                            int index = getScalarIndexByIndices(Vec3i(x, y, z));
+                            int index = getScalarIndexFromIndices(Vec3i(x, y, z));
                             if (Intersect(boxes[index], Sphere3d(Vec3d(pos[s]), radius)))
-                                insertIntoCell(grid + (index * sizeofCell), T(s));
+                                ++counts[index];
+                        }
+            }
+
+		// ALLOCATE CELLS
+		for (int i = 0; i < numAllCells; i++)
+		{
+			T *cell = new T[2 + counts[i]];
+			cell[0] = T(counts[i]);
+			cell[1] = 0;
+			grid[i] = cell;
+		}
+
+		// THEN, INSERT ATOMS INTO THE CELLS
+#if defined(AG_OPENMP)
+    #pragma omp parallel for schedule(dynamic, 1)
+#endif
+        // For each segment and each sphere
+        for (int i = 0; i < segments; i++)
+            for (int s = 0; s < num; s++)
+            {
+                // Get the range of indices for this sphere
+                int sindex = s*2;
+                Vec3i indicesMin = sphereIndicesRange[sindex];
+                Vec3i indicesMax = sphereIndicesRange[sindex+1];
+
+                // Adjust indices in the X axis for them to be in this segment
+                indicesMin.x = Mathi::Max(i * numCellsXPerSegment, indicesMin.x);
+                indicesMax.x = Mathi::Min((i+1) * numCellsXPerSegment - 1, indicesMax.x);
+
+                // For each cell, insert the sphere if intersecting
+                for (int x = indicesMin.x; x <= indicesMax.x; x++)
+                    for (int y = indicesMin.y; y <= indicesMax.y; y++)
+                        for (int z = indicesMin.z; z <= indicesMax.z; z++)
+                        {
+                            int index = getScalarIndexFromIndices(Vec3i(x, y, z));
+                            if (Intersect(boxes[index], Sphere3d(Vec3d(pos[s]), radius)))
+                                insertIntoCell(grid[index], T(s));
                         }
             }
 
@@ -326,9 +337,9 @@ public:
     }
 
 private:
-    T *grid;
+    T **grid;
     Vec3i numCells, numCellsMinus1;
-    T maxElementsInCell, sizeofCell;
+	int numAllCells;
     Vec3d cellSize, cellSizeHalf, cellSizeInv;
     Vec3d cornerPosMin, cornerCellPosMin;
     double cellDiagonalHalf;

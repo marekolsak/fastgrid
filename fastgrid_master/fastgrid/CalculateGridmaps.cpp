@@ -254,7 +254,7 @@ static inline void calculateGridPoint(const InputData *input, GridMapList &gridm
     SpatialCell cell = 0;
     if (UseCutoffGrid)
     {
-        cell = cutoffGrid.getCellByPos(gridPos);
+        cell = cutoffGrid.getCellFromPos(gridPos);
         num = cutoffGrid.getNumElements(cell);
     }
     else
@@ -331,7 +331,11 @@ static void LoopOverGrid(const InputData *input, GridMapList &gridmaps, int hydr
 
 static void initCutoffGrid(const InputData *input, const ProgramParameters &programParams, SpatialGrid &cutoffGrid)
 {
-    // Find distance^2 between two closest atoms
+    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
+    double cellSize = NBCUTOFF/2;
+
+#if 0
+	// Find distance^2 between two closest atoms
 #if defined(AG_OPENMP)
     int subsets = omp_get_max_threads()*4;
 #else
@@ -372,10 +376,8 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
     double minAtomRadius = sqrt(minDistanceSq)/2;
     double minAtomVolume = (4.0/3.0) * 3.14159265358979323846 * Mathd::Cube(minAtomRadius);
     double invMinAtomVolume = 1 / minAtomVolume;
-    Vec3d gridSize = Vec3d(input->numGridPoints) * input->gridSpacing;
 
     // Calculate the cell size and the max atoms per cell according to memory usage
-    double cellSize = NBCUTOFF/2;
     int maxAtomsPerCell = 0;
     int i, iMax = 100;
     for (i = 0; i < iMax; i++, cellSize *= 1.25)
@@ -403,9 +405,13 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
 		size_t mb = cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell);
         fprintf(stderr, "Cutoff Grid: Allocating %1.2f MiB\n", mb / double(1<<20));
     }
+#endif
 
-    cutoffGrid.create(gridSize, cellSize, 0, maxAtomsPerCell);
+	cutoffGrid.create(gridSize, cellSize, 0);
     cutoffGrid.insertSpheres(input->numReceptorAtoms, &input->receptorAtom[0], NBCUTOFF);
+
+	if (programParams.benchmarkEnabled())
+		fprintf(stderr, "Cutoff Grid: Allocated %1.2f MiB\n", cutoffGrid.getSizeOfMemory() / double(1<<20));
 }
 
 static void initHSearch(const InputData *input, NearestNeighborSearch3d &hsearch, int *indicesHtoA)
