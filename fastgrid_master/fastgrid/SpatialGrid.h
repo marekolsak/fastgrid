@@ -22,6 +22,7 @@
 */
 
 #pragma once
+#include <cstring>
 #include "autogrid.h"
 #include "Exceptions.h"
 
