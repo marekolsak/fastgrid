@@ -12,17 +12,20 @@
 		<Platform
 			Name="Win32"
 		/>
+		<Platform
+			Name="x64"
+		/>
 	</Platforms>
 	<ToolFiles>
 		<ToolFile
-			RelativePath="C:\Documents And Settings\All Users\Application Data\NVIDIA Corporation\NVIDIA CUDA SDK\common\Cuda.rules"
+			RelativePath="C:\ProgramData\NVIDIA Corporation\NVIDIA GPU Computing SDK\C\common\Cuda.rules"
 		/>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)_$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="0"
 			>
@@ -112,8 +115,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)_$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="0"
 			WholeProgramOptimization="1"
@@ -190,6 +193,203 @@
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;echo Performing Test...&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat --no-pause&#x0D;&#x0A;"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Debug|x64"
+			OutputDirectory="$(SolutionDir)$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)_$(ConfigurationName)"
+			ConfigurationType="1"
+			CharacterSet="0"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="CUDA Build Rule"
+				Debug="true"
+				Emulation="true"
+				PtxAsOptionV="true"
+				ExtraNvccOptions=""
+				Warning="3"
+				Optimization="0"
+				TypeInfo="true"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
+				Optimization="0"
+				AdditionalIncludeDirectories=".;&quot;$(CUDA_INC_PATH)&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;AG_CUDA;_SCL_SECURE_NO_WARNINGS;FASTGRID"
+				MinimalRebuild="false"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="1"
+				OpenMP="true"
+				UsePrecompiledHeader="0"
+				BrowseInformation="1"
+				WarningLevel="4"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="ws2_32.lib cuda.lib cudart.lib"
+				LinkIncremental="2"
+				AdditionalLibraryDirectories="$(CUDA_LIB_PATH)"
+				GenerateDebugInformation="true"
+				SubSystem="1"
+				StackReserveSize="4000000"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="17"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+				CommandLine="copy &quot;$(TargetPath)&quot; &quot;$(TargetDir)..\..\..\..\..\tests\$(TargetFileName)&quot;&#x0D;&#x0A;echo Performing Test...&#x0D;&#x0A;cd &quot;$(TargetDir)..\..\..\..\..\tests&quot;&#x0D;&#x0A;call test_win32_vs_current.bat --no-pause&#x0D;&#x0A;"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|x64"
+			OutputDirectory="$(SolutionDir)$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)_$(ConfigurationName)"
+			ConfigurationType="1"
+			CharacterSet="0"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="CUDA Build Rule"
+				Emulation="true"
+				PtxAsOptionV="true"
+				ExtraNvccOptions=""
+				Defines="WIN32"
+				Warning="3"
+				TypeInfo="true"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				OmitFramePointers="true"
+				EnableFiberSafeOptimizations="true"
+				AdditionalIncludeDirectories=".;&quot;$(CUDA_INC_PATH)&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;AG_OPENMP;_SCL_SECURE_NO_WARNINGS;FASTGRID"
+				StringPooling="true"
+				RuntimeLibrary="0"
+				BufferSecurityCheck="false"
+				EnableEnhancedInstructionSet="0"
+				FloatingPointModel="2"
+				OpenMP="true"
+				UsePrecompiledHeader="0"
+				BrowseInformation="1"
+				WarningLevel="4"
+				Detect64BitPortabilityProblems="false"
+				DebugInformationFormat="0"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="ws2_32.lib cuda.lib cudart.lib"
+				LinkIncremental="1"
+				AdditionalLibraryDirectories="$(CUDA_LIB_PATH)"
+				GenerateManifest="false"
+				GenerateDebugInformation="false"
+				SubSystem="1"
+				StackReserveSize="4000000"
+				StackCommitSize="0"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				OptimizeForWindows98="0"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -395,6 +595,14 @@
 							AddedDependencies=""
 						/>
 					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|x64"
+						>
+						<Tool
+							Name="CUDA Build Rule"
+							AddedDependencies=""
+						/>
+					</FileConfiguration>
 				</File>
 				<File
 					RelativePath="..\electrostatics\cuda_internal\DDDConstMemKernels.h"
@@ -417,6 +625,14 @@
 					>
 					<FileConfiguration
 						Name="Release|Win32"
+						>
+						<Tool
+							Name="CUDA Build Rule"
+							AddedDependencies=""
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|x64"
 						>
 						<Tool
 							Name="CUDA Build Rule"

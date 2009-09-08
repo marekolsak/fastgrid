@@ -386,11 +386,11 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
         if (maxAtomsPerCell > input->numReceptorAtoms)
             maxAtomsPerCell = input->numReceptorAtoms;
 
-        int mb = cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20;
+        size_t mb = cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20;
         if (mb <= size_t(programParams.getCutoffGridMemoryLimit()))
             break;
         if (programParams.benchmarkEnabled())
-            ;//fprintf(stderr, "Cutoff Grid, test failed: Cell size: %f, Max atoms per cell: %i, Grid memory: %i MB\n", cellSize, maxAtomsPerCell, mb);
+            0;//fprintf(stderr, "Cutoff Grid, test failed: Cell size: %f, Max atoms per cell: %i, Grid memory: %i MB\n", cellSize, maxAtomsPerCell, mb);
     }
     if (i == iMax)
         fprintf(stderr, "Determining the memory size of the cutoff grid FAILED.\n");
@@ -400,7 +400,8 @@ static void initCutoffGrid(const InputData *input, const ProgramParameters &prog
         //fprintf(stderr, "Cutoff Grid: Min atom radius: %f\n", minAtomRadius);
         //fprintf(stderr, "Cutoff Grid: Max atoms per cell: %i\n", maxAtomsPerCell);
         //fprintf(stderr, "Cutoff Grid: Cell size: %f\n", cellSize);
-        fprintf(stderr, "Cutoff Grid: Allocating %" SIZE_T_FLAG "u MiB\n", cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell) >> 20);
+		size_t mb = cutoffGrid.estimateMemorySize(gridSize, cellSize, maxAtomsPerCell);
+        fprintf(stderr, "Cutoff Grid: Allocating %1.2f MiB\n", mb / double(1<<20));
     }
 
     cutoffGrid.create(gridSize, cellSize, 0, maxAtomsPerCell);

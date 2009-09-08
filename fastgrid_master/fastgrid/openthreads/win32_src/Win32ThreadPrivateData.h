@@ -47,7 +47,7 @@ private:
     Win32ThreadPrivateData() {};
     ~Win32ThreadPrivateData();
 
-    unsigned int stackSize;
+    size_t stackSize;
     bool stackSizeLocked;
     bool isRunning;
 

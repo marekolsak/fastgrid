@@ -230,7 +230,7 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
                 receptorAtom = new Vec4d[numAtomsMax];
 
                 // start to read in the lines of the receptor file
-                size_t ia = 0;
+                int ia = 0;
                 while ((fgets(line, length, receptorFile)) != 0)
                 {
                     sscanf(line, "%6s", record);
@@ -798,7 +798,8 @@ void InputDataLoader::load(const char *gridParameterFilename, GridMapList &gridm
 
 int InputDataLoader::parseGPFLine(const char *line)
 {
-    int l, i, token = -1; // return -1 if nothing is recognized
+    size_t l;
+	int i, token = -1; // return -1 if nothing is recognized
     char c[LINE_LEN];
 
     l = strIndex(line, " ");

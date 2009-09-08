@@ -26,8 +26,8 @@
 
 struct CudaConstantMemory::AtomsConstMem
 {
-    int numAtoms;
     float4 atoms[4096];
+    int numAtoms;
 };
 
 CudaConstantMemory::CudaConstantMemory(cudaStream_t stream, CudaInternalAPI *api): api(api), atomsHost(0), stream(stream),
