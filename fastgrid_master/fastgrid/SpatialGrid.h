@@ -152,7 +152,7 @@ public:
         return *((T*)cell + 2 + index);
     }
 
-    // Inserts ID of your object to the cell, which occupies the given cell
+    // Inserts ID of your object into the cell
     void insertIntoCell(SpatialCell cell, T id)
     {
 		T *c = (T*)cell;
@@ -195,29 +195,6 @@ public:
     const Vec3i &getNumCells() const
     {
         return numCells;
-    }
-
-    // For each cell: if the cell is in range of the sphere, insert ID into the cell.
-    void insertSphere(const Sphere3d &s, T id)
-    {
-        Vec3i indicesMin, indicesMax;
-        getIndicesFromPos(s.pos - s.radius, indicesMin);
-        getIndicesFromPos(s.pos + s.radius, indicesMax);
-        clampIndices(indicesMin);
-        clampIndices(indicesMax);
-
-        // Too simple to be parallelized
-        for (int x = indicesMin.x; x <= indicesMax.x; x++)
-            for (int y = indicesMin.y; y <= indicesMax.y; y++)
-                for (int z = indicesMin.z; z <= indicesMax.z; z++)
-                {
-                    Vec3i indices(x, y, z);
-                    Vec3d cellPos;
-                    getCellCornerPosFromIndices(indices, cellPos);
-
-                    if (Intersect(AxisAlignedBox3d(cellPos, cellPos + cellSize), s))
-                        insertAtClampedIndices(indices, id);
-                }
     }
 
     // For each sphere, for each cell: if the cell is in range of the sphere, insert its index into the cell.
