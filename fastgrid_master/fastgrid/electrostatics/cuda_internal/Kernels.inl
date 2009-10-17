@@ -45,59 +45,77 @@ static __constant__ float4 atoms[STD_NUM_ATOMS_PER_KERNEL]; // {x, y, z, charge}
 // Per-slice parameters
 static __constant__ int zIndex; // index of slice in the Z direction
 
+// Contains a reciprocal square root and its parameter
+struct RsqrtDesc
+{
+    float x;
+    float result; // = rsqrt(x)
+
+    // notice that: sqrt(x) = x/sqrt(x) = x*result
+    // that is, we get sqrt with just rsqrt+mul
+};
+
+static inline __device__ RsqrtDesc myRsqrtf(float x)
+{
+    RsqrtDesc i;
+    i.x = x;
+    i.result = rsqrt(i.x);
+    return i;
+}
+
 // Forward declarations
 template<int DielectricKind>
-static inline __device__ float dielectric(float invR);
+static inline __device__ float dielectric(RsqrtDesc rsqrt);
 template<int DielectricKind>
-static inline __device__ float distanceDependentDiel(float invR);
+static inline __device__ float distanceDependentDiel(RsqrtDesc rsqrt);
 
 // Get dielectric using the lookup table
-static inline __device__ float lookupEpsilonTable(float invR)
+static inline __device__ float lookupEpsilonTable(RsqrtDesc rsqrt)
 {
-    return epsilon[min(int(A_DIVISOR / invR), MAX_DIST-1)];
+    return epsilon[min(int(A_DIVISOR * rsqrt.x * rsqrt.result), MAX_DIST-1)];
 }
 
 // Distance dependent dielectric - global memory
 template<>
-static inline __device__ float distanceDependentDiel<DistanceDependentDiel_GlobalMem>(float invR)
+static inline __device__ float distanceDependentDiel<DistanceDependentDiel_GlobalMem>(RsqrtDesc rsqrt)
 {
-    return lookupEpsilonTable(invR);
+    return lookupEpsilonTable(rsqrt);
 }
 
 // Distance dependent dielectric - constant memory
 template<>
-static inline __device__ float distanceDependentDiel<DistanceDependentDiel_ConstMem>(float invR)
+static inline __device__ float distanceDependentDiel<DistanceDependentDiel_ConstMem>(RsqrtDesc rsqrt)
 {
-    return lookupEpsilonTable(invR);
+    return lookupEpsilonTable(rsqrt);
 }
 
 // Distance dependent dielectric - texture memory
 template<>
-static inline __device__ float distanceDependentDiel<DistanceDependentDiel_TextureMem>(float invR)
+static inline __device__ float distanceDependentDiel<DistanceDependentDiel_TextureMem>(RsqrtDesc rsqrt)
 {
-    return tex1D(epsilonTexture, (float(A_DIVISOR) / (MAX_DIST-1)) / invR);
+    return tex1D(epsilonTexture, (float(A_DIVISOR) / (MAX_DIST-1)) * rsqrt.x * rsqrt.result);
 }
 
 // Distance dependent dielectric - in-place calculation
 template<>
-static inline __device__ float distanceDependentDiel<DistanceDependentDiel_InPlace>(float invR)
+static inline __device__ float distanceDependentDiel<DistanceDependentDiel_InPlace>(RsqrtDesc rsqrt)
 {
-    return calculateDistDepDielInv<float>(1.0f / invR);
+    return calculateDistDepDielInv<float>(rsqrt.x * rsqrt.result);
 }
 
 // Constant dielectric
 template<>
-static inline __device__ float dielectric<ConstantDiel>(float invR)
+static inline __device__ float dielectric<ConstantDiel>(RsqrtDesc rsqrt)
 {
-    return fminf(invR, 2.f);
+    return fminf(rsqrt.result, 2.f);
 }
 
 // Distance-dependent dielectric - main function
 template<int DielectricKind>
-static inline __device__ float dielectric(float invR)
+static inline __device__ float dielectric(RsqrtDesc rsqrt)
 {
-    float ddd = distanceDependentDiel<DielectricKind>(invR);
-    return dielectric<ConstantDiel>(invR) * ddd;
+    float ddd = distanceDependentDiel<DielectricKind>(rsqrt);
+    return dielectric<ConstantDiel>(rsqrt) * ddd;
 }
 
 // Initializes gridPos and outputIndex based on the thread ID
@@ -146,7 +164,7 @@ static __global__ void calc_1Point()
         float dz = gridPos.z - atoms[ia].z;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
-        energy += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dx*dx + dy*dy + dz*dz));
+        energy += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dx*dx + dy*dy + dz*dz));
     }
 
     deviceEnergies[outputIndex] += energy;
@@ -180,14 +198,14 @@ static __global__ void calc_8Points()
         float dz7 = dz6 + gridSpacing;
 
         // The estat forcefield coefficient/weight is premultiplied in .w
-        energy0 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz0*dz0));
-        energy1 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz1*dz1));
-        energy2 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz2*dz2));
-        energy3 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz3*dz3));
-        energy4 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz4*dz4));
-        energy5 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz5*dz5));
-        energy6 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz6*dz6));
-        energy7 += atoms[ia].w * dielectric<DielectricKind>(rsqrtf(dxdySq + dz7*dz7));
+        energy0 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz0*dz0));
+        energy1 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz1*dz1));
+        energy2 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz2*dz2));
+        energy3 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz3*dz3));
+        energy4 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz4*dz4));
+        energy5 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz5*dz5));
+        energy6 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz6*dz6));
+        energy7 += atoms[ia].w * dielectric<DielectricKind>(myRsqrtf(dxdySq + dz7*dz7));
     }
 
     int numGridPointsXMulY = numGridPoints.y * numGridPoints.x;
