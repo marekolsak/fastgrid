@@ -19,6 +19,6 @@ Add your content here.  Format your content with:
 
 = Versioning =
 
-FastGrid uses a version number in format *X*.*Y*.*Z*-*W*, which means:
+FastGrid uses a version number in the format *X*.*Y*.*Z*-*W*, which means:
  * It's compatible with AutoGrid *X*.*Y*.*Z* and can be used to replace it.
- * The version of FastGrid itself is *W*, which matches a number of Subversion.
+ * The version of FastGrid itself is *W*, which matches the number of Subversion revision.
